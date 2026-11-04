@@ -73,6 +73,29 @@ class WmMessageLog(models.Model):
             'country_code': pick('country_code', '91'),
         }
 
+    @api.model
+    def _test_connection(self):
+        """Ask Meta for the number's details with the saved credentials. Returns (ok, text)."""
+        cfg = self._get_config()
+        if cfg['provider'] != 'meta':
+            return bool(cfg['gateway_url']), _("Provider is '%s'. Gateway URL: %s", cfg['provider'], cfg['gateway_url'] or '-')
+        if not (cfg['meta_phone_id'] and cfg['meta_token']):
+            return False, _("Phone Number ID / Access Token is not set (also empty in Student Attendance WhatsApp setup).")
+        url = 'https://graph.facebook.com/%s/%s' % (cfg['meta_api_version'] or 'v21.0', cfg['meta_phone_id'])
+        try:
+            resp = requests.get(url, params={'fields': 'display_phone_number,verified_name,quality_rating'},
+                                headers={'Authorization': 'Bearer %s' % cfg['meta_token']}, timeout=15,
+                                allow_redirects=False)
+            data = resp.json()
+        except Exception as e:  # noqa: BLE001 - network/JSON problems are shown to the admin
+            return False, _("Could not reach Meta: %s", e)
+        if resp.status_code != 200 or 'error' in data:
+            err = (data.get('error') or {}).get('message') or resp.text[:200]
+            return False, _("Meta rejected the request: %s", err)
+        return True, _("Connected: %(n)s (%(v)s), quality %(q)s. WhatsApp sending is %(e)s.",
+                       n=data.get('display_phone_number', '-'), v=data.get('verified_name', '-'),
+                       q=data.get('quality_rating', '-'), e=_("ON") if cfg['enabled'] else _("OFF"))
+
     # ------------------------------------------------------------- queueing
     @api.model
     def _queue_for(self, participant, mtype, force=False):

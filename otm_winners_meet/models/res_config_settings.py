@@ -1,4 +1,4 @@
-from odoo import fields, models
+from odoo import _, fields, models
 
 
 class ResConfigSettings(models.TransientModel):
@@ -14,3 +14,9 @@ class ResConfigSettings(models.TransientModel):
     wm_wa_meta_token = fields.Char(string="Access Token", config_parameter='otm_winners_meet.meta_token')
     wm_wa_template_lang = fields.Char(string="Template Language", config_parameter='otm_winners_meet.template_lang')
     wm_wa_country_code = fields.Char(string="Country Code", config_parameter='otm_winners_meet.country_code')
+
+    def action_wm_test_connection(self):
+        ok, text = self.env['otm.wm.message.log']._test_connection()
+        return {'type': 'ir.actions.client', 'tag': 'display_notification',
+                'params': {'title': _("Meta WhatsApp"), 'message': text,
+                           'type': 'success' if ok else 'danger', 'sticky': not ok}}

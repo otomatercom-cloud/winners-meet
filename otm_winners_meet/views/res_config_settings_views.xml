@@ -23,6 +23,10 @@
                                 <div class="row mt8"><label for="wm_wa_country_code" class="col-lg-4"/><field name="wm_wa_country_code"/></div>
                             </div>
                         </setting>
+                        <setting string="Test connection" help="Saves the settings and asks Meta for this number's details.">
+                            <button name="action_wm_test_connection" type="object" class="btn-primary"
+                                    string="Test Meta connection"/>
+                        </setting>
                     </block>
                 </app>
             </xpath>
