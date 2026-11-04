@@ -39,10 +39,23 @@ export default function Scanner({ onScan, active = true }: { onScan: (text: stri
         () => {}
       );
       setOn(true);
-    } catch {
-      setErr("Camera not available. Allow camera access (HTTPS is required on phones) or use search below.");
+    } catch (e: any) {
+      const msg = String(e?.message || e || "");
+      if (typeof window !== "undefined" && !window.isSecureContext) setErr("Camera needs a secure (https://) address. This page is opened over http, so the browser blocks the camera. Use the https link, or tap 'Take photo of QR' below.");
+      else if (/denied|NotAllowed|Permission/i.test(msg)) setErr("Camera permission is blocked. Tap the lock icon in the address bar > Permissions > Camera > Allow, then reload. Or tap 'Take photo of QR' below.");
+      else if (/NotFound|Requested device not found/i.test(msg)) setErr("No camera found on this device.");
+      else setErr("Camera could not start (" + (msg.slice(0, 80) || "unknown") + "). Close other apps using the camera, or tap 'Take photo of QR' below.");
       ref.current = null;
     }
+  };
+  const fromPhoto = async (f?: File) => {
+    if (!f) return;
+    setErr("");
+    try {
+      const s = new Html5Qrcode(id + "-file", { verbose: false });
+      const text = await s.scanFile(f, false);
+      cb.current(text);
+    } catch { setErr("No QR code found in that photo. Move closer and try again."); }
   };
   useEffect(() => { if (!active) stop(); return () => { stop(); }; /* eslint-disable-next-line */ }, [active]);
 
@@ -53,6 +66,11 @@ export default function Scanner({ onScan, active = true }: { onScan: (text: stri
         <Button size="lg" className="w-full" onClick={start}><Camera className="h-5 w-5" /> Start camera scan</Button>
       )}
       {on && <Button variant="secondary" className="mt-2 w-full" onClick={stop}><CameraOff className="h-4 w-4" /> Stop camera</Button>}
+      <label className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700">
+        <Camera className="h-4 w-4" /> Take photo of QR
+        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { fromPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+      </label>
+      <div id={id + "-file"} className="hidden" />
       {err && <p className="mt-2 text-sm text-rose-600">{err}</p>}
     </div>
   );

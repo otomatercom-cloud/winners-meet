@@ -21,6 +21,13 @@ export default function Detail() {
     try { await api(`/participants/${id}/delete`, { method: "POST", body: {} }); router.replace("/admin/participants"); }
     catch (e: any) { alert(e.message); }
   };
+  const [sending, setSending] = useState(false);
+  const resend = async (type: "confirm" | "seat") => {
+    setSending(true);
+    try { setData(await api<Participant>(`/participants/${id}/resend`, { method: "POST", body: { type } })); reload(); alert("WhatsApp queued. It is sent within a minute; refresh to see the result."); }
+    catch (e: any) { alert(e.message); }
+    setSending(false);
+  };
   if (loading && !data) return <Spinner />;
   if (error || !data) return <ErrorBox message={error || "Not found"} onRetry={reload} />;
   return (
@@ -44,7 +51,14 @@ export default function Detail() {
             </dl>
           </Card>
           <Card className="p-4 text-sm">
-            <div className="mb-2 font-semibold">WhatsApp</div>
+            <div className="mb-2 flex items-center justify-between font-semibold">WhatsApp
+              {data.approval_state === "approved" && (
+                <span className="flex gap-1">
+                  <Button size="sm" variant="secondary" loading={sending} onClick={() => resend("confirm")}>Resend confirmation</Button>
+                  {data.seat && <Button size="sm" variant="secondary" loading={sending} onClick={() => resend("seat")}>Resend seat</Button>}
+                </span>
+              )}
+            </div>
             {!data.messages?.length ? <p className="text-slate-500">No messages yet.</p> : data.messages.map((m) => (
               <div key={m.id} className="border-t border-slate-100 py-1.5 first:border-0">
                 <div className="flex items-center justify-between">
