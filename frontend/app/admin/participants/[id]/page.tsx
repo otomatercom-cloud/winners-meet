@@ -1,11 +1,11 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { useEvent } from "@/components/EventContext";
 import ParticipantCard from "@/components/ParticipantCard";
-import { useFetch } from "@/lib/api";
+import { api, useFetch } from "@/lib/api";
 import { Badge, Button, Card, ErrorBox, PageHeader, Spinner, fmtTime } from "@/components/ui";
 import type { Participant } from "@/lib/types";
 
@@ -16,12 +16,17 @@ export default function Detail() {
   const { data, error, loading, reload, setData } = useFetch<Participant>(`/participants/${id}`);
   const [qr, setQr] = useState("");
   useEffect(() => { if (data?.token) QRCode.toDataURL(`${window.location.origin}/pass/${data.token}`, { width: 300, margin: 1 }).then(setQr); }, [data?.token]);
+  const remove = async () => {
+    if (!data || !confirm(`Delete ${data.name}? The registration, seat and WhatsApp history will be removed permanently.`)) return;
+    try { await api(`/participants/${id}/delete`, { method: "POST", body: {} }); router.replace("/admin/participants"); }
+    catch (e: any) { alert(e.message); }
+  };
   if (loading && !data) return <Spinner />;
   if (error || !data) return <ErrorBox message={error || "Not found"} onRetry={reload} />;
   return (
     <div className="mx-auto max-w-3xl">
       <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.back()}><ArrowLeft className="h-4 w-4" /> Back</Button>
-      <PageHeader title="Participant" />
+      <PageHeader title="Participant" actions={me?.manager ? <Button variant="secondary" size="sm" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</Button> : undefined} />
       <div className="grid gap-5 md:grid-cols-5">
         <div className="md:col-span-3">{eventId && <ParticipantCard p={data} eventId={eventId} manager={!!me?.manager} onChange={setData as any} />}</div>
         <div className="space-y-4 md:col-span-2">

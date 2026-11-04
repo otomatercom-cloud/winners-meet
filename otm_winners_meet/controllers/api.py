@@ -553,6 +553,13 @@ class WinnersMeetApi(http.Controller):
         p.action_hat(body.get('action'))
         return _p(p, detail=True)
 
+    @api('/participants/<int:pid>/delete', methods=('POST',))
+    def participant_delete(self, pid, body=None, **kw):
+        _need_manager()
+        p = _participant(pid)
+        p.unlink()  # frees the seat; WhatsApp log rows go with it
+        return True
+
     @api('/participants/<int:pid>/resend', methods=('POST',))
     def participant_resend(self, pid, body=None, **kw):
         _need_staff()

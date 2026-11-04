@@ -189,3 +189,13 @@ class TestWinnersMeet(TransactionCase):
         other = self.env['otm.wm.event'].create({'name': 'Other'})
         with self.assertRaises(ValidationError), self.env.cr.savepoint():
             Cat.create({'event_id': other.id, 'name': 'X', 'course_id': cpa.id})
+
+    def test_delete_participant_frees_seat(self):
+        p = self._reg('Del Me', '9000000055', self.gold)
+        p.action_check_in()
+        seat = p.seat_id
+        p.unlink()
+        self.assertFalse(seat.participant_ids)
+        q = self._reg('Next One', '9000000056', self.gold)
+        q.action_check_in()
+        self.assertEqual(q.seat_id, seat)
