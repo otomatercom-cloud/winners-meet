@@ -8,6 +8,7 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.modules import module
+from .event import DEFAULT_CONFIRM_MSG, DEFAULT_SEAT_MSG
 
 _logger = logging.getLogger(__name__)
 PARAM = 'otm_winners_meet.'
@@ -114,12 +115,14 @@ class WmMessageLog(models.Model):
                   'venue': event.venue or '-', 'link': link, 'seat': seat, 'hat': hat}
         if mtype == 'confirm':
             params = [participant.name, event.name, event.date_text(), event.venue or '-', link]
-            text = event.wa_msg_confirm_teacher if teacher else event.wa_msg_confirm
+            text = ((event.wa_msg_confirm_teacher if teacher else '') or event.wa_msg_confirm or '').strip() \
+                or DEFAULT_CONFIRM_MSG
             tpl = (event.wa_tpl_confirm_teacher if teacher else '') or event.wa_tpl_confirm
             key = 'confirm:%s' % participant.id
         else:
             params = [participant.name, seat, event.name, hat, link]
-            text = event.wa_msg_seat_teacher if teacher else event.wa_msg_seat
+            text = ((event.wa_msg_seat_teacher if teacher else '') or event.wa_msg_seat or '').strip() \
+                or DEFAULT_SEAT_MSG
             tpl = (event.wa_tpl_seat_teacher if teacher else '') or event.wa_tpl_seat
             key = 'seat:%s:%s' % (participant.id, participant.seat_id.id)
         if force:

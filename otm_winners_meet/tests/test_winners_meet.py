@@ -199,3 +199,9 @@ class TestWinnersMeet(TransactionCase):
         q = self._reg('Next One', '9000000056', self.gold)
         q.action_check_in()
         self.assertEqual(q.seat_id, seat)
+
+    def test_blank_message_text_falls_back_to_default(self):
+        self.event.write({'wa_msg_confirm': '', 'wa_msg_confirm_teacher': '', 'wa_tpl_confirm': ''})
+        p = self._reg('Blank Text', '9000000066', self.gold)
+        self.assertIn('Blank Text', p.log_ids.message)
+        self.assertTrue(p.log_ids.message.strip())
