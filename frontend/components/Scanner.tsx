@@ -24,12 +24,14 @@ export default function Scanner({ onScan, active = true }: { onScan: (text: stri
   };
   const start = async () => {
     setErr("");
+    setOn(true); // the container must be visible BEFORE start, otherwise the video has no size and stays blank
+    await new Promise((r) => setTimeout(r, 60));
     try {
       const s = new Html5Qrcode(id, { verbose: false });
       ref.current = s;
       await s.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: (w, h) => { const m = Math.min(w, h); return { width: Math.floor(m * 0.8), height: Math.floor(m * 0.8) }; } },
+        { fps: 10, aspectRatio: 1, qrbox: (w, h) => { const m = Math.max(150, Math.min(w, h)); return { width: Math.floor(m * 0.8), height: Math.floor(m * 0.8) }; } },
         (text) => {
           const now = Date.now();
           if (text === last.current.text && now - last.current.at < 2500) return;
@@ -38,8 +40,8 @@ export default function Scanner({ onScan, active = true }: { onScan: (text: stri
         },
         () => {}
       );
-      setOn(true);
     } catch (e: any) {
+      setOn(false);
       const msg = String(e?.message || e || "");
       if (typeof window !== "undefined" && !window.isSecureContext) setErr("Camera needs a secure (https://) address. This page is opened over http, so the browser blocks the camera. Use the https link, or tap 'Take photo of QR' below.");
       else if (/denied|NotAllowed|Permission/i.test(msg)) setErr("Camera permission is blocked. Tap the lock icon in the address bar > Permissions > Camera > Allow, then reload. Or tap 'Take photo of QR' below.");
@@ -61,7 +63,7 @@ export default function Scanner({ onScan, active = true }: { onScan: (text: stri
 
   return (
     <div>
-      <div id={id} className={on ? "overflow-hidden rounded-xl bg-black" : "hidden"} />
+      <div id={id} className={on ? "min-h-[280px] w-full overflow-hidden rounded-xl bg-black [&_video]:w-full" : "hidden"} />
       {!on && (
         <Button size="lg" className="w-full" onClick={start}><Camera className="h-5 w-5" /> Start camera scan</Button>
       )}
