@@ -2,7 +2,7 @@ from odoo import _, api, fields, models
 
 DEFAULT_CONFIRM_MSG = (
     "Hi {name}, your registration for {event} on {date} at {venue} is confirmed. "
-    "Show this entry pass at the desk: {link}")
+    "Your entry pass: {link}")
 DEFAULT_SEAT_MSG = (
     "Hi {name}, welcome to {event}! Your seat: {seat}. {hat} Entry pass: {link}")
 

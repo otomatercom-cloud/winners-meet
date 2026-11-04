@@ -26,7 +26,7 @@ included as a fallback.
 
 ## WhatsApp templates (Meta, category Utility). Variables cannot be first/last in the text.
 `wm_registration_confirmed` (params: 1 name, 2 event, 3 date, 4 venue, 5 pass link)
-> Hi {{1}}, your registration for {{2}} on {{3}} at {{4}} is confirmed. Show your entry pass at the desk: {{5}} See you there!
+> Hi {{1}}, your registration for {{2}} on {{3}} at {{4}} is confirmed. Your entry pass: {{5}} See you there!
 
 `wm_seat_details` (params: 1 name, 2 seat, 3 event, 4 hat note, 5 pass link)
 > Hi {{1}}, welcome to {{3}}! Your seat is {{2}}. {{4}} Your entry pass: {{5}} Enjoy the programme!

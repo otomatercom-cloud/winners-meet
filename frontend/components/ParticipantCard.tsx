@@ -83,8 +83,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
             </div>
           ) : (
             <>
-              {p.reserved_seat && <div className="rounded-lg bg-violet-50 px-3 py-2 text-center text-sm text-violet-800">Reserved seat: <b className="text-lg">{p.reserved_seat}</b></div>}
-              <Button size="lg" variant="success" className="w-full" loading={busy === "checkin"} onClick={() => act("checkin", "checkin", {}, "Checked in")}>{p.reserved_seat ? `Check in · seat ${p.reserved_seat}` : "Check in · auto seat"}</Button>
+              <Button size="lg" variant="success" className="w-full" loading={busy === "checkin"} onClick={() => act("checkin", "checkin", {}, "Checked in")}>Check in &amp; give seat</Button>
               <Button variant="ghost" className="w-full" onClick={() => setPickSeat(true)}>Pick a seat manually</Button>
             </>
           )}
