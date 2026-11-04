@@ -31,7 +31,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
   };
 
   const pendingApproval = p.approval_state !== "approved";
-  const free = (seats || []).filter((s) => !s.occupant && !s.blocked);
+  const free = (seats || []).filter((s) => !s.occupant && !s.blocked && (!s.reserved_for || s.id === p.reserved_seat_id));
   const manual = p.category?.seat_mode === "manual";
   return (
     <div className="pop overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -83,7 +83,8 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
             </div>
           ) : (
             <>
-              <Button size="lg" variant="success" className="w-full" loading={busy === "checkin"} onClick={() => act("checkin", "checkin", {}, "Checked in")}>Check in · auto seat</Button>
+              {p.reserved_seat && <div className="rounded-lg bg-violet-50 px-3 py-2 text-center text-sm text-violet-800">Reserved seat: <b className="text-lg">{p.reserved_seat}</b></div>}
+              <Button size="lg" variant="success" className="w-full" loading={busy === "checkin"} onClick={() => act("checkin", "checkin", {}, "Checked in")}>{p.reserved_seat ? `Check in · seat ${p.reserved_seat}` : "Check in · auto seat"}</Button>
               <Button variant="ghost" className="w-full" onClick={() => setPickSeat(true)}>Pick a seat manually</Button>
             </>
           )}

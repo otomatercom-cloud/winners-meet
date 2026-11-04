@@ -150,3 +150,42 @@ class TestWinnersMeet(TransactionCase):
         self.event.wa_tpl_confirm_teacher = False   # blank teacher template falls back to student's
         t2 = self._reg('Teach Two', '9000000093', self.teacher, kind='teacher')
         self.assertEqual(t2.log_ids[0].template_name, 'student_confirm')
+
+    def test_reserved_seat_from_winners_list(self):
+        seat = self.sblock.seat_ids.filtered(lambda s: s.number == 3)
+        self.env['otm.wm.expected'].create({
+            'event_id': self.event.id, 'name': 'Anu Krishnan', 'phone': '9876500001',
+            'category_id': self.gold.id, 'reserved_seat_id': seat.id})
+        # another gold student checks in first: must NOT receive the reserved seat G3
+        other = self.env['otm.wm.expected'].create(
+            {'event_id': self.event.id, 'name': 'Zed Zero', 'phone': '9876500009', 'category_id': self.gold.id})
+        a = self._reg('Anu K', '9876500001', self.gold)
+        z = self._reg('Zed Zero', '9876500009', self.gold)
+        self.assertEqual(a._preset_seat().label, 'G3')
+        z.action_check_in()
+        self.assertEqual(z.seat_id.label, 'G1')
+        a.action_check_in()
+        self.assertEqual(a.seat_id.label, 'G3')
+        self.assertTrue(a.log_ids.filtered(lambda l: l.message_type == 'seat'))
+
+    def test_participant_reserved_seat_override(self):
+        p = self._reg('Chitra T', '9000000077', self.teacher, kind='teacher')
+        p.reserved_seat_id = self.tblock.seat_ids.filtered(lambda s: s.number == 2)
+        p.action_check_in()
+        self.assertEqual(p.seat_id.label, 'T2')
+
+    def test_course_subcategories(self):
+        Course = self.env['otm.wm.course']
+        cpa = Course.create({'event_id': self.event.id, 'name': 'CPA USA'})
+        acca = Course.create({'event_id': self.event.id, 'name': 'ACCA'})
+        Cat = self.env['otm.wm.category']
+        a = Cat.create({'event_id': self.event.id, 'name': 'Partly Qualified', 'course_id': cpa.id,
+                        'seat_block_id': self.sblock.id})
+        b = Cat.create({'event_id': self.event.id, 'name': 'Partly Qualified', 'course_id': acca.id})
+        self.assertEqual(a.full_name(), 'CPA USA · Partly Qualified')
+        self.assertNotEqual(a, b)
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            Cat.create({'event_id': self.event.id, 'name': 'partly qualified', 'course_id': cpa.id})
+        other = self.env['otm.wm.event'].create({'name': 'Other'})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            Cat.create({'event_id': other.id, 'name': 'X', 'course_id': cpa.id})

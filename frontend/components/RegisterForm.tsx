@@ -7,13 +7,15 @@ import { Button, Card, Field, Spinner, inputCls } from "@/components/ui";
 
 export default function RegisterForm({ kind }: { kind: "student" | "teacher" }) {
   const { data, loading } = useFetch<any>("/public/event");
-  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", website: "" });
+  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<any>(null);
   const set = (k: string, v: string) => setF((x) => ({ ...x, [k]: v }));
   const ev = data?.event;
-  const cats: { id: number; name: string; color: string }[] = (kind === "student" ? data?.student_categories : data?.teacher_categories) || [];
+  const allCats: { id: number; name: string; color: string; course_id: number | false }[] = (kind === "student" ? data?.student_categories : data?.teacher_categories) || [];
+  const courses: { id: number; name: string }[] = kind === "student" ? data?.courses || [] : [];
+  const cats = courses.length && kind === "student" ? allCats.filter((c) => String(c.course_id) === f.course_id) : allCats;
   const open = ev && (kind === "student" ? ev.reg_student_open : ev.reg_teacher_open);
 
   const submit = async (e: React.FormEvent) => {
@@ -57,7 +59,15 @@ export default function RegisterForm({ kind }: { kind: "student" | "teacher" }) 
             <Field label="WhatsApp number" hint="Your entry pass and seat details will be sent here.">
               <input className={inputCls} value={f.phone} onChange={(e) => set("phone", e.target.value)} inputMode="tel" required placeholder="10-digit mobile number" autoComplete="tel" />
             </Field>
-            {cats.length > 1 && (
+            {courses.length > 0 && (
+              <Field label="Course">
+                <select className={inputCls} value={f.course_id} onChange={(e) => setF((x) => ({ ...x, course_id: e.target.value, category_id: "" }))} required>
+                  <option value="">Select course…</option>
+                  {courses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+            )}
+            {(courses.length === 0 ? cats.length > 1 : !!f.course_id) && (
               <Field label={kind === "student" ? "Winner category" : "Category"}>
                 <select className={inputCls} value={f.category_id} onChange={(e) => set("category_id", e.target.value)} required>
                   <option value="">Select…</option>

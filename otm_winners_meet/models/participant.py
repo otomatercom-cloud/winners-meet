@@ -58,6 +58,9 @@ class WmParticipant(models.Model):
     checkin_by = fields.Many2one('res.users', ondelete='set null')
 
     seat_id = fields.Many2one('otm.wm.seat', string="Seat", ondelete='restrict', copy=False, index=True)
+    reserved_seat_id = fields.Many2one(
+        'otm.wm.seat', string="Reserved Seat", ondelete='set null', copy=False, index=True,
+        help="Pre-set seat (overrides the winners list). Given at check-in.")
     seat_label = fields.Char(related='seat_id.label', store=True, string="Seat No.")
 
     hat_required = fields.Boolean(related='category_id.hat', string="Hat Category")
@@ -74,6 +77,7 @@ class WmParticipant(models.Model):
 
     _event_phone_uniq = models.Constraint('unique(event_id, phone)', 'This phone number is already registered.')
     _token_uniq = models.Constraint('unique(qr_token)', 'QR token must be unique.')
+    _reserved_uniq = models.Constraint('unique(reserved_seat_id)', 'This seat is already reserved for another participant.')
     _seat_uniq = models.Constraint('unique(seat_id)', 'This seat is already assigned to someone else.')
 
     # ------------------------------------------------------------ create / match
@@ -180,15 +184,23 @@ class WmParticipant(models.Model):
         self.invalidate_recordset()
 
     def _free_seat_ids(self, block, limit=60):
-        self.env['otm.wm.participant'].flush_model(['seat_id'])
+        self.env['otm.wm.participant'].flush_model(['seat_id', 'reserved_seat_id'])
+        self.env['otm.wm.expected'].flush_model(['reserved_seat_id'])
         self.env['otm.wm.seat'].flush_model()
         self.env.cr.execute("""
             SELECT s.id FROM otm_wm_seat s
              WHERE s.block_id = %s AND NOT COALESCE(s.blocked, false)
                AND NOT EXISTS (SELECT 1 FROM otm_wm_participant p WHERE p.seat_id = s.id)
+               AND NOT EXISTS (SELECT 1 FROM otm_wm_participant p WHERE p.reserved_seat_id = s.id)
+               AND NOT EXISTS (SELECT 1 FROM otm_wm_expected x WHERE x.reserved_seat_id = s.id)
              ORDER BY s.number
              LIMIT %s""", [block.id, limit])
         return [r[0] for r in self.env.cr.fetchall()]
+
+    def _preset_seat(self):
+        """Seat fixed in advance: the participant's own, else the one on their winners-list entry."""
+        self.ensure_one()
+        return self.reserved_seat_id or self.expected_id.reserved_seat_id
 
     def _assign_auto_seat(self, block):
         """Next free seat of the block, safe when several desks check in at the same moment.
@@ -246,8 +258,11 @@ class WmParticipant(models.Model):
         if self.state == 'checked_in':
             return {'already': True}
         cat = self.category_id
+        preset = self._preset_seat()
         if seat_id:
             self._assign_manual_seat(seat_id)
+        elif preset:
+            self._assign_manual_seat(preset.id)
         elif cat.seat_block_id and cat.seat_mode == 'auto':
             self._assign_auto_seat(cat.seat_block_id)
         elif cat.seat_mode == 'manual':

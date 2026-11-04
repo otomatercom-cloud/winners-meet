@@ -47,6 +47,7 @@
                             <field name="match_status"/>
                             <field name="match_note"/>
                             <field name="state"/>
+                            <field name="reserved_seat_id"/>
                             <field name="seat_id"/>
                             <field name="hat_state"/>
                             <field name="wa_state"/>

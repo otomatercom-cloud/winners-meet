@@ -13,3 +13,5 @@ access_wm_participant_user,wm.participant user,model_otm_wm_participant,group_wm
 access_wm_participant_mgr,wm.participant manager,model_otm_wm_participant,group_wm_manager,1,1,1,1
 access_wm_log_user,wm.message.log user,model_otm_wm_message_log,group_wm_user,1,0,0,0
 access_wm_log_mgr,wm.message.log manager,model_otm_wm_message_log,group_wm_manager,1,1,1,1
+access_wm_course_user,wm.course user,model_otm_wm_course,group_wm_user,1,0,0,0
+access_wm_course_mgr,wm.course manager,model_otm_wm_course,group_wm_manager,1,1,1,1

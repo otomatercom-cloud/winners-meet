@@ -35,10 +35,20 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Courses" name="page_courses">
+                            <field name="course_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="code"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Categories" name="page_categories">
                             <field name="category_ids">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
+                                    <field name="course_id"/>
                                     <field name="name"/>
                                     <field name="kind"/>
                                     <field name="hat"/>

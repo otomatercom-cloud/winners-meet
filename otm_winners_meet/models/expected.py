@@ -15,7 +15,13 @@ class WmExpected(models.Model):
         'otm.wm.category', required=True, ondelete='restrict',
         domain="[('event_id', '=', event_id), ('kind', '=', 'student')]")
 
+    reserved_seat_id = fields.Many2one(
+        'otm.wm.seat', string="Reserved Seat", ondelete='set null', copy=False,
+        domain="[('event_id', '=', event_id)]",
+        help="Pre-set seat. The student gets exactly this seat at check-in.")
+
     _phone_uniq = models.Constraint('unique(event_id, phone)', 'This phone is already in the expected list.')
+    _seat_uniq = models.Constraint('unique(reserved_seat_id)', 'This seat is already reserved for another winner.')
 
     @api.model_create_multi
     def create(self, vals_list):

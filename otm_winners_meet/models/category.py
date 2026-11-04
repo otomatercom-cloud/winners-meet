@@ -8,7 +8,10 @@ class WmCategory(models.Model):
     _order = 'sequence, id'
 
     event_id = fields.Many2one('otm.wm.event', required=True, ondelete='cascade', index=True)
-    name = fields.Char(required=True)
+    name = fields.Char(string="Subcategory", required=True)
+    course_id = fields.Many2one(
+        'otm.wm.course', string="Course", ondelete='restrict', index=True,
+        domain="[('event_id', '=', event_id)]")
     kind = fields.Selection(
         [('student', 'Student'), ('teacher', 'Teacher')], required=True, default='student')
     sequence = fields.Integer(default=10)
@@ -25,7 +28,23 @@ class WmCategory(models.Model):
         string="Selectable at Registration", default=True,
         help="Students can pick this category on the public form.")
 
-    _name_uniq = models.Constraint('unique(event_id, name)', 'Category name must be unique per event.')
+    @api.constrains('name', 'course_id', 'event_id')
+    def _check_name_unique(self):
+        for rec in self:
+            if self.search_count([('event_id', '=', rec.event_id.id), ('course_id', '=', rec.course_id.id),
+                                  ('name', '=ilike', rec.name), ('id', '!=', rec.id)]):
+                raise ValidationError(_("'%s' already exists for this course.", rec.name))
+
+    @api.constrains('course_id', 'event_id')
+    def _check_course_event(self):
+        for rec in self:
+            if rec.course_id and rec.course_id.event_id != rec.event_id:
+                raise ValidationError(_("Course must belong to the same event."))
+
+    def full_name(self):
+        self.ensure_one()
+        return '%s · %s' % (self.course_id.name, self.name) if self.course_id else self.name
+
 
     @api.constrains('seat_block_id', 'event_id')
     def _check_block_event(self):

@@ -108,7 +108,8 @@ def _mask(phone):
 
 
 def _cat(c):
-    return {'id': c.id, 'name': c.name, 'kind': c.kind, 'color': c.color or '#2563eb', 'hat': c.hat,
+    return {'id': c.id, 'name': c.full_name(), 'sub': c.name, 'course_id': c.course_id.id or False,
+            'course': c.course_id.name or '', 'kind': c.kind, 'color': c.color or '#2563eb', 'hat': c.hat,
             'hat_label': c.hat_label or '', 'seat_mode': c.seat_mode, 'self_select': c.self_select,
             'seat_block_id': c.seat_block_id.id or False, 'seat_block': c.seat_block_id.name or ''}
 
@@ -132,6 +133,7 @@ def _p(p, detail=False):
         'category': _cat(p.category_id) if p.category_id else None,
         'claimed_category': _cat(p.claimed_category_id) if p.claimed_category_id else None,
         'seat': p.seat_id.label or '', 'seat_id': p.seat_id.id or False,
+        'reserved_seat': p._preset_seat().label or '', 'reserved_seat_id': p._preset_seat().id or False,
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'create_date': fields.Datetime.to_string(p.create_date),
@@ -142,7 +144,7 @@ def _p(p, detail=False):
             'hat_issued_on': fields.Datetime.to_string(p.hat_issued_on) if p.hat_issued_on else '',
             'hat_returned_on': fields.Datetime.to_string(p.hat_returned_on) if p.hat_returned_on else '',
             'checkin_by': p.checkin_by.name or '', 'approved_by': p.approved_by.name or '',
-            'expected': ({'name': p.expected_id.name, 'category': p.expected_id.category_id.name}
+            'expected': ({'name': p.expected_id.name, 'category': p.expected_id.category_id.full_name()}
                          if p.expected_id else None),
             'messages': [{'id': l.id, 'type': l.message_type, 'state': l.state, 'error': l.error or '',
                           'created': fields.Datetime.to_string(l.create_date), 'retries': l.retries}
@@ -172,7 +174,10 @@ class WinnersMeetApi(http.Controller):
             'event': {'id': ev.id, 'name': ev.name, 'date': fields.Date.to_string(ev.date),
                       'time': ev.time_text or '', 'venue': ev.venue or '',
                       'reg_student_open': ev.reg_student_open, 'reg_teacher_open': ev.reg_teacher_open},
-            'student_categories': [{'id': c.id, 'name': c.name, 'color': c.color} for c in cats if c.kind == 'student'],
+            'student_categories': [{'id': c.id, 'name': c.name, 'course_id': c.course_id.id or False, 'color': c.color}
+                                 for c in cats if c.kind == 'student'],
+            'courses': [{'id': c.id, 'name': c.name, 'code': c.code or ''}
+                        for c in ev.course_ids if any(k.kind == 'student' and k.self_select for k in c.category_ids)],
             'teacher_categories': [{'id': c.id, 'name': c.name, 'color': c.color} for c in cats if c.kind == 'teacher'],
         }
 
@@ -280,6 +285,7 @@ class WinnersMeetApi(http.Controller):
                 'color': body.get('color') or '#2563eb', 'hat': bool(body.get('hat')),
                 'hat_label': body.get('hat_label') or False, 'seat_mode': body.get('seat_mode') or 'auto',
                 'self_select': bool(body.get('self_select', True)),
+                'course_id': _int(body.get('course_id')) or False,
                 'seat_block_id': _int(body.get('seat_block_id')) or False}
         if not vals['name']:
             raise UserError(_("Category name is required."))
@@ -302,6 +308,37 @@ class WinnersMeetApi(http.Controller):
         if request.env['otm.wm.participant'].search_count([('category_id', '=', cat.id)], limit=1):
             raise UserError(_("Category is in use by participants."))
         cat.unlink()
+        return True
+
+    @api('/courses')
+    def courses(self, body=None, event_id=None, **kw):
+        _need_staff()
+        ev = _event(event_id)
+        return [{'id': c.id, 'name': c.name, 'code': c.code or '', 'subs': len(c.category_ids)} for c in ev.course_ids]
+
+    @api('/courses/save', methods=('POST',))
+    def course_save(self, body=None, **kw):
+        _need_manager()
+        ev = _event(body.get('event_id'))
+        vals = {'name': (body.get('name') or '').strip(), 'code': (body.get('code') or '').strip() or False}
+        if not vals['name']:
+            raise UserError(_("Course name is required."))
+        if body.get('id'):
+            c = request.env['otm.wm.course'].browse(_int(body['id'], 0)).exists()
+            if not c:
+                raise MissingError(_("Course not found."))
+            c.write(vals)
+        else:
+            c = request.env['otm.wm.course'].create(dict(vals, event_id=ev.id))
+        return {'id': c.id}
+
+    @api('/courses/delete', methods=('POST',))
+    def course_delete(self, body=None, **kw):
+        _need_manager()
+        c = request.env['otm.wm.course'].browse(_int(body.get('id'), 0)).exists()
+        if c and c.category_ids:
+            raise UserError(_("Delete or move this course's subcategories first."))
+        c.unlink()
         return True
 
     @api('/blocks')
@@ -345,7 +382,9 @@ class WinnersMeetApi(http.Controller):
         out = []
         for s in request.env['otm.wm.seat'].search(domain):
             occ = s.participant_ids[:1]
-            out.append({'id': s.id, 'label': s.label, 'number': s.number, 'block_id': s.block_id.id,
+            res = request.env['otm.wm.participant'].search([('reserved_seat_id', '=', s.id)], limit=1).name or \
+                request.env['otm.wm.expected'].search([('reserved_seat_id', '=', s.id)], limit=1).name or ''
+            out.append({'reserved_for': res, 'id': s.id, 'label': s.label, 'number': s.number, 'block_id': s.block_id.id,
                         'blocked': s.blocked,
                         'occupant': {'id': occ.id, 'name': occ.name, 'kind': occ.kind} if occ else None})
         return out
@@ -380,7 +419,7 @@ class WinnersMeetApi(http.Controller):
         cats = {}
         for c in ev.category_ids:
             mine = [r for r in rows if r['category_id'] and r['category_id'][0] == c.id]
-            cats[c.id] = {'id': c.id, 'name': c.name, 'kind': c.kind, 'color': c.color, 'hat': c.hat,
+            cats[c.id] = {'id': c.id, 'name': c.full_name(), 'kind': c.kind, 'color': c.color, 'hat': c.hat,
                           'registered': len(mine), 'checked_in': len([r for r in mine if r['state'] == 'checked_in'])}
         Expected = request.env['otm.wm.expected']
         exp_total = Expected.search_count([('event_id', '=', ev.id)])
@@ -531,7 +570,8 @@ class WinnersMeetApi(http.Controller):
         _need_staff()
         ev = _event(event_id)
         reg = {p.phone: p for p in request.env['otm.wm.participant'].search([('event_id', '=', ev.id)])}
-        return [{'id': e.id, 'name': e.name, 'phone': e.phone, 'category': e.category_id.name,
+        return [{'id': e.id, 'name': e.name, 'phone': e.phone, 'category': e.category_id.full_name(),
+                 'seat': e.reserved_seat_id.label or '',
                  'registered': e.phone in reg, 'participant_id': reg[e.phone].id if e.phone in reg else False}
                 for e in request.env['otm.wm.expected'].search([('event_id', '=', ev.id)])]
 
@@ -539,14 +579,21 @@ class WinnersMeetApi(http.Controller):
     def expected_bulk(self, body=None, **kw):
         _need_manager()
         ev = _event(body.get('event_id'))
-        cats = {c.name.strip().lower(): c for c in ev.category_ids if c.kind == 'student'}
+        scats = [c for c in ev.category_ids if c.kind == 'student']
         Expected = request.env['otm.wm.expected']
+        seats_by_label = {x.label.lower(): x for x in request.env['otm.wm.seat'].search([('event_id', '=', ev.id)])}
         created = updated = 0
         errors = []
         for idx, row in enumerate(body.get('rows') or [], start=1):
             try:
                 name = ' '.join(str(row.get('name') or '').split())
-                cat = cats.get(str(row.get('category') or '').strip().lower())
+                ctxt = str(row.get('course') or '').strip().lower()
+                stxt = str(row.get('category') or '').strip().lower()
+                found = [c for c in scats if c.name.strip().lower() == stxt
+                         and (not ctxt or c.course_id.name.strip().lower() == ctxt)]
+                if len(found) > 1:
+                    raise UserError(_("'%s' exists in several courses - add the Course column", row.get('category') or ''))
+                cat = found[0] if found else request.env['otm.wm.category']
                 phone = normalize_phone(str(row.get('phone') or ''))
                 if not name:
                     raise UserError(_("Name missing"))
@@ -554,13 +601,24 @@ class WinnersMeetApi(http.Controller):
                     raise UserError(_("Invalid phone"))
                 if not cat:
                     raise UserError(_("Unknown category '%s'", row.get('category') or ''))
+                seat_txt = str(row.get('seat') or '').strip()
+                seat = request.env['otm.wm.seat']
+                if seat_txt:
+                    seat = seats_by_label.get(seat_txt.lower())
+                    if not seat and seat_txt.isdigit() and cat.seat_block_id:
+                        seat = seats_by_label.get((cat.seat_block_id.prefix or '').lower() + seat_txt)
+                    if not seat:
+                        raise UserError(_("Unknown seat '%s'", seat_txt))
                 with request.env.cr.savepoint():
                     ex = Expected.search([('event_id', '=', ev.id), ('phone', '=', phone)], limit=1)
+                    vals = {'name': name, 'category_id': cat.id}
+                    if seat_txt:
+                        vals['reserved_seat_id'] = seat.id
                     if ex:
-                        ex.write({'name': name, 'category_id': cat.id})
+                        ex.write(vals)
                         updated += 1
                     else:
-                        Expected.create({'event_id': ev.id, 'name': name, 'phone': phone, 'category_id': cat.id})
+                        Expected.create(dict(vals, event_id=ev.id, phone=phone))
                         created += 1
             except (UserError, ValidationError) as e:
                 errors.append({'row': idx, 'error': str(e.args[0]) if e.args else str(e)})
@@ -568,6 +626,18 @@ class WinnersMeetApi(http.Controller):
             [('event_id', '=', ev.id), ('approval_state', '=', 'pending'), ('kind', '=', 'student')]
         ).action_rematch_pending()
         return {'created': created, 'updated': updated, 'errors': errors}
+
+    @api('/participants/reserve', methods=('POST',))
+    def participant_reserve(self, body=None, **kw):
+        _need_manager()
+        p = _participant(body.get('id'))
+        sid = _int(body.get('seat_id'), 0)
+        if sid and p.reserved_seat_id.id != sid:
+            seat = request.env['otm.wm.seat'].browse(sid).exists()
+            if not seat or seat.event_id != p.event_id:
+                raise UserError(_("Invalid seat."))
+        p.write({'reserved_seat_id': sid or False})
+        return _p(p, detail=True)
 
     @api('/expected/delete', methods=('POST',))
     def expected_delete(self, body=None, **kw):
