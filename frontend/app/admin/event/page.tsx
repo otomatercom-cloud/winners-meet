@@ -1,0 +1,69 @@
+"use client";
+import { useEffect, useState } from "react";
+import { Copy, Plus } from "lucide-react";
+import { useEvent } from "@/components/EventContext";
+import { api } from "@/lib/api";
+import { Button, Card, Empty, Field, PageHeader, Toggle, inputCls, useToast } from "@/components/ui";
+import type { EventInfo } from "@/lib/types";
+
+const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "" };
+
+export default function EventSettings() {
+  const { event, me, reloadEvents, setEventId } = useEvent();
+  const toast = useToast();
+  const [f, setF] = useState<any>(event || blank);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { setF(event || blank); }, [event?.id]);
+  if (!me?.manager) return <Empty>Administrators only.</Empty>;
+  const set = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const save = async () => {
+    setBusy(true);
+    try {
+      const saved = await api<EventInfo>("/events/save", { method: "POST", body: f });
+      await reloadEvents();
+      setEventId(saved.id);
+      toast("Event saved");
+    } catch (e: any) { toast(e.message, "err"); }
+    setBusy(false);
+  };
+  const copy = (t: string) => { navigator.clipboard?.writeText(t); toast("Link copied"); };
+  return (
+    <div className="mx-auto max-w-3xl">
+      <PageHeader title={f.id ? "Event settings" : "New event"} actions={f.id ? <Button size="sm" variant="secondary" onClick={() => setF(blank)}><Plus className="h-4 w-4" /> New event</Button> : undefined} />
+      <Card className="mb-5 space-y-4 p-5">
+        <Field label="Event name"><input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Field label="Date"><input type="date" className={inputCls} value={f.date} onChange={(e) => set("date", e.target.value)} /></Field>
+          <Field label="Time"><input className={inputCls} value={f.time} onChange={(e) => set("time", e.target.value)} placeholder="9:30 AM" /></Field>
+          <Field label="Status"><select className={inputCls} value={f.state} onChange={(e) => set("state", e.target.value)}><option value="draft">Draft</option><option value="open">Open for registration</option><option value="closed">Closed</option></select></Field>
+        </div>
+        <Field label="Venue"><input className={inputCls} value={f.venue} onChange={(e) => set("venue", e.target.value)} /></Field>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Toggle label="Student registration open" checked={f.reg_student_open} onChange={(v) => set("reg_student_open", v)} />
+          <Toggle label="Teacher registration open" checked={f.reg_teacher_open} onChange={(v) => set("reg_teacher_open", v)} />
+        </div>
+        <Toggle label="Teachers need admin approval (off = auto-approved)" checked={f.teacher_needs_approval} onChange={(v) => set("teacher_needs_approval", v)} />
+      </Card>
+      <Card className="mb-5 space-y-4 p-5">
+        <h3 className="font-semibold">WhatsApp</h3>
+        <Field label="This website's public URL" hint="Used for the entry-pass link inside WhatsApp messages. Example: https://winners.otomater.com"><input className={inputCls} value={f.frontend_url} onChange={(e) => set("frontend_url", e.target.value)} placeholder={origin} /></Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Confirmation template name" hint="Approved Meta template. Params: 1 name, 2 event, 3 date, 4 venue, 5 pass link"><input className={inputCls} value={f.wa_tpl_confirm} onChange={(e) => set("wa_tpl_confirm", e.target.value)} /></Field>
+          <Field label="Seat template name" hint="Params: 1 name, 2 seat, 3 event, 4 hat note, 5 pass link"><input className={inputCls} value={f.wa_tpl_seat} onChange={(e) => set("wa_tpl_seat", e.target.value)} /></Field>
+        </div>
+        <Field label="Confirmation text (used when no template)" hint="{name} {event} {date} {venue} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_confirm} onChange={(e) => set("wa_msg_confirm", e.target.value)} /></Field>
+        <Field label="Seat text (used when no template)" hint="{name} {event} {seat} {hat} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_seat} onChange={(e) => set("wa_msg_seat", e.target.value)} /></Field>
+      </Card>
+      <Button size="lg" className="w-full sm:w-auto" loading={busy} onClick={save}>Save event</Button>
+      {f.id && (
+        <Card className="mt-6 space-y-2 p-5 text-sm">
+          <h3 className="font-semibold">Share these links</h3>
+          {[["Student registration", `${origin}/register`], ["Teacher registration", `${origin}/register/teacher`]].map(([l, u]) => (
+            <div key={l} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"><div className="min-w-0"><div className="text-xs text-slate-500">{l}</div><div className="truncate">{u}</div></div><Button size="sm" variant="secondary" onClick={() => copy(u)}><Copy className="h-4 w-4" /></Button></div>
+          ))}
+        </Card>
+      )}
+    </div>
+  );
+}

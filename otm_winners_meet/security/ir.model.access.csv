@@ -1,0 +1,15 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_wm_event_user,wm.event user,model_otm_wm_event,group_wm_user,1,0,0,0
+access_wm_event_mgr,wm.event manager,model_otm_wm_event,group_wm_manager,1,1,1,1
+access_wm_category_user,wm.category user,model_otm_wm_category,group_wm_user,1,0,0,0
+access_wm_category_mgr,wm.category manager,model_otm_wm_category,group_wm_manager,1,1,1,1
+access_wm_block_user,wm.seat.block user,model_otm_wm_seat_block,group_wm_user,1,0,0,0
+access_wm_block_mgr,wm.seat.block manager,model_otm_wm_seat_block,group_wm_manager,1,1,1,1
+access_wm_seat_user,wm.seat user,model_otm_wm_seat,group_wm_user,1,0,0,0
+access_wm_seat_mgr,wm.seat manager,model_otm_wm_seat,group_wm_manager,1,1,1,1
+access_wm_expected_user,wm.expected user,model_otm_wm_expected,group_wm_user,1,0,0,0
+access_wm_expected_mgr,wm.expected manager,model_otm_wm_expected,group_wm_manager,1,1,1,1
+access_wm_participant_user,wm.participant user,model_otm_wm_participant,group_wm_user,1,1,1,0
+access_wm_participant_mgr,wm.participant manager,model_otm_wm_participant,group_wm_manager,1,1,1,1
+access_wm_log_user,wm.message.log user,model_otm_wm_message_log,group_wm_user,1,0,0,0
+access_wm_log_mgr,wm.message.log manager,model_otm_wm_message_log,group_wm_manager,1,1,1,1

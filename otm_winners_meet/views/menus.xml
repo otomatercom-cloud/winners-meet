@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_wm_root" name="Winners Meet" sequence="55" web_icon="base,static/description/icon.png"
+              groups="otm_winners_meet.group_wm_user"/>
+    <menuitem id="menu_wm_review" name="Review Queue" parent="menu_wm_root" action="action_wm_participant_review" sequence="5"/>
+    <menuitem id="menu_wm_participants" name="Participants" parent="menu_wm_root" action="action_wm_participant" sequence="10"/>
+    <menuitem id="menu_wm_expected" name="Winners List" parent="menu_wm_root" action="action_wm_expected" sequence="20"
+              groups="otm_winners_meet.group_wm_manager"/>
+    <menuitem id="menu_wm_events" name="Events" parent="menu_wm_root" action="action_wm_event" sequence="30"
+              groups="otm_winners_meet.group_wm_manager"/>
+    <menuitem id="menu_wm_log" name="WhatsApp Log" parent="menu_wm_root" action="action_wm_log" sequence="40"/>
+</odoo>

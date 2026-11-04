@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_groups_privilege_wm" model="res.groups.privilege">
+        <field name="name">Winners Meet</field>
+        <field name="sequence">60</field>
+        <field name="category_id" ref="base.module_category_customizations"/>
+    </record>
+    <record id="group_wm_user" model="res.groups">
+        <field name="name">Desk Volunteer</field>
+        <field name="sequence">10</field>
+        <field name="privilege_id" ref="res_groups_privilege_wm"/>
+        <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
+    </record>
+    <record id="group_wm_manager" model="res.groups">
+        <field name="name">Administrator</field>
+        <field name="sequence">20</field>
+        <field name="privilege_id" ref="res_groups_privilege_wm"/>
+        <field name="implied_ids" eval="[(4, ref('group_wm_user'))]"/>
+        <field name="user_ids" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>

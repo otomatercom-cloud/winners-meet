@@ -1,0 +1,21 @@
+{
+    'name': 'Winners Meet',
+    'version': '19.0.1.0.0',
+    'summary': 'Winners Meet event: registration, approval, seats, WhatsApp, check-in and hats (API for Next.js)',
+    'category': 'Customizations',
+    'author': 'Otomater',
+    'website': 'https://otomater.com',
+    'license': 'OPL-1',
+    'depends': ['base'],
+    'data': [
+        'security/groups.xml',
+        'security/ir.model.access.csv',
+        'data/cron.xml',
+        'views/event_views.xml',
+        'views/participant_views.xml',
+        'views/res_config_settings_views.xml',
+        'views/menus.xml',
+    ],
+    'installable': True,
+    'application': True,
+}
