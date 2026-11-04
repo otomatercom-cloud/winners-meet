@@ -120,7 +120,9 @@ class WmMessageLog(models.Model):
             tpl = (event.wa_tpl_confirm_teacher if teacher else '') or event.wa_tpl_confirm
             key = 'confirm:%s' % participant.id
         else:
-            params = [participant.name, seat, event.name, hat, link]
+            params = [participant.name, seat, event.name, link]
+            if event.wa_seat_hat_param:
+                params = [participant.name, seat, event.name, hat, link]
             text = ((event.wa_msg_seat_teacher if teacher else '') or event.wa_msg_seat or '').strip() \
                 or DEFAULT_SEAT_MSG
             tpl = (event.wa_tpl_seat_teacher if teacher else '') or event.wa_tpl_seat

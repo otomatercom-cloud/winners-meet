@@ -205,3 +205,13 @@ class TestWinnersMeet(TransactionCase):
         p = self._reg('Blank Text', '9000000066', self.gold)
         self.assertIn('Blank Text', p.log_ids.message)
         self.assertTrue(p.log_ids.message.strip())
+
+    def test_seat_template_param_count(self):
+        import json
+        p = self._reg('Param Test', '9000000088', self.gold)
+        p.action_check_in()
+        seat_log = p.log_ids.filtered(lambda l: l.message_type == 'seat')
+        self.assertEqual(len(json.loads(seat_log.template_params)), 4)
+        self.event.wa_seat_hat_param = True
+        log2 = self.env['otm.wm.message.log']._queue_for(p, 'seat', force=True)
+        self.assertEqual(len(json.loads(log2.template_params)), 5)

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { Button, Card, Empty, Field, PageHeader, Toggle, inputCls, useToast } from "@/components/ui";
 import type { EventInfo } from "@/lib/types";
 
-const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", frontend_url_teacher: "", wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "", wa_tpl_confirm_teacher: "", wa_tpl_seat_teacher: "", wa_msg_confirm_teacher: "", wa_msg_seat_teacher: "" };
+const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", frontend_url_teacher: "", wa_seat_hat_param: false, wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "", wa_tpl_confirm_teacher: "", wa_tpl_seat_teacher: "", wa_msg_confirm_teacher: "", wa_msg_seat_teacher: "" };
 
 export default function EventSettings() {
   const { event, me, reloadEvents, setEventId } = useEvent();
@@ -50,8 +50,9 @@ export default function EventSettings() {
         <Field label="Student pass link website URL" hint="Entry-pass links sent to students use this. Example: https://meet.logiceducation.org"><input className={inputCls} value={f.frontend_url} onChange={(e) => set("frontend_url", e.target.value)} placeholder={origin} /></Field>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Confirmation template name" hint="Params: 1 name, 2 event, 3 date, 4 venue, 5 pass link"><input className={inputCls} value={f.wa_tpl_confirm} onChange={(e) => set("wa_tpl_confirm", e.target.value)} /></Field>
-          <Field label="Seat template name" hint="Params: 1 name, 2 seat, 3 event, 4 hat note, 5 pass link"><input className={inputCls} value={f.wa_tpl_seat} onChange={(e) => set("wa_tpl_seat", e.target.value)} /></Field>
+          <Field label="Seat template name" hint="Params: 1 name, 2 seat, 3 event, 4 pass link (5 variables if hat note is on)"><input className={inputCls} value={f.wa_tpl_seat} onChange={(e) => set("wa_tpl_seat", e.target.value)} /></Field>
         </div>
+        <Toggle label="Seat template has a hat-note variable (5 variables). Off = 4 variables: name, seat, event, link" checked={!!f.wa_seat_hat_param} onChange={(v) => set("wa_seat_hat_param", v)} />
         <Field label="Confirmation text (used when no template)" hint="{name} {event} {date} {venue} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_confirm} onChange={(e) => set("wa_msg_confirm", e.target.value)} /></Field>
         <Field label="Seat text (used when no template)" hint="{name} {event} {seat} {hat} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_seat} onChange={(e) => set("wa_msg_seat", e.target.value)} /></Field>
       </Card>

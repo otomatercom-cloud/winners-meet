@@ -40,6 +40,10 @@ class WmEvent(models.Model):
     wa_tpl_seat_teacher = fields.Char(string="Teacher Seat Template", help="Blank = use the student template.")
     wa_msg_confirm_teacher = fields.Text(string="Teacher Confirm Message", default=DEFAULT_CONFIRM_MSG)
     wa_msg_seat_teacher = fields.Text(string="Teacher Seat Message", default=DEFAULT_SEAT_MSG)
+    wa_seat_hat_param = fields.Boolean(
+        string="Seat Template Has Hat Note",
+        help="On: seat template has 5 variables (name, seat, event, hat note, link). "
+             "Off: 4 variables (name, seat, event, link).")
     course_ids = fields.One2many('otm.wm.course', 'event_id', string="Courses")
     category_ids = fields.One2many('otm.wm.category', 'event_id', string="Winner Categories")
     block_ids = fields.One2many('otm.wm.seat.block', 'event_id', string="Seat Blocks")

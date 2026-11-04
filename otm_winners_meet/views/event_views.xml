@@ -79,6 +79,7 @@
                                 <field name="wa_tpl_confirm_teacher"/>
                                 <field name="wa_msg_confirm_teacher"/>
                                 <field name="wa_tpl_seat_teacher"/>
+                                <field name="wa_seat_hat_param"/>
                                 <field name="wa_msg_seat_teacher"/>
                             </group>
                         </page>
