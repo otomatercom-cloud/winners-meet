@@ -46,9 +46,12 @@ export default function Detail() {
           <Card className="p-4 text-sm">
             <div className="mb-2 font-semibold">WhatsApp</div>
             {!data.messages?.length ? <p className="text-slate-500">No messages yet.</p> : data.messages.map((m) => (
-              <div key={m.id} className="flex items-center justify-between border-t border-slate-100 py-1.5 first:border-0">
-                <span>{m.type === "confirm" ? "Confirmation" : "Seat"}<span className="ml-2 text-xs text-slate-400">{fmtTime(m.created)}</span></span>
-                <Badge tone={m.state === "sent" ? "green" : m.state === "failed" ? "red" : "blue"}>{m.state}</Badge>
+              <div key={m.id} className="border-t border-slate-100 py-1.5 first:border-0">
+                <div className="flex items-center justify-between">
+                  <span>{m.type === "confirm" ? "Confirmation" : "Seat"}<span className="ml-2 text-xs text-slate-400">{fmtTime(m.created)}</span></span>
+                  <Badge tone={m.state === "sent" ? "green" : m.state === "failed" ? "red" : "blue"}>{m.state}</Badge>
+                </div>
+                {m.error && <p className="mt-1 break-words rounded bg-rose-50 px-2 py-1 text-xs text-rose-700">{m.error}</p>}
               </div>
             ))}
           </Card>
