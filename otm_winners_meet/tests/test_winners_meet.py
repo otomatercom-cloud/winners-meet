@@ -137,3 +137,16 @@ class TestWinnersMeet(TransactionCase):
         p.action_check_in()   # G1
         with self.assertRaises(UserError):
             self.sblock.write({'start_no': 2})
+
+    def test_teacher_specific_template_and_link(self):
+        self.event.write({'frontend_url_teacher': 'https://t.example.com', 'wa_tpl_confirm_teacher': 'teacher_confirm',
+                          'wa_tpl_confirm': 'student_confirm', 'wa_tpl_confirm_teacher': 'teacher_confirm'})
+        t = self._reg('Teach Link', '9000000091', self.teacher, kind='teacher')
+        s = self._reg('Stud Link', '9000000092', self.gold)
+        tl, sl = t.log_ids[0], s.log_ids[0]
+        self.assertEqual((tl.template_name, sl.template_name), ('teacher_confirm', 'student_confirm'))
+        self.assertIn('https://t.example.com/pass/' + t.qr_token, tl.template_params)
+        self.assertIn('https://w.example.com/pass/' + s.qr_token, sl.template_params)
+        self.event.wa_tpl_confirm_teacher = False   # blank teacher template falls back to student's
+        t2 = self._reg('Teach Two', '9000000093', self.teacher, kind='teacher')
+        self.assertEqual(t2.log_ids[0].template_name, 'student_confirm')

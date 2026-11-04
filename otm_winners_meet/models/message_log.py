@@ -79,7 +79,8 @@ class WmMessageLog(models.Model):
         participant = participant.sudo()
         event = participant.event_id
         cfg = self._get_config()
-        link = event.pass_url(participant.qr_token)
+        teacher = participant.kind == 'teacher'
+        link = event.pass_url(participant.qr_token, participant.kind)
         cat = participant.category_id
         if cat.hat:
             hat = _("Your winner hat has been issued; please return it after the programme.")
@@ -90,11 +91,13 @@ class WmMessageLog(models.Model):
                   'venue': event.venue or '-', 'link': link, 'seat': seat, 'hat': hat}
         if mtype == 'confirm':
             params = [participant.name, event.name, event.date_text(), event.venue or '-', link]
-            text, tpl = event.wa_msg_confirm, event.wa_tpl_confirm
+            text = event.wa_msg_confirm_teacher if teacher else event.wa_msg_confirm
+            tpl = (event.wa_tpl_confirm_teacher if teacher else '') or event.wa_tpl_confirm
             key = 'confirm:%s' % participant.id
         else:
             params = [participant.name, seat, event.name, hat, link]
-            text, tpl = event.wa_msg_seat, event.wa_tpl_seat
+            text = event.wa_msg_seat_teacher if teacher else event.wa_msg_seat
+            tpl = (event.wa_tpl_seat_teacher if teacher else '') or event.wa_tpl_seat
             key = 'seat:%s:%s' % (participant.id, participant.seat_id.id)
         if force:
             key = '%s:r%s' % (key, int(time.time()))

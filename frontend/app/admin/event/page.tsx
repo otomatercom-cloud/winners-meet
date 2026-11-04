@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { Button, Card, Empty, Field, PageHeader, Toggle, inputCls, useToast } from "@/components/ui";
 import type { EventInfo } from "@/lib/types";
 
-const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "" };
+const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", frontend_url_teacher: "", wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "", wa_tpl_confirm_teacher: "", wa_tpl_seat_teacher: "", wa_msg_confirm_teacher: "", wa_msg_seat_teacher: "" };
 
 export default function EventSettings() {
   const { event, me, reloadEvents, setEventId } = useEvent();
@@ -46,20 +46,30 @@ export default function EventSettings() {
         <Toggle label="Teachers need admin approval (off = auto-approved)" checked={f.teacher_needs_approval} onChange={(v) => set("teacher_needs_approval", v)} />
       </Card>
       <Card className="mb-5 space-y-4 p-5">
-        <h3 className="font-semibold">WhatsApp</h3>
-        <Field label="This website's public URL" hint="Used for the entry-pass link inside WhatsApp messages. Example: https://winners.otomater.com"><input className={inputCls} value={f.frontend_url} onChange={(e) => set("frontend_url", e.target.value)} placeholder={origin} /></Field>
+        <h3 className="font-semibold">WhatsApp - Students</h3>
+        <Field label="Student pass link website URL" hint="Entry-pass links sent to students use this. Example: https://meet.logiceducation.org"><input className={inputCls} value={f.frontend_url} onChange={(e) => set("frontend_url", e.target.value)} placeholder={origin} /></Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Confirmation template name" hint="Approved Meta template. Params: 1 name, 2 event, 3 date, 4 venue, 5 pass link"><input className={inputCls} value={f.wa_tpl_confirm} onChange={(e) => set("wa_tpl_confirm", e.target.value)} /></Field>
+          <Field label="Confirmation template name" hint="Params: 1 name, 2 event, 3 date, 4 venue, 5 pass link"><input className={inputCls} value={f.wa_tpl_confirm} onChange={(e) => set("wa_tpl_confirm", e.target.value)} /></Field>
           <Field label="Seat template name" hint="Params: 1 name, 2 seat, 3 event, 4 hat note, 5 pass link"><input className={inputCls} value={f.wa_tpl_seat} onChange={(e) => set("wa_tpl_seat", e.target.value)} /></Field>
         </div>
         <Field label="Confirmation text (used when no template)" hint="{name} {event} {date} {venue} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_confirm} onChange={(e) => set("wa_msg_confirm", e.target.value)} /></Field>
         <Field label="Seat text (used when no template)" hint="{name} {event} {seat} {hat} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_seat} onChange={(e) => set("wa_msg_seat", e.target.value)} /></Field>
       </Card>
+      <Card className="mb-5 space-y-4 p-5">
+        <h3 className="font-semibold">WhatsApp - Teachers</h3>
+        <Field label="Teacher pass link website URL" hint="Optional. Leave blank to use the student URL."><input className={inputCls} value={f.frontend_url_teacher} onChange={(e) => set("frontend_url_teacher", e.target.value)} placeholder={f.frontend_url || origin} /></Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Confirmation template name" hint="Blank = use the student template"><input className={inputCls} value={f.wa_tpl_confirm_teacher} onChange={(e) => set("wa_tpl_confirm_teacher", e.target.value)} /></Field>
+          <Field label="Seat template name" hint="Blank = use the student template"><input className={inputCls} value={f.wa_tpl_seat_teacher} onChange={(e) => set("wa_tpl_seat_teacher", e.target.value)} /></Field>
+        </div>
+        <Field label="Confirmation text (used when no template)" hint="{name} {event} {date} {venue} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_confirm_teacher} onChange={(e) => set("wa_msg_confirm_teacher", e.target.value)} /></Field>
+        <Field label="Seat text (used when no template)" hint="{name} {event} {seat} {hat} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_seat_teacher} onChange={(e) => set("wa_msg_seat_teacher", e.target.value)} /></Field>
+      </Card>
       <Button size="lg" className="w-full sm:w-auto" loading={busy} onClick={save}>Save event</Button>
       {f.id && (
         <Card className="mt-6 space-y-2 p-5 text-sm">
           <h3 className="font-semibold">Share these links</h3>
-          {[["Student registration", `${origin}/register`], ["Teacher registration", `${origin}/register/teacher`]].map(([l, u]) => (
+          {[["Student registration", `${f.frontend_url || origin}/register`], ["Teacher registration", `${f.frontend_url_teacher || f.frontend_url || origin}/register/teacher`]].map(([l, u]) => (
             <div key={l} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"><div className="min-w-0"><div className="text-xs text-slate-500">{l}</div><div className="truncate">{u}</div></div><Button size="sm" variant="secondary" onClick={() => copy(u)}><Copy className="h-4 w-4" /></Button></div>
           ))}
         </Card>

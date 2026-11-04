@@ -31,6 +31,7 @@
                             <field name="reg_teacher_open"/>
                             <field name="teacher_needs_approval"/>
                             <field name="frontend_url"/>
+                            <field name="frontend_url_teacher"/>
                         </group>
                     </group>
                     <notebook>
@@ -65,6 +66,10 @@
                                 <field name="wa_msg_confirm"/>
                                 <field name="wa_tpl_seat"/>
                                 <field name="wa_msg_seat"/>
+                                <field name="wa_tpl_confirm_teacher"/>
+                                <field name="wa_msg_confirm_teacher"/>
+                                <field name="wa_tpl_seat_teacher"/>
+                                <field name="wa_msg_seat_teacher"/>
                             </group>
                         </page>
                     </notebook>

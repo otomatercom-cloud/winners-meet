@@ -29,16 +29,23 @@ class WmEvent(models.Model):
         string="Frontend URL",
         help="Public URL of the Next.js app, used for the entry-pass link in WhatsApp. "
              "e.g. https://winners.otomater.com")
-    wa_tpl_confirm = fields.Char(string="Confirm Template")
-    wa_tpl_seat = fields.Char(string="Seat Template")
-    wa_msg_confirm = fields.Text(string="Confirm Message", default=DEFAULT_CONFIRM_MSG)
-    wa_msg_seat = fields.Text(string="Seat Message", default=DEFAULT_SEAT_MSG)
+    frontend_url_teacher = fields.Char(
+        string="Teacher Frontend URL",
+        help="Optional separate public URL for teachers' entry-pass links. Blank = same as Frontend URL.")
+    wa_tpl_confirm = fields.Char(string="Student Confirm Template")
+    wa_tpl_seat = fields.Char(string="Student Seat Template")
+    wa_msg_confirm = fields.Text(string="Student Confirm Message", default=DEFAULT_CONFIRM_MSG)
+    wa_msg_seat = fields.Text(string="Student Seat Message", default=DEFAULT_SEAT_MSG)
+    wa_tpl_confirm_teacher = fields.Char(string="Teacher Confirm Template", help="Blank = use the student template.")
+    wa_tpl_seat_teacher = fields.Char(string="Teacher Seat Template", help="Blank = use the student template.")
+    wa_msg_confirm_teacher = fields.Text(string="Teacher Confirm Message", default=DEFAULT_CONFIRM_MSG)
+    wa_msg_seat_teacher = fields.Text(string="Teacher Seat Message", default=DEFAULT_SEAT_MSG)
     category_ids = fields.One2many('otm.wm.category', 'event_id', string="Winner Categories")
     block_ids = fields.One2many('otm.wm.seat.block', 'event_id', string="Seat Blocks")
 
-    def pass_url(self, token):
+    def pass_url(self, token, kind='student'):
         self.ensure_one()
-        base = (self.frontend_url or '').strip().rstrip('/')
+        base = ((kind == 'teacher' and self.frontend_url_teacher) or self.frontend_url or '').strip().rstrip('/')
         return '%s/pass/%s' % (base, token) if base else '/pass/%s' % token
 
     def date_text(self):

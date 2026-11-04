@@ -117,9 +117,11 @@ def _event_dict(e):
     return {'id': e.id, 'name': e.name, 'date': fields.Date.to_string(e.date), 'time': e.time_text or '',
             'venue': e.venue or '', 'state': e.state, 'reg_student_open': e.reg_student_open,
             'reg_teacher_open': e.reg_teacher_open, 'teacher_needs_approval': e.teacher_needs_approval,
-            'frontend_url': e.frontend_url or '', 'wa_tpl_confirm': e.wa_tpl_confirm or '',
-            'wa_tpl_seat': e.wa_tpl_seat or '', 'wa_msg_confirm': e.wa_msg_confirm or '',
-            'wa_msg_seat': e.wa_msg_seat or ''}
+            'frontend_url': e.frontend_url or '', 'frontend_url_teacher': e.frontend_url_teacher or '',
+            'wa_tpl_confirm': e.wa_tpl_confirm or '', 'wa_tpl_seat': e.wa_tpl_seat or '',
+            'wa_msg_confirm': e.wa_msg_confirm or '', 'wa_msg_seat': e.wa_msg_seat or '',
+            'wa_tpl_confirm_teacher': e.wa_tpl_confirm_teacher or '', 'wa_tpl_seat_teacher': e.wa_tpl_seat_teacher or '',
+            'wa_msg_confirm_teacher': e.wa_msg_confirm_teacher or '', 'wa_msg_seat_teacher': e.wa_msg_seat_teacher or ''}
 
 
 def _p(p, detail=False):
@@ -245,8 +247,9 @@ class WinnersMeetApi(http.Controller):
     def event_save(self, body=None, **kw):
         _need_manager()
         allowed = ('name', 'time_text', 'venue', 'state', 'reg_student_open', 'reg_teacher_open',
-                   'teacher_needs_approval', 'frontend_url', 'wa_tpl_confirm', 'wa_tpl_seat',
-                   'wa_msg_confirm', 'wa_msg_seat')
+                   'teacher_needs_approval', 'frontend_url', 'frontend_url_teacher', 'wa_tpl_confirm', 'wa_tpl_seat',
+                   'wa_msg_confirm', 'wa_msg_seat', 'wa_tpl_confirm_teacher', 'wa_tpl_seat_teacher',
+                   'wa_msg_confirm_teacher', 'wa_msg_seat_teacher')
         vals = {k: body[k] for k in allowed if k in body}
         if 'time' in body:
             vals['time_text'] = body['time']
