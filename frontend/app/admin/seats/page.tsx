@@ -51,20 +51,34 @@ export default function SeatMap() {
             const mine = (seats || []).filter((s) => s.block_id === b.id);
             const rows: { row: number; seats: Seat[] }[] = [];
             mine.forEach((s) => { const last = rows[rows.length - 1]; if (last && last.row === s.row) last.seats.push(s); else rows.push({ row: s.row, seats: [s] }); });
-            return rows.map((r) => (
-              <div key={r.row} className="mb-2">
-                {r.row > 0 && <div className="mb-1 text-xs font-medium text-slate-500">Row {r.row}</div>}
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-1.5">
-                  {r.seats.map((s) => (
-                    <button key={s.id} title={s.occupant?.name || s.label} onClick={() => { setOpen(s); setQ(""); setFound([]); }}
-                      className={cx("flex h-12 flex-col items-center justify-center rounded-lg text-xs font-semibold transition active:scale-95", s.occupant ? "bg-emerald-500 text-white" : s.blocked ? "bg-slate-400 text-white" : "bg-white text-slate-700 ring-1 ring-slate-300 hover:ring-brand-500")}>
-                      {s.label}
-                      {s.occupant && <span className="max-w-full truncate px-0.5 text-[9px] font-normal opacity-90">{s.occupant.name.split(" ")[0]}</span>}
-                    </button>
+            const secs = b.sections?.length ? b.sections : null;
+            const btn = (s: Seat) => (
+              <button key={s.id} title={s.occupant?.name || s.label} onClick={() => { setOpen(s); setQ(""); setFound([]); }}
+                className={cx("flex h-12 w-[44px] shrink-0 flex-col items-center justify-center rounded-md px-0.5 text-[11px] font-semibold transition active:scale-95", s.occupant ? "bg-emerald-500 text-white" : s.blocked ? "bg-slate-400 text-white" : "bg-white text-slate-700 ring-1 ring-slate-300 hover:ring-brand-500")}>
+                {s.label}
+                {s.occupant && <span className="max-w-full truncate text-[9px] font-normal opacity-90">{s.occupant.name.split(" ")[0]}</span>}
+              </button>
+            );
+            const chunks = (list: Seat[]) => { if (!secs) return [list]; const out: Seat[][] = []; let i = 0; for (const n of secs) { out.push(list.slice(i, i + n)); i += n; } return out.filter((c) => c.length); };
+            const stage = secs && <div className="mb-3 rounded-b-full bg-slate-200 py-1 text-center text-[10px] font-semibold uppercase tracking-widest text-slate-500">Stage</div>;
+            return (
+              <div className="overflow-x-auto pb-1">
+                <div className="mx-auto w-max">
+                  {stage}
+                  {rows.map((r) => (
+                    <div key={r.row} className="mb-1.5 flex items-center gap-2">
+                      {r.row > 0 && <div className="w-7 shrink-0 text-right text-[10px] font-medium text-slate-400">{r.row}</div>}
+                      <div className="flex items-stretch gap-8">
+                        {chunks(r.seats).map((c, i) => (
+                          <div key={i} className="flex gap-1" style={secs ? { minWidth: secs[i] * 48 - 4, justifyContent: i === 0 && secs.length > 1 ? "flex-end" : "flex-start" } : undefined}>{c.map(btn)}</div>
+                        ))}
+                      </div>
+                      {r.row > 0 && <div className="w-7 shrink-0 text-[10px] font-medium text-slate-400">{r.row}</div>}
+                    </div>
                   ))}
                 </div>
               </div>
-            ));
+            );
           })()}
         </Card>
       ))}

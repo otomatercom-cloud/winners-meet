@@ -15,5 +15,5 @@ export type Participant = {
   messages?: { id: number; type: string; state: string; error: string; created: string; retries: number }[];
   already?: boolean;
 };
-export type Block = { id: number; name: string; prefix: string; start_no: number; end_no: number; row_size: number; total: number; occupied: number; free: number };
+export type Block = { id: number; name: string; prefix: string; start_no: number; end_no: number; row_size: number; row_layout: string; sequence: number; sections: number[]; total: number; occupied: number; free: number };
 export type Seat = { id: number; label: string; number: number; row: number; block_id: number; blocked: boolean; reserved_for?: string; occupant: { id: number; name: string; kind: string } | null };

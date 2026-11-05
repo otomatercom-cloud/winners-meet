@@ -475,7 +475,7 @@ class WinnersMeetApi(http.Controller):
         seats = b.seat_ids
         taken = len(seats.filtered('participant_ids'))
         return {'id': b.id, 'name': b.name, 'prefix': b.prefix, 'start_no': b.start_no, 'end_no': b.end_no,
-                'row_size': b.row_size, 'total': len(seats), 'occupied': taken, 'free': len(seats) - taken - len(seats.filtered(
+                'row_size': b.row_size, 'row_layout': b.row_layout or '', 'sequence': b.sequence, 'sections': b.layout_sections(), 'total': len(seats), 'occupied': taken, 'free': len(seats) - taken - len(seats.filtered(
                     lambda s: s.blocked and not s.participant_ids))}
 
     @api('/blocks/save', methods=('POST',))
@@ -484,7 +484,8 @@ class WinnersMeetApi(http.Controller):
         ev = _event(body.get('event_id'))
         vals = {'name': (body.get('name') or '').strip(), 'prefix': (body.get('prefix') or '').strip(),
                 'start_no': _int(body.get('start_no'), 1), 'end_no': _int(body.get('end_no'), 1),
-                'row_size': max(0, _int(body.get('row_size'), 0))}
+                'row_size': max(0, _int(body.get('row_size'), 0)), 'row_layout': (body.get('row_layout') or '').strip(),
+                'sequence': _int(body.get('sequence'), 10)}
         if not vals['name'] or not vals['prefix']:
             raise UserError(_("Block name and seat prefix are required."))
         if body.get('id'):

@@ -38,7 +38,7 @@ export default function Setup() {
     try { await api("/courses/delete", { method: "POST", body: { id } }); courses.reload(); } catch (e: any) { toast(e.message, "err"); }
   };
   const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_mode: "auto", self_select: true };
-  const newBlk = { name: "", prefix: "S", start_no: 1, end_no: 100, row_size: 0 };
+  const newBlk = { name: "", prefix: "S", start_no: 1, end_no: 100, row_size: 0, row_layout: "", sequence: 10 };
   return (
     <div className="space-y-8">
       <section>
@@ -92,7 +92,7 @@ export default function Setup() {
             {blocks.data.map((b) => (
               <Card key={b.id} className="p-4">
                 <div className="flex items-start justify-between"><div><div className="font-semibold">{b.name}</div><div className="text-sm text-slate-500">{b.prefix}{b.start_no} – {b.prefix}{b.end_no}</div></div><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setBlk({ ...b })}><Pencil className="h-4 w-4" /></button></div>
-                <div className="mt-3 text-sm text-slate-600">{b.row_size ? `${b.row_size} per row · ` : ""}{b.total} seats · {b.occupied} occupied · {b.free} free</div>
+                <div className="mt-3 text-sm text-slate-600">{b.row_layout ? `${b.row_layout.split(",").join(" | ")} per row · ` : b.row_size ? `${b.row_size} per row · ` : ""}{b.total} seats · {b.occupied} occupied · {b.free} free</div>
               </Card>
             ))}
           </div>
@@ -151,6 +151,8 @@ export default function Setup() {
               <Field label="Start seat"><input type="number" min={0} className={inputCls} value={blk.start_no} onChange={(e) => setBlk({ ...blk, start_no: e.target.value })} required /></Field>
               <Field label="End seat"><input type="number" min={0} className={inputCls} value={blk.end_no} onChange={(e) => setBlk({ ...blk, end_no: e.target.value })} required /></Field>
             </div>
+            <Field label="Theatre row layout (optional)" hint="Sections of each row, left to right, with an aisle between. Example: 13,13 (left 13 · gap · right 13) or 7,13,7 for a balcony. Overrides seats per row."><input className={inputCls} value={blk.row_layout || ""} onChange={(e) => setBlk({ ...blk, row_layout: e.target.value })} placeholder="13,13" /></Field>
+            <Field label="Display order" hint="Smaller number shows first on the seat map (e.g. stalls 10, balcony 20)."><input type="number" className={inputCls} value={blk.sequence ?? 10} onChange={(e) => setBlk({ ...blk, sequence: e.target.value })} /></Field>
             <Field label="Seats per row (optional)" hint="Example: 14 means seats 1-14 are Row 1, 15-28 are Row 2... Leave 0 for no rows."><input type="number" min={0} max={500} className={inputCls} value={blk.row_size} onChange={(e) => setBlk({ ...blk, row_size: e.target.value })} /></Field>
             {Number(blk.row_size) > 0 && (() => { const total = Math.max(0, Number(blk.end_no) - Number(blk.start_no) + 1), rs = Number(blk.row_size), rows = Math.ceil(total / rs), last = total - (rows - 1) * rs; return <p className="text-xs text-violet-700">{rows} rows: {rows > 1 ? `${rows - 1} full rows of ${rs}` : ""}{rows > 1 ? ", last row has " : "one row of "}{last} seats</p>; })()}
             <p className="text-xs text-slate-500">Preview: {blk.prefix}{blk.start_no} … {blk.prefix}{blk.end_no} ({Math.max(0, Number(blk.end_no) - Number(blk.start_no) + 1)} seats)</p>

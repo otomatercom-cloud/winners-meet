@@ -1,3 +1,5 @@
+import re
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -5,14 +7,17 @@ from odoo.exceptions import UserError, ValidationError
 class WmSeatBlock(models.Model):
     _name = 'otm.wm.seat.block'
     _description = 'Seat Block'
-    _order = 'event_id, name'
+    _order = 'event_id, sequence, name'
 
     event_id = fields.Many2one('otm.wm.event', required=True, ondelete='cascade', index=True)
+    sequence = fields.Integer(default=10, help="Display order on the seat map (stage side first).")
     name = fields.Char(required=True)
     prefix = fields.Char(required=True, default='S', help="Seat label = prefix + number, e.g. S45")
     start_no = fields.Integer(string="Start Seat", required=True, default=1)
     end_no = fields.Integer(string="End Seat", required=True, default=100)
     row_size = fields.Integer(string="Seats per Row", help="0 = no rows. E.g. 14: seats 1-14 are row 1, 15-28 row 2...")
+    row_layout = fields.Char(string="Row Layout", help="Theatre sections per row, left to right, e.g. '13,13' or '7,13,7'. "
+                             "A gap (aisle) is drawn between sections. Overrides Seats per Row.")
     seat_ids = fields.One2many('otm.wm.seat', 'block_id', string="Seats")
 
     _name_uniq = models.Constraint('unique(event_id, name)', 'Block name must be unique per event.')
@@ -27,13 +32,42 @@ class WmSeatBlock(models.Model):
             if rec.end_no - rec.start_no >= 5000:
                 raise ValidationError(_("A block can hold at most 5000 seats."))
 
+    @staticmethod
+    def _parse_layout(text):
+        parts = [p.strip() for p in re.split(r'[,\s+|/-]+', text or '') if p.strip()]
+        if not parts or not all(p.isdigit() and 0 < int(p) <= 200 for p in parts) or len(parts) > 8:
+            return []
+        return [int(p) for p in parts]
+
+    @api.constrains('row_layout')
+    def _check_layout(self):
+        for rec in self:
+            if (rec.row_layout or '').strip() and not self._parse_layout(rec.row_layout):
+                raise ValidationError(_("Row layout must be numbers separated by commas, e.g. 7,13,7."))
+
+    def layout_sections(self):
+        self.ensure_one()
+        return self._parse_layout(self.row_layout)
+
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            sec = self._parse_layout(vals.get('row_layout'))
+            if sec:
+                vals['row_layout'] = ','.join(map(str, sec))
+                vals['row_size'] = sum(sec)
         blocks = super().create(vals_list)
         blocks._sync_seats()
         return blocks
 
     def write(self, vals):
+        if 'row_layout' in vals:
+            sec = self._parse_layout(vals['row_layout'])
+            if sec:
+                vals['row_layout'] = ','.join(map(str, sec))
+                vals['row_size'] = sum(sec)
+            elif not (vals['row_layout'] or '').strip():
+                vals['row_layout'] = False
         res = super().write(vals)
         if {'start_no', 'end_no', 'prefix'} & set(vals):
             self._sync_seats()

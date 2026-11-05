@@ -301,3 +301,18 @@ class TestWinnersMeet(TransactionCase):
         legacy.invalidate_recordset()
         legacy.ensure_slug()
         self.assertEqual(legacy.slug, 'old-one')
+
+    def test_theatre_layout(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Layout Show'})
+        b = self.env['otm.wm.seat.block'].create({
+            'event_id': ev.id, 'name': 'Stalls', 'prefix': 'T', 'start_no': 1, 'end_no': 52, 'row_layout': '13 , 13'})
+        self.assertEqual(b.row_layout, '13,13')
+        self.assertEqual(b.row_size, 26)
+        self.assertEqual(b.layout_sections(), [13, 13])
+        self.assertEqual(b.seat_ids.filtered(lambda s: s.number == 27).row_no, 2)
+        b.row_layout = '7,13,7'
+        self.assertEqual(b.row_size, 27)
+        b.row_layout = ''
+        self.assertFalse(b.layout_sections())
+        with self.assertRaises(Exception), self.env.cr.savepoint():
+            b.row_layout = 'abc'
