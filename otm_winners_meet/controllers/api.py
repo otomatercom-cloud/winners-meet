@@ -5,6 +5,7 @@ to Odoo). Public routes (registration form, entry pass) are limited to what a gu
 """
 import functools
 import json
+import re
 import logging
 
 from odoo import _, fields, http
@@ -138,13 +139,13 @@ def _p(p, detail=False):
         'match_status': p.match_status, 'match_note': p.match_note or '',
         'category': _cat(p.category_id) if p.category_id else None,
         'claimed_category': _cat(p.claimed_category_id) if p.claimed_category_id else None,
-        'seat': p.seat_id.label or '', 'seat_id': p.seat_id.id or False, 'seat_row': p.seat_id.row_no or 0,
+        'seat': p.seat_id.label or '', 'seat_id': p.seat_id.id or False, 'seat_row': p.seat_id.row_no or 0, 'seat_row_name': p.seat_id.row_name(),
         'reserved_seat': p._preset_seat().label if _is_manager() else '',
         'reserved_seat_id': p._preset_seat().id if _is_manager() else False,
         'has_preset': bool(p._preset_seat()),
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
-        'food_pref': p.food_pref or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
+        'food_pref': p.food_pref or '', 'instagram': p.instagram or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
         'has_photo': bool(p.photo),
         'trophy_state': p.trophy_state, 'trophy_on': fields.Datetime.to_string(p.trophy_on) if p.trophy_on else '',
         'items': [{'item_id': l.item_id.id, 'name': l.item_id.name, 'state': l.state} for l in p.sudo().issue_ids],
@@ -268,7 +269,7 @@ class WinnersMeetApi(http.Controller):
         cfg = ev.form_config(kind)
         extra = {}
         labels = {'place': _("place"), 'institution': _("school / institution"), 'email': _("email"),
-                  'photo': _("photo"), 'food_pref': _("food preference")}
+                  'photo': _("photo"), 'food_pref': _("food preference"), 'instagram': _("Instagram ID")}
 
         def need(field, value):
             if cfg[field] == 'required' and not value:
@@ -277,6 +278,13 @@ class WinnersMeetApi(http.Controller):
             val = (body.get(fld) or '').strip()[:size] if cfg[fld] != 'off' else ''
             need(fld, val)
             extra[fld] = val
+        if cfg['instagram'] != 'off':
+            ig = (body.get('instagram') or '').strip()
+            ig = re.sub(r'^(https?://)?(www\.)?instagram\.com/', '', ig, flags=re.I).strip('/@ ').split('?')[0]
+            need('instagram', ig)
+            if ig and not re.fullmatch(r'[A-Za-z0-9._]{1,30}', ig):
+                raise UserError(_("Please enter a valid Instagram ID (letters, numbers, dots and underscores only)."))
+            extra['instagram'] = ig or False
         if cfg['food_pref'] != 'off':
             fp = body.get('food_pref')
             if fp not in ('veg', 'nonveg', '', None):
@@ -314,7 +322,9 @@ class WinnersMeetApi(http.Controller):
         return {
             'name': p.name, 'kind': p.kind, 'phone': _mask(p.phone), 'approval_state': p.approval_state,
             'state': p.state,
-            'seat': p.seat_id.label or '', 'seat_row': p.seat_id.row_no or 0, 'hat': bool(p.category_id.hat), 'hat_state': p.hat_state,
+            'seat': p.seat_id.label or '', 'seat_row': p.seat_id.row_no or 0, 'seat_row_name': p.seat_id.row_name(), 'hat': bool(p.category_id.hat), 'hat_state': p.hat_state,
+            'items': [{'name': l.item_id.name, 'state': l.state} for l in p.issue_ids],
+            'planned_items': [i.name for i in p.category_id.item_ids],
             'token': p.qr_token,
             'event': {'name': ev.name, 'date': fields.Date.to_string(ev.date), 'time': ev.time_text or '',
                       'venue': ev.venue or ''},
@@ -343,7 +353,7 @@ class WinnersMeetApi(http.Controller):
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):
                 vals[key] = json.dumps({k: v for k, v in body[key].items()
-                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany')
+                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram')
                                         and v in ('off', 'optional', 'required')})
         if vals.get('slug'):
             clash = request.env['otm.wm.event'].search(
@@ -478,7 +488,7 @@ class WinnersMeetApi(http.Controller):
         seats = b.seat_ids
         taken = len(seats.filtered('participant_ids'))
         return {'id': b.id, 'name': b.name, 'prefix': b.prefix, 'start_no': b.start_no, 'end_no': b.end_no,
-                'row_size': b.row_size, 'row_layout': b.row_layout or '', 'sequence': b.sequence, 'sections': b.layout_sections(), 'total': len(seats), 'occupied': taken, 'free': len(seats) - taken - len(seats.filtered(
+                'row_size': b.row_size, 'row_layout': b.row_layout or '', 'row_names': b.row_names or '', 'sequence': b.sequence, 'sections': b.layout_sections(), 'total': len(seats), 'occupied': taken, 'free': len(seats) - taken - len(seats.filtered(
                     lambda s: s.blocked and not s.participant_ids))}
 
     @api('/blocks/delete', methods=('POST',))
@@ -496,7 +506,7 @@ class WinnersMeetApi(http.Controller):
         ev = _event(body.get('event_id'))
         vals = {'name': (body.get('name') or '').strip(), 'prefix': (body.get('prefix') or '').strip(),
                 'start_no': _int(body.get('start_no'), 1), 'end_no': _int(body.get('end_no'), 1),
-                'row_size': max(0, _int(body.get('row_size'), 0)), 'row_layout': (body.get('row_layout') or '').strip(),
+                'row_size': max(0, _int(body.get('row_size'), 0)), 'row_layout': (body.get('row_layout') or '').strip(), 'row_names': (body.get('row_names') or '').strip()[:2000],
                 'sequence': _int(body.get('sequence'), 10)}
         if not vals['name'] or not vals['prefix']:
             raise UserError(_("Block name and seat prefix are required."))
@@ -523,7 +533,7 @@ class WinnersMeetApi(http.Controller):
             res = request.env['otm.wm.participant'].search([('reserved_seat_id', '=', s.id)], limit=1).name or \
                 request.env['otm.wm.expected'].search([('reserved_seat_id', '=', s.id)], limit=1).name or ''
             out.append({'reserved_for': res, 'id': s.id, 'label': s.label, 'number': s.number, 'block_id': s.block_id.id,
-                        'blocked': s.blocked, 'row': s.row_no,
+                        'blocked': s.blocked, 'row': s.row_no, 'row_name': s.row_name(),
                         'occupant': {'id': occ.id, 'name': occ.name, 'kind': occ.kind} if occ else None})
         return out
 

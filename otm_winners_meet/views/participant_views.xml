@@ -39,6 +39,7 @@
                             <field name="name"/>
                             <field name="phone"/>
                             <field name="place"/>
+                            <field name="instagram"/>
                             <field name="institution"/>
                         </group>
                         <group>

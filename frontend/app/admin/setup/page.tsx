@@ -38,7 +38,7 @@ export default function Setup() {
     try { await api("/courses/delete", { method: "POST", body: { id } }); courses.reload(); } catch (e: any) { toast(e.message, "err"); }
   };
   const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_from: 0, seat_to: 0, seat_mode: "auto", self_select: true };
-  const newBlk = { name: "", prefix: "S", start_no: 1, end_no: 100, row_size: 0, row_layout: "", sequence: 10 };
+  const newBlk = { name: "", prefix: "S", start_no: 1, end_no: 100, row_size: 0, row_layout: "", row_names: "", sequence: 10 };
   return (
     <div className="space-y-8">
       <section>
@@ -158,6 +158,10 @@ export default function Setup() {
               <Field label="End seat"><input type="number" min={0} className={inputCls} value={blk.end_no} onChange={(e) => setBlk({ ...blk, end_no: e.target.value })} required /></Field>
             </div>
             <Field label="Theatre row layout (optional)" hint="Sections of each row, left to right, with an aisle between. Example: 13,13 (left 13 · gap · right 13) or 7,13,7 for a balcony. Overrides seats per row."><input className={inputCls} value={blk.row_layout || ""} onChange={(e) => setBlk({ ...blk, row_layout: e.target.value })} placeholder="13,13" /></Field>
+            <Field label="Row names (optional)" hint="Name each row in order, comma separated: A,B,C,D… Row 1 = first name. Rows without a name keep their number.">
+              <div className="space-y-1.5"><input className={inputCls} value={blk.row_names || ""} onChange={(e) => setBlk({ ...blk, row_names: e.target.value })} placeholder="A,B,C,D,E" />
+                <button type="button" className="text-xs font-medium text-brand-600 underline" onClick={() => { const size = Number((blk.row_layout || "").split(",").reduce((a: number, n: string) => a + (Number(n) || 0), 0)) || Number(blk.row_size) || 0; const total = Math.max(0, Number(blk.end_no) - Number(blk.start_no) + 1); const rows = size ? Math.ceil(total / size) : 0; setBlk({ ...blk, row_names: Array.from({ length: rows }, (_, i) => String.fromCharCode(65 + (i % 26)) + (i >= 26 ? Math.floor(i / 26) : "")).join(",") }); }}>Fill A, B, C… for all rows</button></div>
+            </Field>
             <Field label="Display order" hint="Smaller number shows first on the seat map (e.g. stalls 10, balcony 20)."><input type="number" className={inputCls} value={blk.sequence ?? 10} onChange={(e) => setBlk({ ...blk, sequence: e.target.value })} /></Field>
             <Field label="Seats per row (optional)" hint="Example: 14 means seats 1-14 are Row 1, 15-28 are Row 2... Leave 0 for no rows."><input type="number" min={0} max={500} className={inputCls} value={blk.row_size} onChange={(e) => setBlk({ ...blk, row_size: e.target.value })} /></Field>
             {Number(blk.row_size) > 0 && (() => { const total = Math.max(0, Number(blk.end_no) - Number(blk.start_no) + 1), rs = Number(blk.row_size), rows = Math.ceil(total / rs), last = total - (rows - 1) * rs; return <p className="text-xs text-violet-700">{rows} rows: {rows > 1 ? `${rows - 1} full rows of ${rs}` : ""}{rows > 1 ? ", last row has " : "one row of "}{last} seats</p>; })()}

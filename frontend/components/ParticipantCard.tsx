@@ -69,7 +69,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
         <div className="px-5 py-5 text-center">
           <div className="text-sm text-slate-500">Seat</div>
           <div className="text-6xl font-extrabold tracking-tight text-emerald-600">{p.seat}</div>
-          {p.seat_row > 0 && <div className="mt-1 text-lg font-semibold text-slate-600">Row {p.seat_row}</div>}
+          {p.seat_row > 0 && <div className="mt-1 text-lg font-semibold text-slate-600">Row {p.seat_row_name || p.seat_row}</div>}
           <div className="mt-1 text-xs text-slate-500">Checked in {fmtTime(p.checkin_on)}{p.checkin_by ? ` by ${p.checkin_by}` : ""}</div>
           {p.hat_state === "issued" && (p.items?.length || 0) > 0 && (
             <div className="mt-4 rounded-xl bg-amber-100 px-4 py-3 text-center text-amber-900"><div className="flex items-center justify-center gap-2 text-lg font-bold"><Crown className="h-6 w-6" /> GIVE KIT</div><div className="mt-1 text-base font-semibold">{p.items.filter((i) => i.state === "issued").map((i) => i.name).join(" + ")}</div></div>

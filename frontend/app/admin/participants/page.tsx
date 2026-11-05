@@ -39,7 +39,7 @@ function Inner() {
       }
       const rows = all.map((p) => ({
         Name: p.name, Phone: p.phone, Type: p.kind, Category: p.category?.name || "", Place: p.place, Institution: p.institution,
-        Approval: p.approval_state, "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, Food: p.food_pref, "Coming with": p.accompany_type === "none" ? "" : p.accompany_type, "Guests": p.accompany_count || "", WhatsApp: p.wa_state,
+        Approval: p.approval_state, "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, Instagram: p.instagram ? "@" + p.instagram : "", Food: p.food_pref, "Coming with": p.accompany_type === "none" ? "" : p.accompany_type, "Guests": p.accompany_count || "", WhatsApp: p.wa_state,
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();

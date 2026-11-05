@@ -25,7 +25,7 @@ function shrink(file: File): Promise<string> {
 
 export default function RegisterForm({ kind, slug }: { kind: "student" | "teacher"; slug?: string }) {
   const { data, loading } = useFetch<any>("/public/event", slug ? { slug } : undefined);
-  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", accompany_type: "none", accompany_count: "", photo: "" });
+  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", instagram: "", accompany_type: "none", accompany_count: "", photo: "" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<any>(null);
@@ -125,6 +125,9 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
                   </label>
                 </Field>
               </>
+            )}
+            {on("instagram") && (
+              <Field label="Instagram ID" hint="Required so we can tag you in your event photos."><div className="flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500"><span className="pl-3 text-slate-400">@</span><input className="h-11 w-full rounded-lg bg-transparent px-2 outline-none" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/\s/g, ""))} required={req("instagram")} placeholder="your_instagram_id" autoCapitalize="none" autoCorrect="off" maxLength={60} /></div></Field>
             )}
             {on("food_pref") && (
               <>

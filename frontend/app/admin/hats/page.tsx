@@ -17,6 +17,7 @@ export default function Kit() {
   const [item, setItem] = useState("");
   const [q, setQ] = useState("");
   const [scan, setScan] = useState(false);
+  const [last, setLast] = useState<{ name: string; ok: boolean; msg: string } | null>(null);
   const { data, error, loading, reload } = useFetch<{ total: number; rows: Participant[] }>(eventId ? "/participants" : null, { event_id: eventId, hat: tab, item_id: item, q, limit: 200 }, 8000);
   const inv = useFetch<KitItem[]>(eventId ? "/items" : null, { event_id: eventId }, 8000);
   const [busy, setBusy] = useState<string | null>(null);
@@ -31,10 +32,10 @@ export default function Kit() {
   const onScan = useCallback(async (text: string) => {
     try {
       const p = await api<Participant>("/lookup/token", { method: "POST", body: { token: text } });
-      if (!p.items?.length) toast(`${p.name} has no kit`, "err");
-      else if (p.hat_state === "returned") toast(`${p.name}: everything already returned`, "err");
-      else await act(p.id, "return", undefined, p.name);
-    } catch (e: any) { toast(e.message, "err"); }
+      if (!p.items?.length) { toast(`${p.name} has no kit`, "err"); setLast({ name: p.name, ok: false, msg: "No kit was issued" }); }
+      else if (p.hat_state === "returned") { toast(`${p.name}: everything already returned`, "err"); setLast({ name: p.name, ok: false, msg: "Already returned earlier" }); }
+      else { await act(p.id, "return", undefined, p.name); setLast({ name: p.name, ok: true, msg: `Returned: ${p.items.filter((i) => i.state === "issued").map((i) => i.name).join(", ")}` }); }
+    } catch (e: any) { toast(e.message, "err"); setLast({ name: "", ok: false, msg: e.message }); }
   }, [act, toast]);
 
   if (!eventId) return <Empty>Select an event first.</Empty>;
@@ -42,7 +43,7 @@ export default function Kit() {
   return (
     <div>
       <PageHeader title="Kit & returns" subtitle="Hat, shawl... issued at check-in. Track stock and what comes back." actions={<Button variant={scan ? "secondary" : "primary"} size="sm" onClick={() => setScan(!scan)}><ScanLine className="h-4 w-4" /> {scan ? "Close scanner" : "Scan to return"}</Button>} />
-      {scan && <Card className="mx-auto mb-4 max-w-md p-4"><Scanner onScan={onScan} /></Card>}
+      {scan && <Card className="mx-auto mb-4 max-w-md p-4"><Scanner onScan={onScan} />{last && <div className={`mt-3 rounded-xl p-3 text-center ${last.ok ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}><div className="text-lg font-bold">{last.ok ? "✓ RETURNED" : "Not returned"}</div>{last.name && <div className="font-semibold">{last.name}</div>}<div className="text-sm">{last.msg}</div></div>}</Card>}
 
       {items.length > 0 && (
         <Card className="mb-5 overflow-x-auto">

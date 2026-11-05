@@ -4,12 +4,12 @@ import re
 from odoo import _, api, fields, models
 
 # Registration form fields an admin can switch: off / optional / required.
-FORM_FIELDS = ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany')
+FORM_FIELDS = ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram')
 FORM_DEFAULTS = {
     'student': {'place': 'optional', 'institution': 'off', 'email': 'off', 'photo': 'off',
-                'food_pref': 'off', 'accompany': 'optional'},
+                'food_pref': 'off', 'accompany': 'optional', 'instagram': 'required'},
     'teacher': {'place': 'off', 'institution': 'optional', 'email': 'off', 'photo': 'required',
-                'food_pref': 'required', 'accompany': 'off'},
+                'food_pref': 'required', 'accompany': 'off', 'instagram': 'off'},
 }
 
 DEFAULT_CONFIRM_MSG = (

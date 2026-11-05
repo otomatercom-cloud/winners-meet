@@ -347,3 +347,16 @@ class TestWinnersMeet(TransactionCase):
             p.action_check_in()
         with self.assertRaises(Exception), self.env.cr.savepoint():
             cat.seat_to = 100
+
+    def test_row_names_and_instagram(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Names Show'})
+        b = self.env['otm.wm.seat.block'].create({'event_id': ev.id, 'name': 'N', 'prefix': 'N', 'start_no': 1, 'end_no': 30,
+                                                  'row_size': 10, 'row_names': 'A, B'})
+        s = {x.number: x for x in b.seat_ids}
+        self.assertEqual(s[1].row_name(), 'A')
+        self.assertEqual(s[11].row_name(), 'B')
+        self.assertEqual(s[25].row_name(), '3')
+        self.assertIn('Row A', s[1].display_label())
+        self.assertEqual(self.env['otm.wm.seat'].browse().row_name(), '')
+        self.assertEqual(ev.form_config('student')['instagram'], 'required')
+        self.assertEqual(ev.form_config('teacher')['instagram'], 'off')

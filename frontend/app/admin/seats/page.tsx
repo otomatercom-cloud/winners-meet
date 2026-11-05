@@ -49,8 +49,8 @@ export default function SeatMap() {
           <div className="mb-3 flex items-center justify-between"><h3 className="font-semibold">{b.name} <span className="font-normal text-slate-400">{b.prefix}{b.start_no}–{b.prefix}{b.end_no}</span></h3><Badge>{b.occupied}/{b.total}</Badge></div>
           {(() => {
             const mine = (seats || []).filter((s) => s.block_id === b.id);
-            const rows: { row: number; seats: Seat[] }[] = [];
-            mine.forEach((s) => { const last = rows[rows.length - 1]; if (last && last.row === s.row) last.seats.push(s); else rows.push({ row: s.row, seats: [s] }); });
+            const rows: { row: number; name: string; seats: Seat[] }[] = [];
+            mine.forEach((s) => { const last = rows[rows.length - 1]; if (last && last.row === s.row) last.seats.push(s); else rows.push({ row: s.row, name: s.row_name || String(s.row), seats: [s] }); });
             const secs = b.sections?.length ? b.sections : b.row_size ? [b.row_size] : null;
             const btn = (s: Seat) => (
               <button key={s.id} title={s.occupant?.name || s.label} onClick={() => { setOpen(s); setQ(""); setFound([]); }}
@@ -67,13 +67,13 @@ export default function SeatMap() {
                   {stage}
                   {rows.map((r) => (
                     <div key={r.row} className="mb-1.5 flex items-center gap-2">
-                      {r.row > 0 && <div className="w-7 shrink-0 text-right text-[10px] font-medium text-slate-400">{r.row}</div>}
+                      {r.row > 0 && <div className="w-7 shrink-0 text-right text-[10px] font-medium text-slate-400">{r.name}</div>}
                       <div className="flex flex-1 items-stretch gap-3 sm:gap-8">
                         {chunks(r.seats).map((c, i) => (
                           <div key={i} className="flex gap-0.5 sm:gap-1" style={secs ? { flex: `${secs[i]} 1 0%` } : undefined}>{c.map(btn)}</div>
                         ))}
                       </div>
-                      {r.row > 0 && <div className="w-7 shrink-0 text-[10px] font-medium text-slate-400">{r.row}</div>}
+                      {r.row > 0 && <div className="w-7 shrink-0 text-[10px] font-medium text-slate-400">{r.name}</div>}
                     </div>
                   ))}
                 </div>

@@ -81,6 +81,7 @@
                                     <field name="end_no"/>
                                     <field name="row_size"/>
                                     <field name="row_layout"/>
+                                    <field name="row_names"/>
                                 </list>
                             </field>
                         </page>

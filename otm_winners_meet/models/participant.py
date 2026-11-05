@@ -26,6 +26,7 @@ class WmParticipant(models.Model):
     name = fields.Char(required=True)
     phone = fields.Char(required=True, index=True)
     place = fields.Char()
+    instagram = fields.Char(string="Instagram ID", help="Without the @. Used to tag the person in event photos.")
     institution = fields.Char()
     email = fields.Char()
     note = fields.Char()

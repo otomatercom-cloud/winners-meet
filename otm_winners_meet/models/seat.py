@@ -18,6 +18,8 @@ class WmSeatBlock(models.Model):
     row_size = fields.Integer(string="Seats per Row", help="0 = no rows. E.g. 14: seats 1-14 are row 1, 15-28 row 2...")
     row_layout = fields.Char(string="Row Layout", help="Theatre sections per row, left to right, e.g. '13,13' or '7,13,7'. "
                              "A gap (aisle) is drawn between sections. Overrides Seats per Row.")
+    row_names = fields.Char(string="Row Names", help="Optional names for the rows, in order, comma separated. "
+                            "E.g. 'A,B,C,D' makes Row 1 = A, Row 2 = B... Rows without a name keep their number.")
     seat_ids = fields.One2many('otm.wm.seat', 'block_id', string="Seats")
 
     _name_uniq = models.Constraint('unique(event_id, name)', 'Block name must be unique per event.')
@@ -59,6 +61,10 @@ class WmSeatBlock(models.Model):
         for rec in self:
             if (rec.row_layout or '').strip() and not self._parse_layout(rec.row_layout):
                 raise ValidationError(_("Row layout must be numbers separated by commas, e.g. 7,13,7."))
+
+    def row_name_list(self):
+        self.ensure_one()
+        return [n.strip() for n in (self.row_names or '').split(',')]
 
     def layout_sections(self):
         self.ensure_one()
@@ -135,7 +141,14 @@ class WmSeat(models.Model):
             size = seat.block_id.row_size
             seat.row_no = ((seat.number - seat.block_id.start_no) // size + 1) if size else 0
 
+    def row_name(self):
+        """Name of this seat's row: the custom name if the block has one, else the row number."""
+        if not self or not self.row_no:
+            return ''
+        names = self.block_id.row_name_list()
+        return (names[self.row_no - 1] if self.row_no <= len(names) and names[self.row_no - 1] else str(self.row_no))
+
     def display_label(self):
         """'G12 (Row 1)' when the block has rows, else just the label."""
         self.ensure_one()
-        return '%s (Row %s)' % (self.label, self.row_no) if self.row_no else (self.label or '')
+        return '%s (Row %s)' % (self.label, self.row_name()) if self.row_no else (self.label or '')

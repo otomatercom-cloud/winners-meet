@@ -41,12 +41,23 @@ export default function Pass() {
             <div className="mt-5 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
               <div className="flex items-center justify-center gap-1.5 text-sm text-emerald-700"><Armchair className="h-4 w-4" /> Your seat</div>
               <div className="text-5xl font-extrabold tracking-tight text-emerald-700">{data.seat}</div>
-              {data.seat_row > 0 && <div className="mt-1 text-lg font-semibold text-emerald-800">Row {data.seat_row}</div>}
+              {data.seat_row > 0 && <div className="mt-1 text-lg font-semibold text-emerald-800">Row {data.seat_row_name || data.seat_row}</div>}
             </div>
           )}
-          {data.hat && approved && (
-            <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-amber-700"><Crown className="h-4 w-4" /> You will receive a winner hat. Please return it after the programme.</p>
-          )}
+          {approved && data.items?.length > 0 ? (
+            <div className={`mt-4 rounded-xl p-3 text-sm ring-1 ${data.hat_state === "returned" ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-amber-50 text-amber-800 ring-amber-200"}`}>
+              <div className="flex items-center justify-center gap-1.5 font-semibold"><Crown className="h-4 w-4" />
+                {data.hat_state === "returned" ? "All returned — thank you!" : data.hat_state === "lost" ? "Marked as lost" : "Please return after the programme"}</div>
+              <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+                {data.items.map((i: any) => (
+                  <span key={i.name} className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${i.state === "returned" ? "bg-emerald-600 text-white" : i.state === "lost" ? "bg-rose-600 text-white" : "bg-white ring-1 ring-amber-300"}`}>
+                    {i.name} · {i.state === "returned" ? "Returned ✓" : i.state === "lost" ? "Lost" : "With you"}</span>
+                ))}
+              </div>
+            </div>
+          ) : (approved && data.planned_items?.length > 0 && (
+            <p className="mt-3 flex items-center justify-center gap-1.5 text-sm text-amber-700"><Crown className="h-4 w-4" /> You will receive: {data.planned_items.join(", ")}. Please return {data.planned_items.length > 1 ? "them" : "it"} after the programme.</p>
+          ))}
         </div>
         <div className="space-y-1 border-t border-slate-100 bg-slate-50 px-5 py-3 text-sm text-slate-600">
           <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4" />{data.event.date}{data.event.time ? ` · ${data.event.time}` : ""}</div>

@@ -62,7 +62,7 @@ export default function Stage() {
                 <div className="truncate text-xl font-bold leading-tight">{p.name}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   {p.category && <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full" style={{ background: p.category.color }} />{p.category.name}</span>}
-                  {p.seat && <Badge tone="green"><Armchair className="mr-1 inline h-3 w-3" />{p.seat}{p.seat_row ? ` · Row ${p.seat_row}` : ""}</Badge>}
+                  {p.seat && <Badge tone="green"><Armchair className="mr-1 inline h-3 w-3" />{p.seat}{p.seat_row ? ` · Row ${p.seat_row_name || p.seat_row}` : ""}</Badge>}
                 </div>
               </div>
               {tab === "present" && <Button size="lg" variant="success" loading={busy === p.id} onClick={() => mark(p, true)}><Trophy className="h-5 w-5" /> Collected</Button>}
