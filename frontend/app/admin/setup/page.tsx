@@ -37,7 +37,7 @@ export default function Setup() {
     if (!confirm("Delete this course?")) return;
     try { await api("/courses/delete", { method: "POST", body: { id } }); courses.reload(); } catch (e: any) { toast(e.message, "err"); }
   };
-  const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_mode: "auto", self_select: true };
+  const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_from: 0, seat_to: 0, seat_mode: "auto", self_select: true };
   const newBlk = { name: "", prefix: "S", start_no: 1, end_no: 100, row_size: 0, row_layout: "", sequence: 10 };
   return (
     <div className="space-y-8">
@@ -76,7 +76,7 @@ export default function Setup() {
           <div className="grid gap-3 sm:grid-cols-2">
             {cats.data.map((c) => (
               <Card key={c.id} className="p-4">
-                <div className="flex items-start justify-between"><CategoryChip name={c.name} color={c.color} /><div className="flex gap-1"><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setCat({ ...c, name: c.sub, course_id: c.course_id || "", seat_block_id: c.seat_block_id || "" })}><Pencil className="h-4 w-4" /></button></div></div>
+                <div className="flex items-start justify-between"><CategoryChip name={c.name} color={c.color} /><div className="flex gap-1"><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setCat({ ...c, name: c.sub, course_id: c.course_id || "", seat_block_id: c.seat_block_id || "", seat_from: c.seat_from || 0, seat_to: c.seat_to || 0 })}><Pencil className="h-4 w-4" /></button></div></div>
                 <div className="mt-3 flex flex-wrap gap-1.5"><Badge tone="violet">{c.kind}</Badge>{c.items?.map((i) => <Badge key={i.id} tone="amber">{i.name}</Badge>)}<Badge tone="blue">{c.seat_block || "no block"}</Badge><Badge>{c.seat_mode === "auto" ? "auto seat" : "manual seat"}</Badge>{!c.self_select && <Badge>admin only</Badge>}</div>
                 <button className="mt-3 text-xs text-slate-400 hover:text-rose-600" onClick={() => del(c.id)}>Delete</button>
               </Card>
@@ -109,6 +109,12 @@ export default function Setup() {
               <Field label="Colour"><input type="color" className={inputCls + " p-1"} value={cat.color} onChange={(e) => setCat({ ...cat, color: e.target.value })} /></Field>
             </div>
             <Field label="Seat block"><select className={inputCls} value={cat.seat_block_id} onChange={(e) => setCat({ ...cat, seat_block_id: e.target.value })}><option value="">— none —</option>{(blocks.data || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.prefix}{b.start_no}–{b.end_no})</option>)}</select></Field>
+            {cat.seat_block_id && (
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Seats from (optional)" hint="Use only part of the block, e.g. 469 to 473."><input type="number" min={0} className={inputCls} value={cat.seat_from || ""} onChange={(e) => setCat({ ...cat, seat_from: e.target.value })} placeholder="start" /></Field>
+                <Field label="Seats to"><input type="number" min={0} className={inputCls} value={cat.seat_to || ""} onChange={(e) => setCat({ ...cat, seat_to: e.target.value })} placeholder="end" /></Field>
+              </div>
+            )}
             <Field label="Seat assignment" hint="Automatic gives the next free seat of the block at check-in."><select className={inputCls} value={cat.seat_mode} onChange={(e) => setCat({ ...cat, seat_mode: e.target.value })}><option value="auto">Automatic (next free seat)</option><option value="manual">Manual (desk picks the seat)</option></select></Field>
             <Field label="Kit items given at check-in" hint="Collected back later. Add items in the Kit items section above.">
               <div className="flex flex-wrap gap-2">

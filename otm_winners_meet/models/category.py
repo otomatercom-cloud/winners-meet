@@ -36,6 +36,8 @@ class WmCategory(models.Model):
     seat_block_id = fields.Many2one(
         'otm.wm.seat.block', string="Seat Block", ondelete='set null',
         domain="[('event_id', '=', event_id)]")
+    seat_from = fields.Integer(string="Seat From", help="Optional: first seat number this category may use inside the block (0 = start of block).")
+    seat_to = fields.Integer(string="Seat To", help="Optional: last seat number this category may use inside the block (0 = end of block).")
     seat_mode = fields.Selection(
         [('auto', 'Automatic (next free seat)'), ('manual', 'Manual (desk picks seat)')],
         default='auto', required=True)
@@ -60,6 +62,12 @@ class WmCategory(models.Model):
         self.ensure_one()
         return '%s · %s' % (self.course_id.name, self.name) if self.course_id else self.name
 
+
+    @api.constrains('seat_from', 'seat_to')
+    def _check_seat_range(self):
+        for rec in self:
+            if rec.seat_from < 0 or rec.seat_to < 0 or (rec.seat_from and rec.seat_to and rec.seat_to < rec.seat_from):
+                raise ValidationError(_("Seat range is invalid: 'To' must not be smaller than 'From'."))
 
     @api.constrains('seat_block_id', 'event_id')
     def _check_block_event(self):

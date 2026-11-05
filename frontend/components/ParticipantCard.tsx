@@ -11,6 +11,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
   const [busy, setBusy] = useState("");
   const [pickSeat, setPickSeat] = useState(false);
   const [seatId, setSeatId] = useState("");
+  const [allSeats, setAllSeats] = useState(false);
   const blockId = p.category?.seat_block_id || "";
   const { data: seats } = useFetch<Seat[]>(pickSeat ? "/seats" : null, { event_id: eventId });
 
@@ -31,7 +32,10 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
   };
 
   const pendingApproval = p.approval_state !== "approved";
-  const free = (seats || []).filter((s) => !s.occupant && !s.blocked && (!s.reserved_for || s.id === p.reserved_seat_id));
+  const cat = p.category;
+  const ranged = !!(cat && cat.seat_block_id && (cat.seat_from || cat.seat_to));
+  const free = (seats || []).filter((s) => !s.occupant && !s.blocked && (!s.reserved_for || s.id === p.reserved_seat_id)
+    && (!ranged || allSeats || (s.block_id === cat!.seat_block_id && (!cat!.seat_from || s.number >= cat!.seat_from) && (!cat!.seat_to || s.number <= cat!.seat_to))));
   const manual = p.category?.seat_mode === "manual";
   return (
     <div className="pop overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -83,6 +87,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
           {manual || pickSeat ? (
             <div className="space-y-2">
               <div className="text-sm font-medium text-slate-700">{manual ? "Choose a seat for this person" : "Choose a seat"}</div>
+              {ranged && <p className="text-xs text-slate-500">{allSeats ? "Showing all free seats" : `Seats ${cat!.seat_from || "start"}–${cat!.seat_to || "end"} for ${cat!.name}`} · <button type="button" className="font-medium text-brand-600 underline" onClick={() => setAllSeats(!allSeats)}>{allSeats ? "show only this range" : "show all seats"}</button></p>}
               <SeatSelect seats={free} defaultBlock={blockId} value={seatId} onChange={setSeatId} />
               <Button size="lg" className="w-full" disabled={!seatId} loading={busy === "checkin"} onClick={() => act("checkin", "checkin", { seat_id: seatId }, "Checked in")}>
                 <Armchair className="h-5 w-5" /> Check in with this seat

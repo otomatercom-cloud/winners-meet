@@ -328,3 +328,22 @@ class TestWinnersMeet(TransactionCase):
         b.action_delete_checked()
         self.assertFalse(b.exists())
         self.assertTrue(a.exists())
+
+    def test_category_seat_range(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Range Show'})
+        blk = self.env['otm.wm.seat.block'].create({'event_id': ev.id, 'name': 'Bal', 'prefix': 'Z', 'start_no': 469, 'end_no': 520})
+        cat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'CMA USA', 'kind': 'student',
+                                                  'seat_block_id': blk.id, 'seat_from': 469, 'seat_to': 471})
+        got = []
+        for i in range(3):
+            p = self.env['otm.wm.participant'].create({'event_id': ev.id, 'name': 'R%s' % i, 'phone': '9199000%04d' % i,
+                                                       'kind': 'student', 'category_id': cat.id, 'approval_state': 'approved'})
+            p.action_check_in()
+            got.append(p.seat_id.number)
+        self.assertEqual(got, [469, 470, 471])
+        p = self.env['otm.wm.participant'].create({'event_id': ev.id, 'name': 'R9', 'phone': '919900009999',
+                                                   'kind': 'student', 'category_id': cat.id, 'approval_state': 'approved'})
+        with self.assertRaises(Exception):
+            p.action_check_in()
+        with self.assertRaises(Exception), self.env.cr.savepoint():
+            cat.seat_to = 100

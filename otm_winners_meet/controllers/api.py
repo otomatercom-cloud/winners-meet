@@ -113,7 +113,8 @@ def _cat(c):
             'course': c.course_id.name or '', 'kind': c.kind, 'color': c.color or '#2563eb', 'hat': c.hat,
             'item_ids': c.item_ids.ids, 'items': [{'id': i.id, 'name': i.name} for i in c.item_ids],
             'hat_label': c.hat_label or '', 'seat_mode': c.seat_mode, 'self_select': c.self_select,
-            'seat_block_id': c.seat_block_id.id or False, 'seat_block': c.seat_block_id.name or ''}
+            'seat_block_id': c.seat_block_id.id or False, 'seat_block': c.seat_block_id.name or '',
+            'seat_from': c.seat_from or 0, 'seat_to': c.seat_to or 0}
 
 
 def _event_dict(e):
@@ -379,7 +380,8 @@ class WinnersMeetApi(http.Controller):
                 'seat_mode': body.get('seat_mode') or 'auto',
                 'self_select': bool(body.get('self_select', True)),
                 'course_id': _int(body.get('course_id')) or False,
-                'seat_block_id': _int(body.get('seat_block_id')) or False}
+                'seat_block_id': _int(body.get('seat_block_id')) or False,
+                'seat_from': max(0, _int(body.get('seat_from'), 0)), 'seat_to': max(0, _int(body.get('seat_to'), 0))}
         if not vals['name']:
             raise UserError(_("Category name is required."))
         if body.get('id'):

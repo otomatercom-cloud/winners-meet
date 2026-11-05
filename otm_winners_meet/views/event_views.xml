@@ -63,6 +63,8 @@
                                     <field name="kind"/>
                                     <field name="item_ids" widget="many2many_tags"/>
                                     <field name="seat_block_id"/>
+                                    <field name="seat_from"/>
+                                    <field name="seat_to"/>
                                     <field name="seat_mode"/>
                                     <field name="self_select"/>
                                     <field name="color"/>

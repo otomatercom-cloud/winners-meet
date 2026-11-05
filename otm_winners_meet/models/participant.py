@@ -203,18 +203,19 @@ class WmParticipant(models.Model):
         self.env.cr.execute("SELECT id FROM otm_wm_participant WHERE id = %s FOR UPDATE", [self.id])
         self.invalidate_recordset()
 
-    def _free_seat_ids(self, block, limit=60):
+    def _free_seat_ids(self, block, limit=60, lo=0, hi=0):
         self.env['otm.wm.participant'].flush_model(['seat_id', 'reserved_seat_id'])
         self.env['otm.wm.expected'].flush_model(['reserved_seat_id'])
         self.env['otm.wm.seat'].flush_model()
         self.env.cr.execute("""
             SELECT s.id FROM otm_wm_seat s
              WHERE s.block_id = %s AND NOT COALESCE(s.blocked, false)
+               AND (%s = 0 OR s.number >= %s) AND (%s = 0 OR s.number <= %s)
                AND NOT EXISTS (SELECT 1 FROM otm_wm_participant p WHERE p.seat_id = s.id)
                AND NOT EXISTS (SELECT 1 FROM otm_wm_participant p WHERE p.reserved_seat_id = s.id)
                AND NOT EXISTS (SELECT 1 FROM otm_wm_expected x WHERE x.reserved_seat_id = s.id)
              ORDER BY s.number
-             LIMIT %s""", [block.id, limit])
+             LIMIT %s""", [block.id, lo or 0, lo or 0, hi or 0, hi or 0, limit])
         return [r[0] for r in self.env.cr.fetchall()]
 
     def _preset_seat(self):
@@ -222,7 +223,7 @@ class WmParticipant(models.Model):
         self.ensure_one()
         return self.reserved_seat_id or self.expected_id.reserved_seat_id
 
-    def _assign_auto_seat(self, block):
+    def _assign_auto_seat(self, block, lo=0, hi=0):
         """Next free seat of the block, safe when several desks check in at the same moment.
 
         Odoo transactions use REPEATABLE READ, so the free-seat list may be slightly stale (seats taken
@@ -230,8 +231,11 @@ class WmParticipant(models.Model):
         try the candidates in order, each in a savepoint, until one is accepted.
         """
         self.ensure_one()
-        candidates = self._free_seat_ids(block)
+        candidates = self._free_seat_ids(block, lo=lo, hi=hi)
         if not candidates:
+            if lo or hi:
+                raise UserError(_("Seats %(a)s%(b)s-%(a)s%(c)s of block '%(n)s' are full. Pick another seat.",
+                                  a=block.prefix or '', b=lo or block.start_no, c=hi or block.end_no, n=block.name))
             raise UserError(_("Seat block '%s' is full. Pick a seat from another block.", block.name))
         for seat_id in candidates:
             # lock only the seat we are about to try; skip seats another desk is taking right now
@@ -284,7 +288,7 @@ class WmParticipant(models.Model):
         elif preset:
             self._assign_manual_seat(preset.id)
         elif cat.seat_block_id and cat.seat_mode == 'auto':
-            self._assign_auto_seat(cat.seat_block_id)
+            self._assign_auto_seat(cat.seat_block_id, cat.seat_from, cat.seat_to)
         elif cat.seat_mode == 'manual':
             raise UserError(_("Select a seat for %s.", self.name))
         else:
