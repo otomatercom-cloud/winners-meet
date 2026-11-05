@@ -35,11 +35,10 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
 
   const pendingApproval = p.approval_state !== "approved";
   const cat = p.category;
-  const ranged = !!(cat && cat.seat_block_id && (cat.seat_from || cat.seat_to));
+  const ranged = !!(cat && cat.seat_block_id);
   const free = (seats || []).filter((s) => !s.occupant && !s.blocked && (!s.reserved_for || s.id === p.reserved_seat_id)
     && (!ranged || allSeats || (s.block_id === cat!.seat_block_id && (!cat!.seat_from || s.number >= cat!.seat_from) && (!cat!.seat_to || s.number <= cat!.seat_to))));
   const manual = manualNeeded;
-  const freeAll = (seats || []).filter((s) => !s.occupant && !s.blocked && (!s.reserved_for || s.id === p.reserved_seat_id));
   const reserve = async (sid: number | "") => {
     setBusy("reserve");
     try { onChange(await api<Participant>("/participants/reserve", { method: "POST", body: { id: p.id, seat_id: sid || 0 } })); toast(sid ? "Seat pre-assigned" : "Pre-assigned seat removed"); setResSeat(""); }
@@ -97,9 +96,10 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
           {p.reserved_seat ? (
             <div className="mt-2 flex items-center justify-between gap-2"><span className="rounded-lg bg-violet-100 px-3 py-1.5 text-sm font-semibold text-violet-800">{p.reserved_seat}</span><Button size="sm" variant="secondary" loading={busy === "reserve"} onClick={() => reserve("")}>Remove</Button></div>
           ) : (
-            <div className="mt-2 flex gap-2">
-              <div className="min-w-0 flex-1"><SeatSelect seats={freeAll} defaultBlock={blockId} value={resSeat} onChange={setResSeat} /></div>
-              <Button disabled={!resSeat} loading={busy === "reserve"} onClick={() => reserve(Number(resSeat) as number)}>Set</Button>
+            <div className="mt-2 space-y-1.5">
+              {ranged && <p className="text-xs text-slate-500">{allSeats ? "Showing all free seats" : `${cat!.seat_from || cat!.seat_to ? `Seats ${cat!.seat_from || "start"}–${cat!.seat_to || "end"} of ` : "Block "}${cat!.seat_block}`} · <button type="button" className="font-medium text-brand-600 underline" onClick={() => setAllSeats(!allSeats)}>{allSeats ? "show only this range" : "show all seats"}</button></p>}
+              <div className="flex gap-2"><div className="min-w-0 flex-1"><SeatSelect seats={free} defaultBlock={blockId} value={resSeat} onChange={setResSeat} /></div>
+              <Button disabled={!resSeat} loading={busy === "reserve"} onClick={() => reserve(Number(resSeat) as number)}>Set</Button></div>
             </div>
           )}
         </div>
@@ -110,7 +110,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
           {manual || pickSeat ? (
             <div className="space-y-2">
               <div className="text-sm font-medium text-slate-700">{manual ? "Choose a seat for this person" : "Choose a seat"}</div>
-              {ranged && <p className="text-xs text-slate-500">{allSeats ? "Showing all free seats" : `Seats ${cat!.seat_from || "start"}–${cat!.seat_to || "end"} for ${cat!.name}`} · <button type="button" className="font-medium text-brand-600 underline" onClick={() => setAllSeats(!allSeats)}>{allSeats ? "show only this range" : "show all seats"}</button></p>}
+              {ranged && <p className="text-xs text-slate-500">{allSeats ? "Showing all free seats" : `${cat!.seat_from || cat!.seat_to ? `Seats ${cat!.seat_from || "start"}–${cat!.seat_to || "end"}` : `Block ${cat!.seat_block}`} for ${cat!.name}`} · <button type="button" className="font-medium text-brand-600 underline" onClick={() => setAllSeats(!allSeats)}>{allSeats ? "show only this range" : "show all seats"}</button></p>}
               <SeatSelect seats={free} defaultBlock={blockId} value={seatId} onChange={setSeatId} />
               <Button size="lg" className="w-full" disabled={!seatId} loading={busy === "checkin"} onClick={() => act("checkin", "checkin", { seat_id: seatId }, "Checked in")}>
                 <Armchair className="h-5 w-5" /> Check in with this seat
@@ -154,7 +154,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
 
 function SeatSelect({ seats, defaultBlock, value, onChange }: { seats: Seat[]; defaultBlock: number | string; value: string; onChange: (v: string) => void }) {
   const blocks = Array.from(new Set(seats.map((s) => s.block_id)));
-  const sorted = [...seats].sort((a, b) => (a.block_id === defaultBlock ? -1 : b.block_id === defaultBlock ? 1 : 0) || a.block_id - b.block_id || a.number - b.number);
+  const sorted = [...seats].sort((a, b) => ((b.block_id === defaultBlock ? 1 : 0) - (a.block_id === defaultBlock ? 1 : 0)) || a.block_id - b.block_id || a.number - b.number);
   return (
     <select className={inputCls + " h-12 text-base"} value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">{seats.length ? `Select seat (${seats.length} free${blocks.length > 1 ? " across blocks" : ""})` : "No free seats"}</option>
