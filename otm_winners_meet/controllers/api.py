@@ -4,6 +4,7 @@ Staff routes use the normal Odoo session (the Next.js server holds session_id, t
 to Odoo). Public routes (registration form, entry pass) are limited to what a guest may see.
 """
 import functools
+import json
 import logging
 
 from odoo import _, fields, http
@@ -122,6 +123,7 @@ def _event_dict(e):
             'wa_tpl_confirm': e.wa_tpl_confirm or '', 'wa_tpl_seat': e.wa_tpl_seat or '',
             'wa_msg_confirm': e.wa_msg_confirm or '', 'wa_msg_seat': e.wa_msg_seat or '',
             'wa_seat_hat_param': bool(e.wa_seat_hat_param),
+            'form_student': e.form_config('student'), 'form_teacher': e.form_config('teacher'),
             'wa_tpl_confirm_teacher': e.wa_tpl_confirm_teacher or '', 'wa_tpl_seat_teacher': e.wa_tpl_seat_teacher or '',
             'wa_msg_confirm_teacher': e.wa_msg_confirm_teacher or '', 'wa_msg_seat_teacher': e.wa_msg_seat_teacher or ''}
 
@@ -138,11 +140,14 @@ def _p(p, detail=False):
         'reserved_seat_id': p._preset_seat().id if _is_manager() else False,
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
+        'food_pref': p.food_pref or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
+        'has_photo': bool(p.photo),
         'create_date': fields.Datetime.to_string(p.create_date),
     }
     if detail:
         d.update({
             'email': p.email or '', 'note': p.note or '', 'token': p.qr_token,
+            'photo': ('data:image/jpeg;base64,' + p.photo.decode()) if p.photo else '',
             'hat_issued_on': fields.Datetime.to_string(p.hat_issued_on) if p.hat_issued_on else '',
             'hat_returned_on': fields.Datetime.to_string(p.hat_returned_on) if p.hat_returned_on else '',
             'checkin_by': p.checkin_by.name or '', 'approved_by': p.approved_by.name or '',
@@ -153,6 +158,28 @@ def _p(p, detail=False):
                          for l in p.log_ids.sorted('id', reverse=True)[:10]],
         })
     return d
+
+
+def _photo_from_body(raw, required=False):
+    """Accept a base64 / data-URL image (already shrunk by the browser). Returns base64 str or False."""
+    import base64
+    import io
+    if not raw:
+        if required:
+            raise UserError(_("Please upload your photo."))
+        return False
+    raw = str(raw)
+    if raw.startswith('data:'):
+        raw = raw.split(',', 1)[-1]
+    if len(raw) > 3_000_000:
+        raise UserError(_("Photo is too large. Please choose a smaller photo."))
+    try:
+        from PIL import Image
+        data = base64.b64decode(raw, validate=False)
+        Image.open(io.BytesIO(data)).verify()
+    except Exception:  # noqa: BLE001 - any decoding problem means "not a usable image"
+        raise UserError(_("That file is not a valid image. Please upload a JPG or PNG photo."))
+    return base64.b64encode(data).decode()
 
 
 def _participant(pid):
@@ -178,6 +205,7 @@ class WinnersMeetApi(http.Controller):
                       'reg_student_open': ev.reg_student_open, 'reg_teacher_open': ev.reg_teacher_open},
             'student_categories': [{'id': c.id, 'name': c.name, 'course_id': c.course_id.id or False, 'color': c.color}
                                  for c in cats if c.kind == 'student'],
+            'form': {'student': ev.form_config('student'), 'teacher': ev.form_config('teacher')},
             'courses': [{'id': c.id, 'name': c.name, 'code': c.code or ''}
                         for c in ev.course_ids if any(k.kind == 'student' and k.self_select for k in c.category_ids)],
             'teacher_categories': [{'id': c.id, 'name': c.name, 'color': c.color} for c in cats if c.kind == 'teacher'],
@@ -206,10 +234,40 @@ class WinnersMeetApi(http.Controller):
         cats = ev.category_ids.filtered(lambda c: c.kind == kind and c.self_select)
         cat = cats.filtered(lambda c: c.id == _int(body.get('category_id'), 0))
         if not cat:
-            if kind == 'teacher' and len(cats) == 1:
-                cat = cats
+            if kind == 'teacher':
+                cat = cats[:1] or ev.category_ids.filtered(lambda c: c.kind == 'teacher')[:1]
+                if not cat:
+                    raise UserError(_("Teacher registration is not set up yet. Please contact the organisers."))
             else:
                 raise UserError(_("Please select a category."))
+        cfg = ev.form_config(kind)
+        extra = {}
+        labels = {'place': _("place"), 'institution': _("school / institution"), 'email': _("email"),
+                  'photo': _("photo"), 'food_pref': _("food preference")}
+
+        def need(field, value):
+            if cfg[field] == 'required' and not value:
+                raise UserError(_("Please provide your %s.", labels[field]))
+        for fld, size in (('place', 120), ('institution', 160), ('email', 120)):
+            val = (body.get(fld) or '').strip()[:size] if cfg[fld] != 'off' else ''
+            need(fld, val)
+            extra[fld] = val
+        if cfg['food_pref'] != 'off':
+            fp = body.get('food_pref')
+            if fp not in ('veg', 'nonveg', '', None):
+                raise UserError(_("Invalid food preference."))
+            need('food_pref', fp)
+            extra['food_pref'] = fp or False
+        if cfg['photo'] != 'off':
+            extra['photo'] = _photo_from_body(body.get('photo'), required=cfg['photo'] == 'required')
+        if cfg['accompany'] != 'off':
+            acc = body.get('accompany_type') or 'none'
+            if acc not in ('none', 'friend', 'guardian'):
+                raise UserError(_("Invalid selection."))
+            cnt = _int(body.get('accompany_count'), 0) if acc != 'none' else 0
+            if acc != 'none' and not (1 <= cnt <= 10):
+                raise UserError(_("Please enter how many people are coming with you (1 to 10)."))
+            extra.update(accompany_type=acc, accompany_count=cnt)
         existing = env['otm.wm.participant'].search([('event_id', '=', ev.id), ('phone', '=', phone)], limit=1)
         if existing:
             return {'registered': True, 'already': True, 'approval_state': existing.approval_state,
@@ -217,9 +275,8 @@ class WinnersMeetApi(http.Controller):
                     'message': _("This number is already registered. Your entry pass was sent on WhatsApp.")}
         p = env['otm.wm.participant'].create({
             'event_id': ev.id, 'kind': kind, 'name': name, 'phone': phone,
-            'place': (body.get('place') or '')[:120], 'institution': (body.get('institution') or '')[:160],
-            'email': (body.get('email') or '')[:120], 'claimed_category_id': cat.id,
-            'category_id': cat.id if kind == 'teacher' else False, 'registered_via': 'public'})
+            'claimed_category_id': cat.id,
+            'category_id': cat.id if kind == 'teacher' else False, 'registered_via': 'public', **extra})
         return {'registered': True, 'already': False, 'approval_state': p.approval_state,
                 'token': p.qr_token if p.approval_state == 'approved' else False}
 
@@ -258,6 +315,11 @@ class WinnersMeetApi(http.Controller):
                    'wa_msg_confirm', 'wa_msg_seat', 'wa_tpl_confirm_teacher', 'wa_tpl_seat_teacher',
                    'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param')
         vals = {k: body[k] for k in allowed if k in body}
+        for key in ('form_student', 'form_teacher'):
+            if isinstance(body.get(key), dict):
+                vals[key] = json.dumps({k: v for k, v in body[key].items()
+                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany')
+                                        and v in ('off', 'optional', 'required')})
         if 'time' in body:
             vals['time_text'] = body['time']
         if body.get('date'):
@@ -423,6 +485,7 @@ class WinnersMeetApi(http.Controller):
             mine = [r for r in rows if r['category_id'] and r['category_id'][0] == c.id]
             cats[c.id] = {'id': c.id, 'name': c.full_name(), 'kind': c.kind, 'color': c.color, 'hat': c.hat,
                           'registered': len(mine), 'checked_in': len([r for r in mine if r['state'] == 'checked_in'])}
+        Part = request.env['otm.wm.participant']
         Expected = request.env['otm.wm.expected']
         exp_total = Expected.search_count([('event_id', '=', ev.id)])
         reg_phones = set(request.env['otm.wm.participant'].search([('event_id', '=', ev.id)]).mapped('phone'))
@@ -439,6 +502,12 @@ class WinnersMeetApi(http.Controller):
                      'lost': len([r for r in rows if r['hat_state'] == 'lost'])},
             'whatsapp': {s: len([l for l in logs if l['state'] == s]) for s in ('queued', 'sent', 'failed', 'skipped')},
             'expected': {'total': exp_total, 'registered': exp_registered, 'missing': exp_total - exp_registered},
+            'extras': {
+                'veg': Part.search_count([('event_id', '=', ev.id), ('kind', '=', 'teacher'), ('food_pref', '=', 'veg')]),
+                'nonveg': Part.search_count([('event_id', '=', ev.id), ('kind', '=', 'teacher'), ('food_pref', '=', 'nonveg')]),
+                'guests': sum(Part.search([('event_id', '=', ev.id), ('kind', '=', 'student'),
+                                           ('approval_state', '!=', 'rejected')]).mapped('accompany_count')),
+            },
             'recent': [_p(p) for p in recent],
         }
 

@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { Button, Card, Empty, Field, PageHeader, Toggle, inputCls, useToast } from "@/components/ui";
 import type { EventInfo } from "@/lib/types";
 
-const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", frontend_url_teacher: "", wa_seat_hat_param: false, wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "", wa_tpl_confirm_teacher: "", wa_tpl_seat_teacher: "", wa_msg_confirm_teacher: "", wa_msg_seat_teacher: "" };
+const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", frontend_url_teacher: "", wa_seat_hat_param: false, form_student: { place: "optional", institution: "off", email: "off", photo: "off", food_pref: "off", accompany: "optional" }, form_teacher: { place: "off", institution: "optional", email: "off", photo: "required", food_pref: "required", accompany: "off" }, wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "", wa_tpl_confirm_teacher: "", wa_tpl_seat_teacher: "", wa_msg_confirm_teacher: "", wa_msg_seat_teacher: "" };
 
 export default function EventSettings() {
   const { event, me, reloadEvents, setEventId } = useEvent();
@@ -44,6 +44,21 @@ export default function EventSettings() {
           <Toggle label="Teacher registration open" checked={f.reg_teacher_open} onChange={(v) => set("reg_teacher_open", v)} />
         </div>
         <Toggle label="Teachers need admin approval (off = auto-approved)" checked={f.teacher_needs_approval} onChange={(v) => set("teacher_needs_approval", v)} />
+      </Card>
+      <Card className="mb-5 p-5">
+        <h3 className="font-semibold">Registration form fields</h3>
+        <p className="mb-3 mt-1 text-xs text-slate-500">Name and WhatsApp number are always asked. Choose what else each form shows. Students also always choose course / category.</p>
+        <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-slate-500"><th className="py-1.5 pr-3">Field</th><th className="px-2">Students</th><th className="px-2">Teachers</th></tr></thead><tbody className="divide-y divide-slate-100">
+          {([["place", "Place"], ["institution", "School / institution"], ["email", "Email"], ["photo", "Photo"], ["food_pref", "Food preference (veg / non-veg)"], ["accompany", "Coming with friend / guardian"]] as const).map(([k, label]) => (
+            <tr key={k}><td className="py-2 pr-3">{label}</td>
+              {(["form_student", "form_teacher"] as const).map((fk) => (
+                <td key={fk} className="px-2 py-1.5"><select className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm" value={f[fk]?.[k] || "off"} onChange={(e) => set(fk, { ...f[fk], [k]: e.target.value })}>
+                  <option value="off">Hidden</option><option value="optional">Optional</option>{k !== "accompany" && <option value="required">Required</option>}
+                </select></td>
+              ))}
+            </tr>
+          ))}
+        </tbody></table></div>
       </Card>
       <Card className="mb-5 space-y-4 p-5">
         <h3 className="font-semibold">WhatsApp - Students</h3>

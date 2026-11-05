@@ -43,6 +43,8 @@ export default function Detail() {
             <dl className="space-y-1.5 text-slate-600">
               <div className="flex justify-between"><dt>Registered</dt><dd>{fmtTime(data.create_date)}</dd></div>
               <div className="flex justify-between"><dt>Via</dt><dd>{data.registered_via}</dd></div>
+              {data.food_pref && <div className="flex justify-between"><dt>Food</dt><dd>{data.food_pref === "veg" ? "Veg" : "Non-veg"}</dd></div>}
+              {data.accompany_count > 0 && <div className="flex justify-between"><dt>Coming with</dt><dd>{data.accompany_count} {data.accompany_type}</dd></div>}
               {data.claimed_category && <div className="flex justify-between"><dt>Chose</dt><dd>{data.claimed_category.name}</dd></div>}
               {data.expected && <div className="flex justify-between"><dt>Winners list</dt><dd>{data.expected.category}</dd></div>}
               {data.approved_by && <div className="flex justify-between"><dt>Approved by</dt><dd>{data.approved_by}</dd></div>}

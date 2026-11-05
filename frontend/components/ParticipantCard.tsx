@@ -42,7 +42,14 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
           {approvalBadge(p.approval_state)}
           {hatBadge(p.hat_state)}
         </div>
-        <div className="mt-2 text-2xl font-bold leading-tight">{p.name}</div>
+        <div className="mt-2 flex items-center gap-3">
+          {p.photo && <img src={p.photo} alt={p.name} className="h-20 w-20 shrink-0 rounded-xl object-cover ring-2 ring-white" />}
+          <div className="min-w-0"><div className="text-2xl font-bold leading-tight">{p.name}</div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {p.food_pref && <Badge tone={p.food_pref === "veg" ? "green" : "amber"}>{p.food_pref === "veg" ? "Veg" : "Non-veg"}</Badge>}
+              {p.accompany_count > 0 && <Badge tone="blue">+{p.accompany_count} {p.accompany_type}</Badge>}
+            </div></div>
+        </div>
         <div className="text-sm text-slate-600">{fmtPhone(p.phone)}{p.place ? ` · ${p.place}` : ""}{p.institution ? ` · ${p.institution}` : ""}</div>
       </div>
 

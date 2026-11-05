@@ -57,6 +57,21 @@ class WmParticipant(models.Model):
     checkin_on = fields.Datetime()
     checkin_by = fields.Many2one('res.users', ondelete='set null')
 
+    photo = fields.Image(string="Photo", max_width=600, max_height=600, copy=False)
+    food_pref = fields.Selection([('veg', 'Vegetarian'), ('nonveg', 'Non-Vegetarian')], string="Food Preference")
+    accompany_type = fields.Selection(
+        [('none', 'Alone'), ('friend', 'With Friend'), ('guardian', 'With Guardian')],
+        string="Accompanied By", default='none', required=True)
+    accompany_count = fields.Integer(string="Accompanying Persons", default=0)
+
+    @api.constrains('accompany_type', 'accompany_count')
+    def _check_accompany(self):
+        for rec in self:
+            if rec.accompany_type == 'none' and rec.accompany_count:
+                raise ValidationError(_("Accompanying count must be 0 when coming alone."))
+            if rec.accompany_type != 'none' and not (1 <= rec.accompany_count <= 10):
+                raise ValidationError(_("Accompanying persons must be between 1 and 10."))
+
     seat_id = fields.Many2one('otm.wm.seat', string="Seat", ondelete='restrict', copy=False, index=True)
     reserved_seat_id = fields.Many2one(
         'otm.wm.seat', string="Reserved Seat", ondelete='set null', copy=False, index=True,

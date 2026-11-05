@@ -215,3 +215,22 @@ class TestWinnersMeet(TransactionCase):
         self.event.wa_seat_hat_param = True
         log2 = self.env['otm.wm.message.log']._queue_for(p, 'seat', force=True)
         self.assertEqual(len(json.loads(log2.template_params)), 5)
+
+    def test_extra_fields(self):
+        p = self._reg('Guest Test', '9000000099', self.gold)
+        p.write({'accompany_type': 'friend', 'accompany_count': 2})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            p.write({'accompany_type': 'guardian', 'accompany_count': 0})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            p.write({'accompany_type': 'none', 'accompany_count': 1})
+        t = self._reg('Teach Food', '9000000098', self.teacher, kind='teacher')
+        t.food_pref = 'veg'
+        self.assertEqual(t.food_pref, 'veg')
+
+    def test_form_config(self):
+        cfg = self.event.form_config('teacher')
+        self.assertEqual((cfg['photo'], cfg['food_pref'], cfg['accompany']), ('required', 'required', 'off'))
+        self.event.form_teacher = '{"photo": "off", "bogus": "required", "email": "weird"}'
+        cfg = self.event.form_config('teacher')
+        self.assertEqual((cfg['photo'], cfg['email'], cfg.get('bogus')), ('off', 'off', None))
+        self.assertEqual(self.event.form_config('student')['place'], 'optional')

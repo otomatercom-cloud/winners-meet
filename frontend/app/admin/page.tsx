@@ -43,6 +43,13 @@ export default function Dashboard() {
         <Stat label="Teachers registered" value={t.registered} sub={`${t.approved} approved`} icon={Users} href="/admin/participants?kind=teacher" />
         <Stat label="Teachers checked in" value={t.checked_in} sub={`${t.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />
       </div>
+      {d.extras && (
+        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Teachers · Veg" value={d.extras.veg} icon={Users} />
+          <Stat label="Teachers · Non-veg" value={d.extras.nonveg} icon={Users} />
+          <Stat label="Students' guests (friends / guardians)" value={d.extras.guests} icon={Users} />
+        </div>
+      )}
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Hats issued (pending return)" value={d.hats.issued} sub={`${d.hats.returned} returned · ${d.hats.lost} lost`} icon={Crown} href="/admin/hats" />
         <Stat label="Needs review" value={pending} icon={AlertTriangle} tone={pending ? "red" : "slate"} href="/admin/review" />

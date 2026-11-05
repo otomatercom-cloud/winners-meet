@@ -1,13 +1,31 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock, Trophy } from "lucide-react";
+import { Camera, CheckCircle2, Clock, Trophy } from "lucide-react";
 import { api, useFetch } from "@/lib/api";
 import { Button, Card, Field, Spinner, inputCls } from "@/components/ui";
 
+/** Shrink a chosen photo in the browser (max 600px JPEG) so uploads stay small and fast on mobile data. */
+function shrink(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 600, k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad image")); };
+    img.src = url;
+  });
+}
+
 export default function RegisterForm({ kind }: { kind: "student" | "teacher" }) {
   const { data, loading } = useFetch<any>("/public/event");
-  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "" });
+  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", accompany_type: "none", accompany_count: "", photo: "" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<any>(null);
@@ -16,11 +34,20 @@ export default function RegisterForm({ kind }: { kind: "student" | "teacher" }) 
   const allCats: { id: number; name: string; color: string; course_id: number | false }[] = (kind === "student" ? data?.student_categories : data?.teacher_categories) || [];
   const courses: { id: number; name: string }[] = kind === "student" ? data?.courses || [] : [];
   const cats = courses.length && kind === "student" ? allCats.filter((c) => String(c.course_id) === f.course_id) : allCats;
+  const cfg = (data?.form?.[kind] || {}) as Record<string, string>;
+  const on = (k: string) => (cfg[k] || "off") !== "off";
+  const req = (k: string) => cfg[k] === "required";
   const open = ev && (kind === "student" ? ev.reg_student_open : ev.reg_teacher_open);
 
+  const pickPhoto = async (file?: File) => {
+    if (!file) return;
+    try { set("photo", await shrink(file)); setErr(""); } catch { setErr("Could not read that photo. Please choose a JPG or PNG image."); }
+  };
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
+    if (req("photo") && !f.photo) { setErr("Please upload your photo."); return; }
+    if (req("food_pref") && !f.food_pref) { setErr("Please choose your food preference."); return; }
     setBusy(true);
     setErr("");
     try {
@@ -67,7 +94,7 @@ export default function RegisterForm({ kind }: { kind: "student" | "teacher" }) 
                 </select>
               </Field>
             )}
-            {(courses.length === 0 ? cats.length > 1 : !!f.course_id) && (
+            {kind === "student" && (courses.length === 0 ? cats.length > 1 : !!f.course_id) && (
               <Field label={kind === "student" ? "Winner category" : "Category"}>
                 <select className={inputCls} value={f.category_id} onChange={(e) => set("category_id", e.target.value)} required>
                   <option value="">Select…</option>
@@ -75,9 +102,47 @@ export default function RegisterForm({ kind }: { kind: "student" | "teacher" }) 
                 </select>
               </Field>
             )}
-            <Field label={kind === "student" ? "Place" : "School / institution"}>
-              <input className={inputCls} value={kind === "student" ? f.place : f.institution} onChange={(e) => set(kind === "student" ? "place" : "institution", e.target.value)} />
-            </Field>
+            {on("place") && <Field label="Place"><input className={inputCls} value={f.place} onChange={(e) => set("place", e.target.value)} required={req("place")} /></Field>}
+            {on("institution") && <Field label="School / institution"><input className={inputCls} value={f.institution} onChange={(e) => set("institution", e.target.value)} required={req("institution")} /></Field>}
+            {on("email") && <Field label="Email"><input type="email" className={inputCls} value={f.email} onChange={(e) => set("email", e.target.value)} required={req("email")} autoComplete="email" /></Field>}
+            {on("photo") && (
+              <>
+                <Field label="Your photo" hint="A clear face photo. It is shown at the entry desk.">
+                  <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-slate-300 p-3 hover:border-brand-500">
+                    {f.photo ? <img src={f.photo} alt="Your photo" className="h-20 w-20 rounded-lg object-cover" /> : <span className="flex h-20 w-20 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera className="h-7 w-7" /></span>}
+                    <span className="text-sm font-medium text-brand-600">{f.photo ? "Change photo" : "Take or choose photo"}</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+                  </label>
+                </Field>
+              </>
+            )}
+            {on("food_pref") && (
+              <>
+                <Field label="Food preference">
+                  <div className="grid grid-cols-2 gap-2">
+                    {[["veg", "Veg"], ["nonveg", "Non-veg"]].map(([v, l]) => (
+                      <button type="button" key={v} onClick={() => set("food_pref", v)} className={`h-11 rounded-lg border text-sm font-medium ${f.food_pref === v ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-700"}`}>{l}</button>
+                    ))}
+                  </div>
+                </Field>
+              </>
+            )}
+            {on("accompany") && (
+              <>
+                <Field label="Coming with">
+                  <select className={inputCls} value={f.accompany_type} onChange={(e) => setF((x) => ({ ...x, accompany_type: e.target.value, accompany_count: e.target.value === "none" ? "" : x.accompany_count }))}>
+                    <option value="none">None (coming alone)</option>
+                    <option value="friend">Friend</option>
+                    <option value="guardian">Guardian</option>
+                  </select>
+                </Field>
+                {f.accompany_type !== "none" && (
+                  <Field label={`How many ${f.accompany_type === "friend" ? "friends" : "guardians"} are coming?`}>
+                    <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required />
+                  </Field>
+                )}
+              </>
+            )}
             <input type="text" tabIndex={-1} autoComplete="off" value={f.website} onChange={(e) => set("website", e.target.value)} className="hidden" aria-hidden />
             {err && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{err}</p>}
             <Button size="lg" className="w-full" loading={busy}>Register</Button>

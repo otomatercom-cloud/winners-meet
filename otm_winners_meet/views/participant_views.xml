@@ -47,6 +47,10 @@
                             <field name="match_status"/>
                             <field name="match_note"/>
                             <field name="state"/>
+                            <field name="photo" widget="image" options="{'size': [96, 96]}"/>
+                            <field name="food_pref"/>
+                            <field name="accompany_type"/>
+                            <field name="accompany_count"/>
                             <field name="reserved_seat_id"/>
                             <field name="seat_id"/>
                             <field name="hat_state"/>

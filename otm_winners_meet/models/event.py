@@ -1,4 +1,15 @@
+import json
+
 from odoo import _, api, fields, models
+
+# Registration form fields an admin can switch: off / optional / required.
+FORM_FIELDS = ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany')
+FORM_DEFAULTS = {
+    'student': {'place': 'optional', 'institution': 'off', 'email': 'off', 'photo': 'off',
+                'food_pref': 'off', 'accompany': 'optional'},
+    'teacher': {'place': 'off', 'institution': 'optional', 'email': 'off', 'photo': 'required',
+                'food_pref': 'required', 'accompany': 'off'},
+}
 
 DEFAULT_CONFIRM_MSG = (
     "Hi {name}, your registration for {event} on {date} at {venue} is confirmed. "
@@ -44,6 +55,8 @@ class WmEvent(models.Model):
         string="Seat Template Has Hat Note",
         help="On: seat template has 5 variables (name, seat, event, hat note, link). "
              "Off: 4 variables (name, seat, event, link).")
+    form_student = fields.Text(string="Student Form Fields (JSON)")
+    form_teacher = fields.Text(string="Teacher Form Fields (JSON)")
     course_ids = fields.One2many('otm.wm.course', 'event_id', string="Courses")
     category_ids = fields.One2many('otm.wm.category', 'event_id', string="Winner Categories")
     block_ids = fields.One2many('otm.wm.seat.block', 'event_id', string="Seat Blocks")
@@ -59,3 +72,16 @@ class WmEvent(models.Model):
         if self.date:
             text = self.date.strftime('%d %b %Y')
         return ('%s, %s' % (text, self.time_text)) if self.time_text else text
+
+    def form_config(self, kind):
+        """Per-field mode (off/optional/required) for the public form, defaults filled in."""
+        self.ensure_one()
+        cfg = dict(FORM_DEFAULTS[kind])
+        try:
+            saved = json.loads((self.form_teacher if kind == 'teacher' else self.form_student) or '{}')
+        except ValueError:
+            saved = {}
+        for k in FORM_FIELDS:
+            if saved.get(k) in ('off', 'optional', 'required'):
+                cfg[k] = saved[k]
+        return cfg
