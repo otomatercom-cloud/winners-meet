@@ -288,7 +288,7 @@ class WinnersMeetApi(http.Controller):
         ev = p.event_id
         return {
             'name': p.name, 'kind': p.kind, 'phone': _mask(p.phone), 'approval_state': p.approval_state,
-            'state': p.state, 'category': _cat(p.category_id) if p.category_id else None,
+            'state': p.state,
             'seat': p.seat_id.label or '', 'hat': bool(p.category_id.hat), 'hat_state': p.hat_state,
             'token': p.qr_token,
             'event': {'name': ev.name, 'date': fields.Date.to_string(ev.date), 'time': ev.time_text or '',

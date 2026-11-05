@@ -28,7 +28,6 @@ export default function Pass() {
           <div className="text-2xl font-bold">{data.name}</div>
           <div className="mt-1 flex items-center justify-center gap-2">
             <Badge tone="violet">{data.kind === "teacher" ? "Teacher" : "Student"}</Badge>
-            {data.category && <Badge tone="blue">{data.category.name}</Badge>}
           </div>
           {approved ? (
             <>
