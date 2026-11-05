@@ -141,6 +141,7 @@ def _p(p, detail=False):
         'seat': p.seat_id.label or '', 'seat_id': p.seat_id.id or False, 'seat_row': p.seat_id.row_no or 0,
         'reserved_seat': p._preset_seat().label if _is_manager() else '',
         'reserved_seat_id': p._preset_seat().id if _is_manager() else False,
+        'has_preset': bool(p._preset_seat()),
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,

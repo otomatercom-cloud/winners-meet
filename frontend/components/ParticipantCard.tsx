@@ -9,11 +9,13 @@ import type { Participant, Seat } from "@/lib/types";
 export default function ParticipantCard({ p, onChange, eventId, manager }: { p: Participant; onChange: (p: Participant) => void; eventId: number; manager: boolean }) {
   const toast = useToast();
   const [busy, setBusy] = useState("");
+  const manualNeeded = p.category?.seat_mode === "manual" && !p.has_preset;
+  const [resSeat, setResSeat] = useState("");
   const [pickSeat, setPickSeat] = useState(false);
   const [seatId, setSeatId] = useState("");
   const [allSeats, setAllSeats] = useState(false);
   const blockId = p.category?.seat_block_id || "";
-  const { data: seats } = useFetch<Seat[]>(pickSeat || p.category?.seat_mode === "manual" ? "/seats" : null, { event_id: eventId });
+  const { data: seats } = useFetch<Seat[]>(pickSeat || manualNeeded || (manager && p.state !== "checked_in") ? "/seats" : null, { event_id: eventId });
 
   const act = async (key: string, path: string, body: any = {}, okMsg?: string) => {
     setBusy(key);
@@ -36,7 +38,14 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
   const ranged = !!(cat && cat.seat_block_id && (cat.seat_from || cat.seat_to));
   const free = (seats || []).filter((s) => !s.occupant && !s.blocked && (!s.reserved_for || s.id === p.reserved_seat_id)
     && (!ranged || allSeats || (s.block_id === cat!.seat_block_id && (!cat!.seat_from || s.number >= cat!.seat_from) && (!cat!.seat_to || s.number <= cat!.seat_to))));
-  const manual = p.category?.seat_mode === "manual";
+  const manual = manualNeeded;
+  const freeAll = (seats || []).filter((s) => !s.occupant && !s.blocked && (!s.reserved_for || s.id === p.reserved_seat_id));
+  const reserve = async (sid: number | "") => {
+    setBusy("reserve");
+    try { onChange(await api<Participant>("/participants/reserve", { method: "POST", body: { id: p.id, seat_id: sid || 0 } })); toast(sid ? "Seat pre-assigned" : "Pre-assigned seat removed"); setResSeat(""); }
+    catch (e: any) { toast(e.message, "err"); }
+    setBusy("");
+  };
   return (
     <div className="pop overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <div className={`px-5 py-4 ${p.state === "checked_in" ? "bg-emerald-50" : pendingApproval ? "bg-rose-50" : "bg-slate-50"}`}>
@@ -82,6 +91,20 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
         </div>
       )}
 
+      {manager && p.state !== "checked_in" && !pendingApproval && (
+        <div className="border-t border-slate-100 bg-violet-50/50 px-5 py-3">
+          <div className="text-sm font-medium text-slate-700">Pre-assigned seat <span className="font-normal text-slate-500">(hidden from the student until check-in)</span></div>
+          {p.reserved_seat ? (
+            <div className="mt-2 flex items-center justify-between gap-2"><span className="rounded-lg bg-violet-100 px-3 py-1.5 text-sm font-semibold text-violet-800">{p.reserved_seat}</span><Button size="sm" variant="secondary" loading={busy === "reserve"} onClick={() => reserve("")}>Remove</Button></div>
+          ) : (
+            <div className="mt-2 flex gap-2">
+              <div className="min-w-0 flex-1"><SeatSelect seats={freeAll} defaultBlock={blockId} value={resSeat} onChange={setResSeat} /></div>
+              <Button disabled={!resSeat} loading={busy === "reserve"} onClick={() => reserve(Number(resSeat) as number)}>Set</Button>
+            </div>
+          )}
+        </div>
+      )}
+
       {p.state !== "checked_in" && !pendingApproval && (
         <div className="space-y-3 px-5 py-4">
           {manual || pickSeat ? (
@@ -96,7 +119,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
             </div>
           ) : (
             <>
-              <Button size="lg" variant="success" className="w-full" loading={busy === "checkin"} onClick={() => act("checkin", "checkin", {}, "Checked in")}>Check in &amp; give seat</Button>
+              <Button size="lg" variant="success" className="w-full" loading={busy === "checkin"} onClick={() => act("checkin", "checkin", {}, "Checked in")}>{p.has_preset ? "Check in & give pre-assigned seat" : "Check in & give seat"}</Button>
               <Button variant="ghost" className="w-full" onClick={() => setPickSeat(true)}>Pick a seat manually</Button>
             </>
           )}
