@@ -13,7 +13,7 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
   const [seatId, setSeatId] = useState("");
   const [allSeats, setAllSeats] = useState(false);
   const blockId = p.category?.seat_block_id || "";
-  const { data: seats } = useFetch<Seat[]>(pickSeat ? "/seats" : null, { event_id: eventId });
+  const { data: seats } = useFetch<Seat[]>(pickSeat || p.category?.seat_mode === "manual" ? "/seats" : null, { event_id: eventId });
 
   const act = async (key: string, path: string, body: any = {}, okMsg?: string) => {
     setBusy(key);
