@@ -135,7 +135,7 @@ def _p(p, detail=False):
         'match_status': p.match_status, 'match_note': p.match_note or '',
         'category': _cat(p.category_id) if p.category_id else None,
         'claimed_category': _cat(p.claimed_category_id) if p.claimed_category_id else None,
-        'seat': p.seat_id.label or '', 'seat_id': p.seat_id.id or False,
+        'seat': p.seat_id.label or '', 'seat_id': p.seat_id.id or False, 'seat_row': p.seat_id.row_no or 0,
         'reserved_seat': p._preset_seat().label if _is_manager() else '',
         'reserved_seat_id': p._preset_seat().id if _is_manager() else False,
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
@@ -289,7 +289,7 @@ class WinnersMeetApi(http.Controller):
         return {
             'name': p.name, 'kind': p.kind, 'phone': _mask(p.phone), 'approval_state': p.approval_state,
             'state': p.state,
-            'seat': p.seat_id.label or '', 'hat': bool(p.category_id.hat), 'hat_state': p.hat_state,
+            'seat': p.seat_id.label or '', 'seat_row': p.seat_id.row_no or 0, 'hat': bool(p.category_id.hat), 'hat_state': p.hat_state,
             'token': p.qr_token,
             'event': {'name': ev.name, 'date': fields.Date.to_string(ev.date), 'time': ev.time_text or '',
                       'venue': ev.venue or ''},
@@ -415,7 +415,7 @@ class WinnersMeetApi(http.Controller):
         seats = b.seat_ids
         taken = len(seats.filtered('participant_ids'))
         return {'id': b.id, 'name': b.name, 'prefix': b.prefix, 'start_no': b.start_no, 'end_no': b.end_no,
-                'total': len(seats), 'occupied': taken, 'free': len(seats) - taken - len(seats.filtered(
+                'row_size': b.row_size, 'total': len(seats), 'occupied': taken, 'free': len(seats) - taken - len(seats.filtered(
                     lambda s: s.blocked and not s.participant_ids))}
 
     @api('/blocks/save', methods=('POST',))
@@ -423,7 +423,8 @@ class WinnersMeetApi(http.Controller):
         _need_manager()
         ev = _event(body.get('event_id'))
         vals = {'name': (body.get('name') or '').strip(), 'prefix': (body.get('prefix') or '').strip(),
-                'start_no': _int(body.get('start_no'), 1), 'end_no': _int(body.get('end_no'), 1)}
+                'start_no': _int(body.get('start_no'), 1), 'end_no': _int(body.get('end_no'), 1),
+                'row_size': max(0, _int(body.get('row_size'), 0))}
         if not vals['name'] or not vals['prefix']:
             raise UserError(_("Block name and seat prefix are required."))
         if body.get('id'):
@@ -449,7 +450,7 @@ class WinnersMeetApi(http.Controller):
             res = request.env['otm.wm.participant'].search([('reserved_seat_id', '=', s.id)], limit=1).name or \
                 request.env['otm.wm.expected'].search([('reserved_seat_id', '=', s.id)], limit=1).name or ''
             out.append({'reserved_for': res, 'id': s.id, 'label': s.label, 'number': s.number, 'block_id': s.block_id.id,
-                        'blocked': s.blocked,
+                        'blocked': s.blocked, 'row': s.row_no,
                         'occupant': {'id': occ.id, 'name': occ.name, 'kind': occ.kind} if occ else None})
         return out
 

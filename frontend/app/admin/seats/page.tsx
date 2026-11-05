@@ -47,15 +47,25 @@ export default function SeatMap() {
       {!blocks?.length ? <Empty>No seat blocks yet. Create them in Categories &amp; seats.</Empty> : blocks.map((b) => (
         <Card key={b.id} className="mb-5 p-4">
           <div className="mb-3 flex items-center justify-between"><h3 className="font-semibold">{b.name} <span className="font-normal text-slate-400">{b.prefix}{b.start_no}–{b.prefix}{b.end_no}</span></h3><Badge>{b.occupied}/{b.total}</Badge></div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-1.5">
-            {(seats || []).filter((s) => s.block_id === b.id).map((s) => (
-              <button key={s.id} title={s.occupant?.name || s.label} onClick={() => { setOpen(s); setQ(""); setFound([]); }}
-                className={cx("flex h-12 flex-col items-center justify-center rounded-lg text-xs font-semibold transition active:scale-95", s.occupant ? "bg-emerald-500 text-white" : s.blocked ? "bg-slate-400 text-white" : "bg-white text-slate-700 ring-1 ring-slate-300 hover:ring-brand-500")}>
-                {s.label}
-                {s.occupant && <span className="max-w-full truncate px-0.5 text-[9px] font-normal opacity-90">{s.occupant.name.split(" ")[0]}</span>}
-              </button>
-            ))}
-          </div>
+          {(() => {
+            const mine = (seats || []).filter((s) => s.block_id === b.id);
+            const rows: { row: number; seats: Seat[] }[] = [];
+            mine.forEach((s) => { const last = rows[rows.length - 1]; if (last && last.row === s.row) last.seats.push(s); else rows.push({ row: s.row, seats: [s] }); });
+            return rows.map((r) => (
+              <div key={r.row} className="mb-2">
+                {r.row > 0 && <div className="mb-1 text-xs font-medium text-slate-500">Row {r.row}</div>}
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(54px,1fr))] gap-1.5">
+                  {r.seats.map((s) => (
+                    <button key={s.id} title={s.occupant?.name || s.label} onClick={() => { setOpen(s); setQ(""); setFound([]); }}
+                      className={cx("flex h-12 flex-col items-center justify-center rounded-lg text-xs font-semibold transition active:scale-95", s.occupant ? "bg-emerald-500 text-white" : s.blocked ? "bg-slate-400 text-white" : "bg-white text-slate-700 ring-1 ring-slate-300 hover:ring-brand-500")}>
+                      {s.label}
+                      {s.occupant && <span className="max-w-full truncate px-0.5 text-[9px] font-normal opacity-90">{s.occupant.name.split(" ")[0]}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
         </Card>
       ))}
       <Modal open={!!open} onClose={() => setOpen(null)} title={`Seat ${open?.label}`}>

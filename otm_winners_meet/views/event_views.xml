@@ -67,6 +67,7 @@
                                     <field name="prefix"/>
                                     <field name="start_no"/>
                                     <field name="end_no"/>
+                                    <field name="row_size"/>
                                 </list>
                             </field>
                         </page>

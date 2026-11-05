@@ -41,6 +41,7 @@ export default function Pass() {
             <div className="mt-5 rounded-xl bg-emerald-50 p-4 ring-1 ring-emerald-200">
               <div className="flex items-center justify-center gap-1.5 text-sm text-emerald-700"><Armchair className="h-4 w-4" /> Your seat</div>
               <div className="text-5xl font-extrabold tracking-tight text-emerald-700">{data.seat}</div>
+              {data.seat_row > 0 && <div className="mt-1 text-lg font-semibold text-emerald-800">Row {data.seat_row}</div>}
             </div>
           )}
           {data.hat && approved && (

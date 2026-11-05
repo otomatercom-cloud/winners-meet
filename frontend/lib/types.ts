@@ -7,12 +7,12 @@ export type Participant = {
   id: number; name: string; phone: string; kind: "student" | "teacher"; place: string; institution: string;
   state: "registered" | "checked_in"; approval_state: "pending" | "approved" | "rejected";
   match_status: "na" | "matched" | "name_mismatch" | "category_mismatch" | "not_listed"; match_note: string;
-  category: Category | null; claimed_category: Category | null; seat: string; seat_id: number | false; reserved_seat: string; reserved_seat_id: number | false; checkin_on: string;
+  category: Category | null; claimed_category: Category | null; seat: string; seat_row: number; seat_id: number | false; reserved_seat: string; reserved_seat_id: number | false; checkin_on: string;
   hat_state: "none" | "issued" | "returned" | "lost"; food_pref: "" | "veg" | "nonveg"; accompany_type: "none" | "friend" | "guardian"; accompany_count: number; has_photo: boolean; photo?: string; wa_state: string; registered_via: string; create_date: string;
   email?: string; note?: string; token?: string; hat_issued_on?: string; hat_returned_on?: string; checkin_by?: string; approved_by?: string;
   expected?: { name: string; category: string } | null;
   messages?: { id: number; type: string; state: string; error: string; created: string; retries: number }[];
   already?: boolean;
 };
-export type Block = { id: number; name: string; prefix: string; start_no: number; end_no: number; total: number; occupied: number; free: number };
-export type Seat = { id: number; label: string; number: number; block_id: number; blocked: boolean; reserved_for?: string; occupant: { id: number; name: string; kind: string } | null };
+export type Block = { id: number; name: string; prefix: string; start_no: number; end_no: number; row_size: number; total: number; occupied: number; free: number };
+export type Seat = { id: number; label: string; number: number; row: number; block_id: number; blocked: boolean; reserved_for?: string; occupant: { id: number; name: string; kind: string } | null };

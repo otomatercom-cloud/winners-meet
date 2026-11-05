@@ -110,7 +110,7 @@ class WmMessageLog(models.Model):
             hat = _("Your winner hat has been issued; please return it after the programme.")
         else:
             hat = _("Enjoy the programme.")
-        seat = participant.seat_id.label or '-'
+        seat = participant.seat_id.display_label() if participant.seat_id else '-'
         values = {'name': participant.name, 'event': event.name, 'date': event.date_text(),
                   'venue': event.venue or '-', 'link': link, 'seat': seat, 'hat': hat}
         if mtype == 'confirm':

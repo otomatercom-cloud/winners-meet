@@ -234,3 +234,15 @@ class TestWinnersMeet(TransactionCase):
         cfg = self.event.form_config('teacher')
         self.assertEqual((cfg['photo'], cfg['email'], cfg.get('bogus')), ('off', 'off', None))
         self.assertEqual(self.event.form_config('student')['place'], 'optional')
+
+    def test_seat_rows(self):
+        blk = self.env['otm.wm.seat.block'].create(
+            {'event_id': self.event.id, 'name': 'Rows', 'prefix': 'R', 'start_no': 1, 'end_no': 30, 'row_size': 14})
+        rows = {s.number: s.row_no for s in blk.seat_ids}
+        self.assertEqual((rows[1], rows[14], rows[15], rows[28], rows[29], rows[30]), (1, 1, 2, 2, 3, 3))
+        self.assertEqual(blk.seat_ids.filtered(lambda s: s.number == 15).display_label(), 'R15 (Row 2)')
+        blk.row_size = 10
+        self.assertEqual({s.number: s.row_no for s in blk.seat_ids}[15], 2)
+        self.assertEqual({s.number: s.row_no for s in blk.seat_ids}[30], 3)
+        blk.row_size = 0
+        self.assertEqual(blk.seat_ids.filtered(lambda s: s.number == 15).display_label(), 'R15')
