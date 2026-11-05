@@ -316,3 +316,15 @@ class TestWinnersMeet(TransactionCase):
         self.assertFalse(b.layout_sections())
         with self.assertRaises(Exception), self.env.cr.savepoint():
             b.row_layout = 'abc'
+
+    def test_block_overlap_and_delete(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Overlap Show'})
+        Block = self.env['otm.wm.seat.block']
+        a = Block.create({'event_id': ev.id, 'name': 'A', 'prefix': 'S', 'start_no': 1, 'end_no': 10})
+        with self.assertRaises(Exception), self.env.cr.savepoint():
+            Block.create({'event_id': ev.id, 'name': 'B', 'prefix': 'S', 'start_no': 5, 'end_no': 20})
+        b = Block.create({'event_id': ev.id, 'name': 'B', 'prefix': 'S', 'start_no': 11, 'end_no': 20})
+        self.assertEqual(len(b.seat_ids), 10)
+        b.action_delete_checked()
+        self.assertFalse(b.exists())
+        self.assertTrue(a.exists())

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEvent } from "@/components/EventContext";
 import { api, useFetch } from "@/lib/api";
 import { Badge, Button, Card, CategoryChip, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Toggle, inputCls, useToast } from "@/components/ui";
@@ -91,7 +91,7 @@ export default function Setup() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {blocks.data.map((b) => (
               <Card key={b.id} className="p-4">
-                <div className="flex items-start justify-between"><div><div className="font-semibold">{b.name}</div><div className="text-sm text-slate-500">{b.prefix}{b.start_no} – {b.prefix}{b.end_no}</div></div><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setBlk({ ...b })}><Pencil className="h-4 w-4" /></button></div>
+                <div className="flex items-start justify-between"><div><div className="font-semibold">{b.name}</div><div className="text-sm text-slate-500">{b.prefix}{b.start_no} – {b.prefix}{b.end_no}</div></div><div className="flex"><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setBlk({ ...b })}><Pencil className="h-4 w-4" /></button><button className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600" title="Delete block" onClick={async () => { if (!confirm(`Delete block "${b.name}" and its ${b.total} seats?`)) return; try { await api("/blocks/delete", { method: "POST", body: { id: b.id } }); toast("Block deleted"); blocks.reload(); } catch (e: any) { toast(e.message, "err"); } }}><Trash2 className="h-4 w-4" /></button></div></div>
                 <div className="mt-3 text-sm text-slate-600">{b.row_layout ? `${b.row_layout.split(",").join(" | ")} per row · ` : b.row_size ? `${b.row_size} per row · ` : ""}{b.total} seats · {b.occupied} occupied · {b.free} free</div>
               </Card>
             ))}

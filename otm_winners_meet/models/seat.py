@@ -32,6 +32,21 @@ class WmSeatBlock(models.Model):
             if rec.end_no - rec.start_no >= 5000:
                 raise ValidationError(_("A block can hold at most 5000 seats."))
 
+    @api.constrains('prefix', 'start_no', 'end_no', 'event_id')
+    def _check_overlap(self):
+        for rec in self:
+            for o in self.search([('event_id', '=', rec.event_id.id), ('id', '!=', rec.id), ('prefix', '=', rec.prefix)]):
+                if rec.start_no <= o.end_no and o.start_no <= rec.end_no:
+                    raise ValidationError(_(
+                        "Seats %(a)s%(b)s-%(a)s%(c)s already exist in block '%(n)s'. Use a different prefix or "
+                        "seat range, or edit that block instead.", a=rec.prefix, b=rec.start_no, c=rec.end_no, n=o.name))
+
+    def action_delete_checked(self):
+        for rec in self:
+            if rec.seat_ids.participant_ids:
+                raise UserError(_("Block '%s' has seated people. Move or undo their check-in first.", rec.name))
+        self.unlink()
+
     @staticmethod
     def _parse_layout(text):
         parts = [p.strip() for p in re.split(r'[,\s+|/-]+', text or '') if p.strip()]

@@ -478,6 +478,15 @@ class WinnersMeetApi(http.Controller):
                 'row_size': b.row_size, 'row_layout': b.row_layout or '', 'sequence': b.sequence, 'sections': b.layout_sections(), 'total': len(seats), 'occupied': taken, 'free': len(seats) - taken - len(seats.filtered(
                     lambda s: s.blocked and not s.participant_ids))}
 
+    @api('/blocks/delete', methods=('POST',))
+    def block_delete(self, body=None, **kw):
+        _need_manager()
+        b = request.env['otm.wm.seat.block'].browse(_int(body.get('id'), 0)).exists()
+        if not b:
+            raise MissingError(_("Block not found."))
+        b.action_delete_checked()
+        return {'deleted': True}
+
     @api('/blocks/save', methods=('POST',))
     def block_save(self, body=None, **kw):
         _need_manager()

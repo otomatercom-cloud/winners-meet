@@ -51,26 +51,26 @@ export default function SeatMap() {
             const mine = (seats || []).filter((s) => s.block_id === b.id);
             const rows: { row: number; seats: Seat[] }[] = [];
             mine.forEach((s) => { const last = rows[rows.length - 1]; if (last && last.row === s.row) last.seats.push(s); else rows.push({ row: s.row, seats: [s] }); });
-            const secs = b.sections?.length ? b.sections : null;
+            const secs = b.sections?.length ? b.sections : b.row_size ? [b.row_size] : null;
             const btn = (s: Seat) => (
               <button key={s.id} title={s.occupant?.name || s.label} onClick={() => { setOpen(s); setQ(""); setFound([]); }}
-                className={cx("flex h-12 w-[44px] shrink-0 flex-col items-center justify-center rounded-md px-0.5 text-[11px] font-semibold transition active:scale-95", s.occupant ? "bg-emerald-500 text-white" : s.blocked ? "bg-slate-400 text-white" : "bg-white text-slate-700 ring-1 ring-slate-300 hover:ring-brand-500")}>
-                {s.label}
-                {s.occupant && <span className="max-w-full truncate text-[9px] font-normal opacity-90">{s.occupant.name.split(" ")[0]}</span>}
+                className={cx("flex h-11 min-w-0 flex-1 flex-col items-center justify-center overflow-hidden rounded-md px-0 text-[10px] sm:text-xs font-semibold transition active:scale-95", s.occupant ? "bg-emerald-500 text-white" : s.blocked ? "bg-slate-400 text-white" : "bg-white text-slate-700 ring-1 ring-slate-300 hover:ring-brand-500")}>
+                {secs ? s.number : s.label}
+                {s.occupant && <span className="max-w-full truncate text-[8px] sm:text-[9px] font-normal opacity-90">{s.occupant.name.split(" ")[0]}</span>}
               </button>
             );
             const chunks = (list: Seat[]) => { if (!secs) return [list]; const out: Seat[][] = []; let i = 0; for (const n of secs) { out.push(list.slice(i, i + n)); i += n; } return out.filter((c) => c.length); };
             const stage = secs && <div className="mb-3 rounded-b-full bg-slate-200 py-1 text-center text-[10px] font-semibold uppercase tracking-widest text-slate-500">Stage</div>;
             return (
               <div className="overflow-x-auto pb-1">
-                <div className="mx-auto w-max">
+                <div className="min-w-[680px]">
                   {stage}
                   {rows.map((r) => (
                     <div key={r.row} className="mb-1.5 flex items-center gap-2">
                       {r.row > 0 && <div className="w-7 shrink-0 text-right text-[10px] font-medium text-slate-400">{r.row}</div>}
-                      <div className="flex items-stretch gap-8">
+                      <div className="flex flex-1 items-stretch gap-3 sm:gap-8">
                         {chunks(r.seats).map((c, i) => (
-                          <div key={i} className="flex gap-1" style={secs ? { minWidth: secs[i] * 48 - 4, justifyContent: i === 0 && secs.length > 1 ? "flex-end" : "flex-start" } : undefined}>{c.map(btn)}</div>
+                          <div key={i} className="flex gap-0.5 sm:gap-1" style={secs ? { flex: `${secs[i]} 1 0%` } : undefined}>{c.map(btn)}</div>
                         ))}
                       </div>
                       {r.row > 0 && <div className="w-7 shrink-0 text-[10px] font-medium text-slate-400">{r.row}</div>}
