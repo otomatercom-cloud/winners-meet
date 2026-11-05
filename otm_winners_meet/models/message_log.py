@@ -107,7 +107,7 @@ class WmMessageLog(models.Model):
         link = event.pass_url(participant.qr_token, participant.kind)
         cat = participant.category_id
         if cat.hat:
-            hat = _("Your winner hat has been issued; please return it after the programme.")
+            hat = _("Your %s has been issued; please return it after the programme.", cat.hat_label)
         else:
             hat = _("Enjoy the programme.")
         seat = participant.seat_id.display_label() if participant.seat_id else '-'

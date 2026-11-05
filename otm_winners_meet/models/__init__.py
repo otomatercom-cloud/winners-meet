@@ -1,6 +1,7 @@
 from . import utils
 from . import event
 from . import course
+from . import item
 from . import category
 from . import seat
 from . import expected

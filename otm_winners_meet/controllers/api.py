@@ -111,6 +111,7 @@ def _mask(phone):
 def _cat(c):
     return {'id': c.id, 'name': c.full_name(), 'sub': c.name, 'course_id': c.course_id.id or False,
             'course': c.course_id.name or '', 'kind': c.kind, 'color': c.color or '#2563eb', 'hat': c.hat,
+            'item_ids': c.item_ids.ids, 'items': [{'id': i.id, 'name': i.name} for i in c.item_ids],
             'hat_label': c.hat_label or '', 'seat_mode': c.seat_mode, 'self_select': c.self_select,
             'seat_block_id': c.seat_block_id.id or False, 'seat_block': c.seat_block_id.name or ''}
 
@@ -142,6 +143,7 @@ def _p(p, detail=False):
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
         'has_photo': bool(p.photo),
+        'items': [{'item_id': l.item_id.id, 'name': l.item_id.name, 'state': l.state} for l in p.sudo().issue_ids],
         'create_date': fields.Datetime.to_string(p.create_date),
     }
     if detail:
@@ -153,7 +155,7 @@ def _p(p, detail=False):
             'checkin_by': p.checkin_by.name or '', 'approved_by': p.approved_by.name or '',
             'expected': ({'name': p.expected_id.name, 'category': p.expected_id.category_id.full_name()}
                          if p.expected_id else None),
-            'messages': [{'id': l.id, 'type': l.message_type, 'state': l.state, 'error': l.error or '',
+            'messages': [{'id': l.id, 'type': l.message_type, 'state': l.state, 'error': (l.error or '') if l.state == 'failed' else '',
                           'created': fields.Datetime.to_string(l.create_date), 'retries': l.retries}
                          for l in p.log_ids.sorted('id', reverse=True)[:10]],
         })
@@ -346,8 +348,9 @@ class WinnersMeetApi(http.Controller):
         _need_manager()
         ev = _event(body.get('event_id'))
         vals = {'name': (body.get('name') or '').strip(), 'kind': body.get('kind') or 'student',
-                'color': body.get('color') or '#2563eb', 'hat': bool(body.get('hat')),
-                'hat_label': body.get('hat_label') or False, 'seat_mode': body.get('seat_mode') or 'auto',
+                'color': body.get('color') or '#2563eb',
+                'item_ids': [(6, 0, [_int(i) for i in (body.get('item_ids') or []) if _int(i)])],
+                'seat_mode': body.get('seat_mode') or 'auto',
                 'self_select': bool(body.get('self_select', True)),
                 'course_id': _int(body.get('course_id')) or False,
                 'seat_block_id': _int(body.get('seat_block_id')) or False}
@@ -403,6 +406,37 @@ class WinnersMeetApi(http.Controller):
         if c and c.category_ids:
             raise UserError(_("Delete or move this course's subcategories first."))
         c.unlink()
+        return True
+
+    @api('/items')
+    def items(self, body=None, event_id=None, **kw):
+        _need_staff()
+        return [i.stats() for i in _event(event_id).item_ids]
+
+    @api('/items/save', methods=('POST',))
+    def item_save(self, body=None, **kw):
+        _need_manager()
+        ev = _event(body.get('event_id'))
+        vals = {'name': (body.get('name') or '').strip(), 'quantity': max(0, _int(body.get('quantity'), 0))}
+        if not vals['name']:
+            raise UserError(_("Item name is required."))
+        if body.get('id'):
+            i = request.env['otm.wm.item'].browse(_int(body['id'], 0)).exists()
+            if not i:
+                raise MissingError(_("Item not found."))
+            i.write(vals)
+        else:
+            i = request.env['otm.wm.item'].create(dict(vals, event_id=ev.id))
+        return i.stats()
+
+    @api('/items/delete', methods=('POST',))
+    def item_delete(self, body=None, **kw):
+        _need_manager()
+        i = request.env['otm.wm.item'].browse(_int(body.get('id'), 0)).exists()
+        if i and i.issue_ids:
+            raise UserError(_("This item has already been issued; it cannot be deleted."))
+        if i:
+            i.unlink()
         return True
 
     @api('/blocks')
@@ -501,6 +535,7 @@ class WinnersMeetApi(http.Controller):
             'hats': {'issued': len([r for r in rows if r['hat_state'] == 'issued']),
                      'returned': len([r for r in rows if r['hat_state'] == 'returned']),
                      'lost': len([r for r in rows if r['hat_state'] == 'lost'])},
+            'items': [i.stats() for i in ev.item_ids],
             'whatsapp': {s: len([l for l in logs if l['state'] == s]) for s in ('queued', 'sent', 'failed', 'skipped')},
             'expected': {'total': exp_total, 'registered': exp_registered, 'missing': exp_total - exp_registered},
             'extras': {
@@ -528,7 +563,10 @@ class WinnersMeetApi(http.Controller):
         if _int(category_id):
             domain.append(('category_id', '=', _int(category_id)))
         if hat in ('issued', 'returned', 'lost', 'none'):
-            domain.append(('hat_state', '=', hat))
+            if _int(kw.get('item_id')) and hat != 'none':
+                domain.append(('issue_ids', 'any', [('item_id', '=', _int(kw.get('item_id'))), ('state', '=', hat)]))
+            else:
+                domain.append(('hat_state', '=', hat))
         if wa in ('queued', 'sent', 'failed', 'skipped'):
             domain.append(('wa_state', '=', wa))
         q = (q or '').strip()
@@ -621,7 +659,7 @@ class WinnersMeetApi(http.Controller):
     def participant_hat(self, pid, body=None, **kw):
         _need_staff()
         p = _participant(pid)
-        p.action_hat(body.get('action'))
+        p.action_hat(body.get('action'), body.get('item_id'))
         return _p(p, detail=True)
 
     @api('/participants/<int:pid>/delete', methods=('POST',))
@@ -733,7 +771,7 @@ class WinnersMeetApi(http.Controller):
         if state in ('queued', 'sent', 'failed', 'skipped'):
             domain.append(('state', '=', state))
         return [{'id': l.id, 'participant': l.participant_id.name, 'participant_id': l.participant_id.id,
-                 'type': l.message_type, 'number': l.number, 'state': l.state, 'error': l.error or '',
+                 'type': l.message_type, 'number': l.number, 'state': l.state, 'error': (l.error or '') if l.state in ('failed', 'skipped') else '',
                  'retries': l.retries, 'created': fields.Datetime.to_string(l.create_date)}
                 for l in request.env['otm.wm.message.log'].search(domain, limit=200)]
 

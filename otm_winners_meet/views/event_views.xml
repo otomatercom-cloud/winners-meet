@@ -44,6 +44,15 @@
                                 </list>
                             </field>
                         </page>
+                        <page string="Kit Items" name="page_items">
+                            <field name="item_ids">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="quantity"/>
+                                </list>
+                            </field>
+                        </page>
                         <page string="Categories" name="page_categories">
                             <field name="category_ids">
                                 <list editable="bottom">
@@ -51,8 +60,7 @@
                                     <field name="course_id"/>
                                     <field name="name"/>
                                     <field name="kind"/>
-                                    <field name="hat"/>
-                                    <field name="hat_label"/>
+                                    <field name="item_ids" widget="many2many_tags"/>
                                     <field name="seat_block_id"/>
                                     <field name="seat_mode"/>
                                     <field name="self_select"/>

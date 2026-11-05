@@ -4,13 +4,15 @@ import { Pencil, Plus } from "lucide-react";
 import { useEvent } from "@/components/EventContext";
 import { api, useFetch } from "@/lib/api";
 import { Badge, Button, Card, CategoryChip, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Toggle, inputCls, useToast } from "@/components/ui";
-import type { Block, Category, Course } from "@/lib/types";
+import type { Block, Category, Course, KitItem } from "@/lib/types";
 
 export default function Setup() {
   const { eventId, me } = useEvent();
   const toast = useToast();
   const cats = useFetch<Category[]>(eventId ? "/categories" : null, { event_id: eventId });
   const courses = useFetch<Course[]>(eventId ? "/courses" : null, { event_id: eventId });
+  const items = useFetch<KitItem[]>(eventId ? "/items" : null, { event_id: eventId });
+  const [itm, setItm] = useState<any>(null);
   const [crs, setCrs] = useState<any>(null);
   const blocks = useFetch<Block[]>(eventId ? "/blocks" : null, { event_id: eventId });
   const [cat, setCat] = useState<any>(null);
@@ -23,7 +25,7 @@ export default function Setup() {
 
   const save = async (path: string, body: any, done: () => void, reload: () => void) => {
     setBusy(true);
-    try { await api(path, { method: "POST", body: { ...body, event_id: eventId } }); toast("Saved"); done(); reload(); blocks.reload(); cats.reload(); courses.reload(); }
+    try { await api(path, { method: "POST", body: { ...body, event_id: eventId } }); toast("Saved"); done(); reload(); blocks.reload(); cats.reload(); courses.reload(); items.reload(); }
     catch (e: any) { toast(e.message, "err"); }
     setBusy(false);
   };
@@ -35,10 +37,24 @@ export default function Setup() {
     if (!confirm("Delete this course?")) return;
     try { await api("/courses/delete", { method: "POST", body: { id } }); courses.reload(); } catch (e: any) { toast(e.message, "err"); }
   };
-  const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", hat: false, hat_label: "", seat_block_id: "", seat_mode: "auto", self_select: true };
+  const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_mode: "auto", self_select: true };
   const newBlk = { name: "", prefix: "S", start_no: 1, end_no: 100, row_size: 0 };
   return (
     <div className="space-y-8">
+      <section>
+        <PageHeader title="Kit items" subtitle="Convocation hat, shawl... Enter how many pieces you have. Issued at check-in, returned later."
+          actions={<Button size="sm" onClick={() => setItm({ name: "", quantity: 0 })}><Plus className="h-4 w-4" /> Item</Button>} />
+        {!items.data?.length ? <Empty>No kit items yet. Add Hat, Shawl… (optional)</Empty> : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {items.data.map((i) => (
+              <Card key={i.id} className="p-4">
+                <div className="flex items-start justify-between"><div><div className="font-semibold">{i.name}</div><div className="text-sm text-slate-500">Stock {i.quantity} · with people {i.out} · available {i.available}</div></div><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setItm({ ...i })}><Pencil className="h-4 w-4" /></button></div>
+                <button className="mt-3 text-xs text-slate-400 hover:text-rose-600" onClick={async () => { if (!confirm("Delete this item?")) return; try { await api("/items/delete", { method: "POST", body: { id: i.id } }); items.reload(); } catch (e: any) { toast(e.message, "err"); } }}>Delete</button>
+              </Card>
+            ))}
+          </div>
+        )}
+      </section>
       <section>
         <PageHeader title="Courses" subtitle="Students pick a course first, then a winner subcategory of that course."
           actions={<Button size="sm" onClick={() => setCrs({ name: "", code: "" })}><Plus className="h-4 w-4" /> Course</Button>} />
@@ -54,14 +70,14 @@ export default function Setup() {
         )}
       </section>
       <section>
-        <PageHeader title="Winner categories" subtitle="Each subcategory (under a course) decides the seat block, whether a hat is given, and how the seat is assigned at check-in."
+        <PageHeader title="Winner categories" subtitle="Each subcategory (under a course) decides the seat block, which kit items are given, and how the seat is assigned at check-in."
           actions={<Button size="sm" onClick={() => setCat(newCat)}><Plus className="h-4 w-4" /> Category</Button>} />
         {!cats.data?.length ? <Empty>No categories yet. Add Gold, Silver, Teacher…</Empty> : (
           <div className="grid gap-3 sm:grid-cols-2">
             {cats.data.map((c) => (
               <Card key={c.id} className="p-4">
                 <div className="flex items-start justify-between"><CategoryChip name={c.name} color={c.color} /><div className="flex gap-1"><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setCat({ ...c, name: c.sub, course_id: c.course_id || "", seat_block_id: c.seat_block_id || "" })}><Pencil className="h-4 w-4" /></button></div></div>
-                <div className="mt-3 flex flex-wrap gap-1.5"><Badge tone="violet">{c.kind}</Badge>{c.hat && <Badge tone="amber">Hat{c.hat_label ? `: ${c.hat_label}` : ""}</Badge>}<Badge tone="blue">{c.seat_block || "no block"}</Badge><Badge>{c.seat_mode === "auto" ? "auto seat" : "manual seat"}</Badge>{!c.self_select && <Badge>admin only</Badge>}</div>
+                <div className="mt-3 flex flex-wrap gap-1.5"><Badge tone="violet">{c.kind}</Badge>{c.items?.map((i) => <Badge key={i.id} tone="amber">{i.name}</Badge>)}<Badge tone="blue">{c.seat_block || "no block"}</Badge><Badge>{c.seat_mode === "auto" ? "auto seat" : "manual seat"}</Badge>{!c.self_select && <Badge>admin only</Badge>}</div>
                 <button className="mt-3 text-xs text-slate-400 hover:text-rose-600" onClick={() => del(c.id)}>Delete</button>
               </Card>
             ))}
@@ -94,10 +110,26 @@ export default function Setup() {
             </div>
             <Field label="Seat block"><select className={inputCls} value={cat.seat_block_id} onChange={(e) => setCat({ ...cat, seat_block_id: e.target.value })}><option value="">— none —</option>{(blocks.data || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.prefix}{b.start_no}–{b.end_no})</option>)}</select></Field>
             <Field label="Seat assignment" hint="Automatic gives the next free seat of the block at check-in."><select className={inputCls} value={cat.seat_mode} onChange={(e) => setCat({ ...cat, seat_mode: e.target.value })}><option value="auto">Automatic (next free seat)</option><option value="manual">Manual (desk picks the seat)</option></select></Field>
-            <Toggle label="Gets a hat (issued automatically at check-in)" checked={cat.hat} onChange={(v) => setCat({ ...cat, hat: v })} />
-            {cat.hat && <Field label="Hat type (optional)"><input className={inputCls} value={cat.hat_label} onChange={(e) => setCat({ ...cat, hat_label: e.target.value })} placeholder="e.g. Gold hat" /></Field>}
+            <Field label="Kit items given at check-in" hint="Collected back later. Add items in the Kit items section above.">
+              <div className="flex flex-wrap gap-2">
+                {(items.data || []).length === 0 && <span className="text-xs text-slate-400">No kit items yet.</span>}
+                {(items.data || []).map((i) => { const on = (cat.item_ids || []).includes(i.id); return (
+                  <button type="button" key={i.id} onClick={() => setCat({ ...cat, item_ids: on ? cat.item_ids.filter((x: number) => x !== i.id) : [...(cat.item_ids || []), i.id] })}
+                    className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${on ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-600"}`}>{on ? "✓ " : ""}{i.name}</button>
+                ); })}
+              </div>
+            </Field>
             <Toggle label="Students can choose this on the registration form" checked={cat.self_select} onChange={(v) => setCat({ ...cat, self_select: v })} />
             <Button size="lg" className="w-full" loading={busy}>Save category</Button>
+          </form>
+        )}
+      </Modal>
+      <Modal open={!!itm} onClose={() => setItm(null)} title={itm?.id ? "Edit item" : "New kit item"}>
+        {itm && (
+          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save("/items/save", itm, () => setItm(null), items.reload); }}>
+            <Field label="Item name"><input className={inputCls} value={itm.name} onChange={(e) => setItm({ ...itm, name: e.target.value })} placeholder="Convocation hat" required /></Field>
+            <Field label="Stock quantity" hint="Total pieces you have in hand."><input type="number" min={0} className={inputCls} value={itm.quantity} onChange={(e) => setItm({ ...itm, quantity: e.target.value })} required /></Field>
+            <Button size="lg" className="w-full" loading={busy}>Save item</Button>
           </form>
         )}
       </Modal>

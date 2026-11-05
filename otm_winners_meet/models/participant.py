@@ -82,6 +82,7 @@ class WmParticipant(models.Model):
     hat_state = fields.Selection(
         [('none', 'No Hat'), ('issued', 'Issued'), ('returned', 'Returned'), ('lost', 'Lost')],
         default='none', required=True, index=True)
+    issue_ids = fields.One2many('otm.wm.issue', 'participant_id', string="Kit Issued")
     hat_issued_on = fields.Datetime()
     hat_returned_on = fields.Datetime()
 
@@ -285,9 +286,8 @@ class WmParticipant(models.Model):
         else:
             raise UserError(_("No seat block is configured for category '%s'.", cat.name))
         vals = {'state': 'checked_in', 'checkin_on': fields.Datetime.now(), 'checkin_by': self.env.uid}
-        if cat.hat and self.hat_state == 'none':
-            vals.update(hat_state='issued', hat_issued_on=fields.Datetime.now())
         self.write(vals)
+        self._issue_items()
         self._queue_message('seat')
         return {'already': False}
 
@@ -306,33 +306,58 @@ class WmParticipant(models.Model):
     def action_undo_check_in(self):
         self.ensure_one()
         self._lock_row()
-        if self.hat_state in ('returned', 'lost'):
-            raise UserError(_("Hat already %s; cannot undo check-in.", self.hat_state))
-        self.write({'state': 'registered', 'checkin_on': False, 'checkin_by': False, 'seat_id': False,
-                    'hat_state': 'none', 'hat_issued_on': False})
+        if self.sudo().issue_ids.filtered(lambda l: l.state in ('returned', 'lost')):
+            raise UserError(_("Kit already returned or lost; cannot undo check-in."))
+        self.sudo().issue_ids.unlink()
+        self.write({'state': 'registered', 'checkin_on': False, 'checkin_by': False, 'seat_id': False})
+        self._refresh_hat_state()
         return True
 
-    # ------------------------------------------------------------ hats
-    def action_hat(self, action):
+    # ------------------------------------------------------------ kit (hat, shawl ...)
+    def _issue_items(self):
+        """Create an 'issued' line for every kit item of the category that is not issued yet."""
+        self.ensure_one()
+        have = self.sudo().issue_ids.mapped('item_id')
+        for item in self.category_id.item_ids - have:
+            self.env['otm.wm.issue'].sudo().create({'participant_id': self.id, 'item_id': item.id})
+        self._refresh_hat_state()
+
+    def _refresh_hat_state(self):
+        """hat_state summarises the kit: none / issued (something still out) / lost / returned."""
+        for rec in self:
+            lines = rec.sudo().issue_ids
+            if not lines:
+                vals = {'hat_state': 'none', 'hat_issued_on': False, 'hat_returned_on': False}
+            else:
+                states = lines.mapped('state')
+                st = 'issued' if 'issued' in states else ('lost' if 'lost' in states else 'returned')
+                vals = {'hat_state': st, 'hat_issued_on': min(lines.mapped('issued_on')),
+                        'hat_returned_on': max([d for d in lines.mapped('returned_on') if d] or [False])
+                        if st == 'returned' else False}
+            rec.write(vals)
+
+    def action_hat(self, action, item_id=None):
+        """issue / return / lost for one kit item, or for all of them when item_id is empty."""
         self.ensure_one()
         self._lock_row()
         now = fields.Datetime.now()
+        lines = self.sudo().issue_ids
+        if item_id:
+            lines = lines.filtered(lambda l: l.item_id.id == int(item_id))
         if action == 'issue':
-            if self.hat_state == 'issued':
-                return True
-            self.write({'hat_state': 'issued', 'hat_issued_on': now, 'hat_returned_on': False})
-        elif action == 'return':
-            if self.hat_state == 'returned':
-                return True
-            if self.hat_state == 'none':
-                raise UserError(_("No hat was issued to %s.", self.name))
-            self.write({'hat_state': 'returned', 'hat_returned_on': now})
+            self._issue_items()
+            if not self.sudo().issue_ids:
+                raise UserError(_("No kit items are set for this category."))
+            return True
+        if not lines:
+            raise UserError(_("Nothing was issued to %s.", self.name))
+        if action == 'return':
+            lines.filtered(lambda l: l.state != 'returned').write({'state': 'returned', 'returned_on': now})
         elif action == 'lost':
-            if self.hat_state == 'none':
-                raise UserError(_("No hat was issued to %s.", self.name))
-            self.write({'hat_state': 'lost'})
+            lines.filtered(lambda l: l.state == 'issued').write({'state': 'lost'})
         else:
-            raise UserError(_("Unknown hat action."))
+            raise UserError(_("Unknown kit action."))
+        self._refresh_hat_state()
         return True
 
     # ------------------------------------------------------------ whatsapp

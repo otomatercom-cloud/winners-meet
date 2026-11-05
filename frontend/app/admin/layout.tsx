@@ -13,7 +13,7 @@ const NAV = [
   { href: "/admin/participants", label: "Participants", icon: Users },
   { href: "/admin/review", label: "Review queue", icon: ShieldAlert, badge: true, manager: true },
   { href: "/admin/seats", label: "Seat map", icon: Armchair },
-  { href: "/admin/hats", label: "Hats", icon: Crown },
+  { href: "/admin/hats", label: "Kit & returns", icon: Crown },
   { href: "/admin/winners", label: "Winners list", icon: FileSpreadsheet, manager: true },
   { href: "/admin/whatsapp", label: "WhatsApp log", icon: MessageCircle },
   { href: "/admin/setup", label: "Categories & seats", icon: Settings2, manager: true },

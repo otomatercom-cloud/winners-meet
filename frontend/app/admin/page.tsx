@@ -51,7 +51,7 @@ export default function Dashboard() {
         </div>
       )}
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Hats issued (pending return)" value={d.hats.issued} sub={`${d.hats.returned} returned · ${d.hats.lost} lost`} icon={Crown} href="/admin/hats" />
+        <Stat label="Kit pending return" value={d.hats.issued} sub={`${d.hats.returned} returned · ${d.hats.lost} lost`} icon={Crown} href="/admin/hats" />
         <Stat label="Needs review" value={pending} icon={AlertTriangle} tone={pending ? "red" : "slate"} href="/admin/review" />
         <Stat label="WhatsApp sent" value={d.whatsapp.sent} sub={`${d.whatsapp.queued} queued · ${d.whatsapp.failed} failed`} icon={MessageCircle} href="/admin/whatsapp" tone={d.whatsapp.failed ? "red" : "slate"} />
         <Stat label="Winners list" value={`${d.expected.registered}/${d.expected.total}`} sub={`${d.expected.missing} not registered yet`} icon={Users} href="/admin/winners" />
@@ -63,7 +63,7 @@ export default function Dashboard() {
             <div className="space-y-4">
               {d.categories.map((c: any) => (
                 <div key={c.id}>
-                  <div className="mb-1 flex items-center justify-between text-sm"><CategoryChip name={c.name} color={c.color} /><span className="text-slate-600">{c.checked_in} / {c.registered} arrived{c.hat ? " · hat" : ""}</span></div>
+                  <div className="mb-1 flex items-center justify-between text-sm"><CategoryChip name={c.name} color={c.color} /><span className="text-slate-600">{c.checked_in} / {c.registered} arrived{c.hat ? " · kit" : ""}</span></div>
                   <Bar value={c.checked_in} max={c.registered} color={c.color} />
                 </div>
               ))}

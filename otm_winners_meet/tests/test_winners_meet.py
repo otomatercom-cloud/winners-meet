@@ -15,7 +15,10 @@ class TestWinnersMeet(TransactionCase):
         cls.tblock = cls.env['otm.wm.seat.block'].create(
             {'event_id': cls.event.id, 'name': 'Teachers', 'prefix': 'T', 'start_no': 1, 'end_no': 2})
         Cat = cls.env['otm.wm.category']
-        cls.gold = Cat.create({'event_id': cls.event.id, 'name': 'Gold', 'hat': True,
+        Item = cls.env['otm.wm.item']
+        cls.hat_item = Item.create({'event_id': cls.event.id, 'name': 'Hat', 'quantity': 5})
+        cls.shawl = Item.create({'event_id': cls.event.id, 'name': 'Shawl', 'quantity': 2})
+        cls.gold = Cat.create({'event_id': cls.event.id, 'name': 'Gold', 'item_ids': [(6, 0, [cls.hat_item.id])],
                                'seat_block_id': cls.sblock.id, 'seat_mode': 'auto'})
         cls.silver = Cat.create({'event_id': cls.event.id, 'name': 'Silver', 'seat_mode': 'manual'})
         cls.teacher = Cat.create({'event_id': cls.event.id, 'name': 'Teacher', 'kind': 'teacher',
@@ -246,3 +249,27 @@ class TestWinnersMeet(TransactionCase):
         self.assertEqual({s.number: s.row_no for s in blk.seat_ids}[30], 3)
         blk.row_size = 0
         self.assertEqual(blk.seat_ids.filtered(lambda s: s.number == 15).display_label(), 'R15')
+
+    def test_kit_inventory(self):
+        self.gold.item_ids = [(6, 0, [self.hat_item.id, self.shawl.id])]
+        self.assertTrue(self.gold.hat)
+        self.assertEqual(self.gold.hat_label, 'Hat, Shawl')
+        a = self._reg('Kit A', '9000000071', self.gold)
+        b = self._reg('Kit B', '9000000072', self.gold)
+        a.action_check_in()
+        b.action_check_in()
+        self.assertEqual(len(a.issue_ids), 2)
+        st = {s['name']: s for s in (self.hat_item.stats(), self.shawl.stats())}
+        self.assertEqual((st['Shawl']['quantity'], st['Shawl']['out'], st['Shawl']['available']), (2, 2, 0))
+        self.assertEqual((st['Hat']['available'], st['Hat']['needed']), (3, 2))
+        a.action_hat('return', self.hat_item.id)            # one item back, shawl still out
+        self.assertEqual(a.hat_state, 'issued')
+        a.action_hat('return')                               # everything back
+        self.assertEqual(a.hat_state, 'returned')
+        b.action_hat('lost', self.shawl.id)
+        self.assertEqual(self.shawl.stats()['lost'], 1)
+        self.assertEqual(self.shawl.stats()['available'], 1)   # stock 2 - 1 lost, A's shawl is back
+        with self.assertRaises(UserError):
+            a.action_undo_check_in()
+        with self.assertRaises(Exception), self.env.cr.savepoint():
+            self.hat_item.unlink()                           # issued items cannot be deleted

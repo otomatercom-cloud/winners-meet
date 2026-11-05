@@ -53,12 +53,13 @@ export default function Detail() {
             </dl>
           </Card>
           <Card className="p-4 text-sm">
-            <div className="mb-2 flex items-center justify-between font-semibold">WhatsApp
+            <div className="mb-2 font-semibold">WhatsApp</div>
+            <div className="mb-2 flex flex-wrap gap-1.5">
               {data.approval_state === "approved" && (
-                <span className="flex gap-1">
+                <>
                   <Button size="sm" variant="secondary" loading={sending} onClick={() => resend("confirm")}>Resend confirmation</Button>
                   {data.seat && <Button size="sm" variant="secondary" loading={sending} onClick={() => resend("seat")}>Resend seat</Button>}
-                </span>
+                </>
               )}
             </div>
             {!data.messages?.length ? <p className="text-slate-500">No messages yet.</p> : data.messages.map((m) => (
@@ -67,7 +68,6 @@ export default function Detail() {
                   <span>{m.type === "confirm" ? "Confirmation" : "Seat"}<span className="ml-2 text-xs text-slate-400">{fmtTime(m.created)}</span></span>
                   <Badge tone={m.state === "sent" ? "green" : m.state === "failed" ? "red" : "blue"}>{m.state}</Badge>
                 </div>
-                {m.error && <p className="mt-1 break-words rounded bg-rose-50 px-2 py-1 text-xs text-rose-700">{m.error}</p>}
               </div>
             ))}
           </Card>

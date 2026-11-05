@@ -16,8 +16,23 @@ class WmCategory(models.Model):
         [('student', 'Student'), ('teacher', 'Teacher')], required=True, default='student')
     sequence = fields.Integer(default=10)
     color = fields.Char(default='#2563eb')
-    hat = fields.Boolean(string="Gets Hat", help="Hat is issued automatically at check-in.")
-    hat_label = fields.Char(string="Hat Type")
+    item_ids = fields.Many2many(
+        'otm.wm.item', 'otm_wm_category_item_rel', 'category_id', 'item_id', string="Kit Items",
+        domain="[('event_id', '=', event_id)]", help="Issued automatically at check-in, collected back later.")
+    hat = fields.Boolean(string="Gets Kit", compute='_compute_hat', store=True)
+    hat_label = fields.Char(string="Kit", compute='_compute_hat', store=True)
+
+    @api.depends('item_ids', 'item_ids.name')
+    def _compute_hat(self):
+        for rec in self:
+            rec.hat = bool(rec.item_ids)
+            rec.hat_label = ', '.join(rec.item_ids.mapped('name')) or False
+
+    @api.constrains('item_ids', 'event_id')
+    def _check_items_event(self):
+        for rec in self:
+            if any(i.event_id != rec.event_id for i in rec.item_ids):
+                raise ValidationError(_("Kit items must belong to the same event."))
     seat_block_id = fields.Many2one(
         'otm.wm.seat.block', string="Seat Block", ondelete='set null',
         domain="[('event_id', '=', event_id)]")

@@ -59,8 +59,8 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
           <div className="text-6xl font-extrabold tracking-tight text-emerald-600">{p.seat}</div>
           {p.seat_row > 0 && <div className="mt-1 text-lg font-semibold text-slate-600">Row {p.seat_row}</div>}
           <div className="mt-1 text-xs text-slate-500">Checked in {fmtTime(p.checkin_on)}{p.checkin_by ? ` by ${p.checkin_by}` : ""}</div>
-          {p.hat_state === "issued" && p.category?.hat && (
-            <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-amber-100 px-4 py-3 text-lg font-bold text-amber-900"><Crown className="h-6 w-6" /> GIVE HAT{p.category.hat_label ? ` · ${p.category.hat_label}` : ""}</div>
+          {p.hat_state === "issued" && (p.items?.length || 0) > 0 && (
+            <div className="mt-4 rounded-xl bg-amber-100 px-4 py-3 text-center text-amber-900"><div className="flex items-center justify-center gap-2 text-lg font-bold"><Crown className="h-6 w-6" /> GIVE KIT</div><div className="mt-1 text-base font-semibold">{p.items.filter((i) => i.state === "issued").map((i) => i.name).join(" + ")}</div></div>
           )}
         </div>
       )}
@@ -112,8 +112,8 @@ export default function ParticipantCard({ p, onChange, eventId, manager }: { p: 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="secondary" onClick={() => setPickSeat(true)}><Armchair className="h-4 w-4" /> Change seat</Button>
               <Button size="sm" variant="secondary" loading={busy === "resend"} onClick={() => act("resend", "resend", { type: "seat" }, "Seat WhatsApp queued")}><MessageCircle className="h-4 w-4" /> Resend seat</Button>
-              {p.hat_state === "none" && <Button size="sm" variant="secondary" loading={busy === "hat"} onClick={() => act("hat", "hat", { action: "issue" }, "Hat issued")}><Crown className="h-4 w-4" /> Issue hat</Button>}
-              {p.hat_state === "issued" && <Button size="sm" variant="secondary" loading={busy === "hatr"} onClick={() => act("hatr", "hat", { action: "return" }, "Hat returned")}><Crown className="h-4 w-4" /> Hat returned</Button>}
+              {p.hat_state === "none" && p.category?.hat && <Button size="sm" variant="secondary" loading={busy === "hat"} onClick={() => act("hat", "hat", { action: "issue" }, "Kit issued")}><Crown className="h-4 w-4" /> Issue kit</Button>}
+              {p.hat_state === "issued" && <Button size="sm" variant="secondary" loading={busy === "hatr"} onClick={() => act("hatr", "hat", { action: "return" }, "Kit returned")}><Crown className="h-4 w-4" /> Kit returned</Button>}
               <Button size="sm" variant="ghost" loading={busy === "undo"} onClick={() => { if (confirm(`Undo check-in for ${p.name}? The seat will be freed.`)) act("undo", "undo-checkin", {}, "Check-in undone"); }}><Undo2 className="h-4 w-4" /> Undo</Button>
             </div>
           )}

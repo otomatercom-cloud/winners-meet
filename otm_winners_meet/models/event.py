@@ -57,6 +57,7 @@ class WmEvent(models.Model):
              "Off: 4 variables (name, seat, event, link).")
     form_student = fields.Text(string="Student Form Fields (JSON)")
     form_teacher = fields.Text(string="Teacher Form Fields (JSON)")
+    item_ids = fields.One2many('otm.wm.item', 'event_id', string="Kit Items")
     course_ids = fields.One2many('otm.wm.course', 'event_id', string="Courses")
     category_ids = fields.One2many('otm.wm.category', 'event_id', string="Winner Categories")
     block_ids = fields.One2many('otm.wm.seat.block', 'event_id', string="Seat Blocks")

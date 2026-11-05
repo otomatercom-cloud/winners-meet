@@ -1,5 +1,6 @@
 export type Course = { id: number; name: string; code: string; subs: number };
-export type Category = { id: number; name: string; sub: string; course_id: number | false; course: string; kind: "student" | "teacher"; color: string; hat: boolean; hat_label: string; seat_mode: "auto" | "manual"; self_select: boolean; seat_block_id: number | false; seat_block: string };
+export type KitItem = { id: number; name: string; quantity: number; needed: number; given: number; out: number; returned: number; lost: number; available: number; to_give: number; short: number };
+export type Category = { id: number; name: string; item_ids: number[]; items: { id: number; name: string }[]; sub: string; course_id: number | false; course: string; kind: "student" | "teacher"; color: string; hat: boolean; hat_label: string; seat_mode: "auto" | "manual"; self_select: boolean; seat_block_id: number | false; seat_block: string };
 export type FormMode = "off" | "optional" | "required";
 export type FormCfg = { place: FormMode; institution: FormMode; email: FormMode; photo: FormMode; food_pref: FormMode; accompany: FormMode };
 export type EventInfo = { id: number; name: string; date: string; time: string; venue: string; state: "draft" | "open" | "closed"; reg_student_open: boolean; reg_teacher_open: boolean; teacher_needs_approval: boolean; frontend_url: string; frontend_url_teacher: string; wa_seat_hat_param: boolean; form_student: FormCfg; form_teacher: FormCfg; wa_tpl_confirm: string; wa_tpl_seat: string; wa_msg_confirm: string; wa_msg_seat: string; wa_tpl_confirm_teacher: string; wa_tpl_seat_teacher: string; wa_msg_confirm_teacher: string; wa_msg_seat_teacher: string };
@@ -8,7 +9,7 @@ export type Participant = {
   state: "registered" | "checked_in"; approval_state: "pending" | "approved" | "rejected";
   match_status: "na" | "matched" | "name_mismatch" | "category_mismatch" | "not_listed"; match_note: string;
   category: Category | null; claimed_category: Category | null; seat: string; seat_row: number; seat_id: number | false; reserved_seat: string; reserved_seat_id: number | false; checkin_on: string;
-  hat_state: "none" | "issued" | "returned" | "lost"; food_pref: "" | "veg" | "nonveg"; accompany_type: "none" | "friend" | "guardian"; accompany_count: number; has_photo: boolean; photo?: string; wa_state: string; registered_via: string; create_date: string;
+  hat_state: "none" | "issued" | "returned" | "lost"; food_pref: "" | "veg" | "nonveg"; accompany_type: "none" | "friend" | "guardian"; accompany_count: number; has_photo: boolean; items: { item_id: number; name: string; state: "issued" | "returned" | "lost" }[]; photo?: string; wa_state: string; registered_via: string; create_date: string;
   email?: string; note?: string; token?: string; hat_issued_on?: string; hat_returned_on?: string; checkin_by?: string; approved_by?: string;
   expected?: { name: string; category: string } | null;
   messages?: { id: number; type: string; state: string; error: string; created: string; retries: number }[];
