@@ -21,6 +21,7 @@
                     <group>
                         <group>
                             <field name="name"/>
+                            <field name="slug"/>
                             <field name="date"/>
                             <field name="time_text"/>
                             <field name="venue"/>

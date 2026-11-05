@@ -82,6 +82,10 @@ class WmParticipant(models.Model):
     hat_state = fields.Selection(
         [('none', 'No Hat'), ('issued', 'Issued'), ('returned', 'Returned'), ('lost', 'Lost')],
         default='none', required=True, index=True)
+    trophy_state = fields.Selection(
+        [('pending', 'Not Collected'), ('given', 'Trophy Collected')], default='pending', required=True, index=True)
+    trophy_on = fields.Datetime()
+    trophy_by = fields.Many2one('res.users', ondelete='set null')
     issue_ids = fields.One2many('otm.wm.issue', 'participant_id', string="Kit Issued")
     hat_issued_on = fields.Datetime()
     hat_returned_on = fields.Datetime()
@@ -306,11 +310,27 @@ class WmParticipant(models.Model):
     def action_undo_check_in(self):
         self.ensure_one()
         self._lock_row()
+        if self.trophy_state == 'given':
+            raise UserError(_("Trophy already collected; cannot undo check-in."))
         if self.sudo().issue_ids.filtered(lambda l: l.state in ('returned', 'lost')):
             raise UserError(_("Kit already returned or lost; cannot undo check-in."))
         self.sudo().issue_ids.unlink()
         self.write({'state': 'registered', 'checkin_on': False, 'checkin_by': False, 'seat_id': False})
         self._refresh_hat_state()
+        return True
+
+    # ------------------------------------------------------------ stage (trophy)
+    def action_trophy(self, done=True):
+        """Stage team marks that the winner has collected the trophy (only for people who are present)."""
+        self.ensure_one()
+        self._lock_row()
+        if self.state != 'checked_in':
+            raise UserError(_("%s has not checked in yet.", self.name))
+        if done:
+            if self.trophy_state != 'given':
+                self.write({'trophy_state': 'given', 'trophy_on': fields.Datetime.now(), 'trophy_by': self.env.uid})
+        else:
+            self.write({'trophy_state': 'pending', 'trophy_on': False, 'trophy_by': False})
         return True
 
     # ------------------------------------------------------------ kit (hat, shawl ...)

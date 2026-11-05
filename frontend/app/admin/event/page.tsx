@@ -33,6 +33,7 @@ export default function EventSettings() {
       <PageHeader title={f.id ? "Event settings" : "New event"} actions={f.id ? <Button size="sm" variant="secondary" onClick={() => setF(blank)}><Plus className="h-4 w-4" /> New event</Button> : undefined} />
       <Card className="mb-5 space-y-4 p-5">
         <Field label="Event name"><input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} /></Field>
+        <Field label="Public URL name" hint="Used in links: /e/<name>/register. Leave blank to auto-generate."><input className={inputCls} value={f.slug || ""} onChange={(e) => set("slug", e.target.value)} placeholder="winners-meet-2026" /></Field>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Date"><input type="date" className={inputCls} value={f.date} onChange={(e) => set("date", e.target.value)} /></Field>
           <Field label="Time"><input className={inputCls} value={f.time} onChange={(e) => set("time", e.target.value)} placeholder="9:30 AM" /></Field>
@@ -85,7 +86,7 @@ export default function EventSettings() {
       {f.id && (
         <Card className="mt-6 space-y-2 p-5 text-sm">
           <h3 className="font-semibold">Share these links</h3>
-          {[["Student registration", `${f.frontend_url || origin}/register`], ["Teacher registration", `${f.frontend_url_teacher || f.frontend_url || origin}/register/teacher`]].map(([l, u]) => (
+          {[["Student registration", `${f.frontend_url || origin}/e/${f.slug}/register`], ["Event page (all links)", `${f.frontend_url || origin}/e/${f.slug}`], ["Teacher registration", `${f.frontend_url_teacher || f.frontend_url || origin}/e/${f.slug}/register/teacher`]].map(([l, u]) => (
             <div key={l} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"><div className="min-w-0"><div className="text-xs text-slate-500">{l}</div><div className="truncate">{u}</div></div><Button size="sm" variant="secondary" onClick={() => copy(u)}><Copy className="h-4 w-4" /></Button></div>
           ))}
         </Card>

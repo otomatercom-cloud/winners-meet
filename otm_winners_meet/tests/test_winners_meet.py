@@ -273,3 +273,31 @@ class TestWinnersMeet(TransactionCase):
             a.action_undo_check_in()
         with self.assertRaises(Exception), self.env.cr.savepoint():
             self.hat_item.unlink()                           # issued items cannot be deleted
+
+    def test_trophy_stage(self):
+        p = self._reg('Stage Guy', '9000000081', self.gold)
+        with self.assertRaises(UserError):
+            p.action_trophy()                     # not present yet
+        p.action_check_in()
+        p.action_trophy()
+        self.assertEqual(p.trophy_state, 'given')
+        with self.assertRaises(UserError):
+            p.action_undo_check_in()
+        p.action_trophy(False)
+        self.assertEqual((p.trophy_state, bool(p.trophy_on)), ('pending', False))
+
+    def test_event_slugs(self):
+        Event = self.env['otm.wm.event']
+        a = Event.create({'name': 'Zeta Gala 2031!'})
+        b = Event.create({'name': 'Zeta Gala 2031!'})
+        self.assertEqual(a.slug, 'zeta-gala-2031')
+        self.assertEqual(b.slug, 'zeta-gala-2031-2')
+        a.slug = 'My Event / Kochi'
+        self.assertEqual(a.slug, 'my-event-kochi')
+        with self.assertRaises(Exception), self.env.cr.savepoint():
+            b.slug = 'my-event-kochi'
+        legacy = Event.create({'name': 'Old One'})
+        self.env.cr.execute("UPDATE otm_wm_event SET slug = NULL WHERE id = %s", [legacy.id])
+        legacy.invalidate_recordset()
+        legacy.ensure_slug()
+        self.assertEqual(legacy.slug, 'old-one')

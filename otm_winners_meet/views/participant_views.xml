@@ -54,6 +54,7 @@
                             <field name="reserved_seat_id"/>
                             <field name="seat_id"/>
                             <field name="hat_state"/>
+                            <field name="trophy_state"/>
                             <field name="wa_state"/>
                         </group>
                     </group>

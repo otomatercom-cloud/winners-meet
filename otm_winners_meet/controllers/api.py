@@ -117,7 +117,8 @@ def _cat(c):
 
 
 def _event_dict(e):
-    return {'id': e.id, 'name': e.name, 'date': fields.Date.to_string(e.date), 'time': e.time_text or '',
+    e.ensure_slug()
+    return {'slug': e.slug or '', 'id': e.id, 'name': e.name, 'date': fields.Date.to_string(e.date), 'time': e.time_text or '',
             'venue': e.venue or '', 'state': e.state, 'reg_student_open': e.reg_student_open,
             'reg_teacher_open': e.reg_teacher_open, 'teacher_needs_approval': e.teacher_needs_approval,
             'frontend_url': e.frontend_url or '', 'frontend_url_teacher': e.frontend_url_teacher or '',
@@ -143,6 +144,7 @@ def _p(p, detail=False):
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
         'has_photo': bool(p.photo),
+        'trophy_state': p.trophy_state, 'trophy_on': fields.Datetime.to_string(p.trophy_on) if p.trophy_on else '',
         'items': [{'item_id': l.item_id.id, 'name': l.item_id.name, 'state': l.state} for l in p.sudo().issue_ids],
         'create_date': fields.Datetime.to_string(p.create_date),
     }
@@ -195,14 +197,33 @@ class WinnersMeetApi(http.Controller):
 
     # ============================================================ PUBLIC
     @api('/public/event', auth='public')
-    def public_event(self, body=None, **kw):
+    def public_event(self, body=None, slug=None, **kw):
+        """The event a public page is about: by ?slug=..., else the only open event, else a chooser list."""
         env = request.env(su=True)
-        ev = env['otm.wm.event'].search([('state', '=', 'open')], limit=1)
-        if not ev:
-            return {'event': None}
+        Event = env['otm.wm.event']
+        slug = (slug or '').strip().lower()
+        if slug:
+            ev = Event.search([('slug', '=', slug)], limit=1)
+            if not ev:
+                for cand in Event.search([('slug', '=', False)]):   # events created before slugs existed
+                    cand.ensure_slug()
+                ev = Event.search([('slug', '=', slug)], limit=1)
+            if not ev or ev.state != 'open':
+                return {'event': None, 'closed': bool(ev), 'events': []}
+        else:
+            opens = Event.search([('state', '=', 'open')], order='date, id')
+            opens.ensure_slug()
+            if len(opens) > 1:
+                return {'event': None, 'events': [
+                    {'name': e.name, 'slug': e.slug, 'date': fields.Date.to_string(e.date),
+                     'time': e.time_text or '', 'venue': e.venue or '',
+                     'reg_student_open': e.reg_student_open, 'reg_teacher_open': e.reg_teacher_open} for e in opens]}
+            ev = opens[:1]
+            if not ev:
+                return {'event': None, 'events': []}
         cats = ev.category_ids.filtered(lambda c: c.self_select)
         return {
-            'event': {'id': ev.id, 'name': ev.name, 'date': fields.Date.to_string(ev.date),
+            'event': {'id': ev.id, 'slug': ev.slug, 'name': ev.name, 'date': fields.Date.to_string(ev.date),
                       'time': ev.time_text or '', 'venue': ev.venue or '',
                       'reg_student_open': ev.reg_student_open, 'reg_teacher_open': ev.reg_teacher_open},
             'student_categories': [{'id': c.id, 'name': c.name, 'course_id': c.course_id.id or False, 'color': c.color}
@@ -315,13 +336,18 @@ class WinnersMeetApi(http.Controller):
         allowed = ('name', 'time_text', 'venue', 'state', 'reg_student_open', 'reg_teacher_open',
                    'teacher_needs_approval', 'frontend_url', 'frontend_url_teacher', 'wa_tpl_confirm', 'wa_tpl_seat',
                    'wa_msg_confirm', 'wa_msg_seat', 'wa_tpl_confirm_teacher', 'wa_tpl_seat_teacher',
-                   'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param')
+                   'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param', 'slug')
         vals = {k: body[k] for k in allowed if k in body}
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):
                 vals[key] = json.dumps({k: v for k, v in body[key].items()
                                         if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany')
                                         and v in ('off', 'optional', 'required')})
+        if vals.get('slug'):
+            clash = request.env['otm.wm.event'].search(
+                [('slug', '=', request.env['otm.wm.event']._slugify(vals['slug'])), ('id', '!=', _int(body.get('id'), 0))], limit=1)
+            if clash:
+                raise UserError(_("The public URL name '%s' is already used by another event.", vals['slug']))
         if 'time' in body:
             vals['time_text'] = body['time']
         if body.get('date'):
@@ -550,7 +576,7 @@ class WinnersMeetApi(http.Controller):
     # ============================================================ participants
     @api('/participants')
     def participants(self, body=None, event_id=None, kind=None, q=None, state=None, approval=None,
-                     category_id=None, hat=None, wa=None, offset=0, limit=50, **kw):
+                     category_id=None, hat=None, wa=None, trophy=None, order=None, offset=0, limit=50, **kw):
         _need_staff()
         ev = _event(event_id)
         domain = [('event_id', '=', ev.id)]
@@ -567,6 +593,8 @@ class WinnersMeetApi(http.Controller):
                 domain.append(('issue_ids', 'any', [('item_id', '=', _int(kw.get('item_id'))), ('state', '=', hat)]))
             else:
                 domain.append(('hat_state', '=', hat))
+        if trophy in ('pending', 'given'):
+            domain.append(('trophy_state', '=', trophy))
         if wa in ('queued', 'sent', 'failed', 'skipped'):
             domain.append(('wa_state', '=', wa))
         q = (q or '').strip()
@@ -579,7 +607,8 @@ class WinnersMeetApi(http.Controller):
         P_ = request.env['otm.wm.participant']
         limit = min(max(_int(limit, 50), 1), 200)
         recs = P_.search(domain, offset=max(_int(offset, 0), 0), limit=limit,
-                         order='approval_state desc, name' if approval == 'pending' else 'name, id')
+                         order=('category_id, seat_id, name' if order == 'stage' else
+                                'approval_state desc, name' if approval == 'pending' else 'name, id'))
         return {'total': P_.search_count(domain), 'rows': [_p(p) for p in recs]}
 
     @api('/participants/<int:pid>')
@@ -661,6 +690,36 @@ class WinnersMeetApi(http.Controller):
         p = _participant(pid)
         p.action_hat(body.get('action'), body.get('item_id'))
         return _p(p, detail=True)
+
+    @api('/participants/<int:pid>/trophy', methods=('POST',))
+    def participant_trophy(self, pid, body=None, **kw):
+        _need_staff()
+        p = _participant(pid)
+        p.action_trophy(bool(body.get('done', True)))
+        return _p(p, detail=True)
+
+    @api('/stage')
+    def stage(self, body=None, event_id=None, kind=None, **kw):
+        """Per-category headcount for the stage team: present now, collected, not arrived."""
+        _need_staff()
+        ev = _event(event_id)
+        P_ = request.env['otm.wm.participant']
+        base = [('event_id', '=', ev.id), ('approval_state', '=', 'approved')]
+        if kind in ('student', 'teacher'):
+            base.append(('kind', '=', kind))
+        out = []
+        for c in ev.category_ids:
+            if kind in ('student', 'teacher') and c.kind != kind:
+                continue
+            d = base + [('category_id', '=', c.id)]
+            present = P_.search_count(d + [('state', '=', 'checked_in'), ('trophy_state', '=', 'pending')])
+            collected = P_.search_count(d + [('trophy_state', '=', 'given')])
+            absent = P_.search_count(d + [('state', '=', 'registered')])
+            if present or collected or absent:
+                out.append({'id': c.id, 'name': c.full_name(), 'color': c.color or '#2563eb',
+                            'present': present, 'collected': collected, 'absent': absent})
+        return {'categories': out, 'present': sum(c['present'] for c in out),
+                'collected': sum(c['collected'] for c in out), 'absent': sum(c['absent'] for c in out)}
 
     @api('/participants/<int:pid>/delete', methods=('POST',))
     def participant_delete(self, pid, body=None, **kw):

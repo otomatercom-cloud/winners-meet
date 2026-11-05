@@ -23,8 +23,8 @@ function shrink(file: File): Promise<string> {
   });
 }
 
-export default function RegisterForm({ kind }: { kind: "student" | "teacher" }) {
-  const { data, loading } = useFetch<any>("/public/event");
+export default function RegisterForm({ kind, slug }: { kind: "student" | "teacher"; slug?: string }) {
+  const { data, loading } = useFetch<any>("/public/event", slug ? { slug } : undefined);
   const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", accompany_type: "none", accompany_count: "", photo: "" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -62,8 +62,18 @@ export default function RegisterForm({ kind }: { kind: "student" | "teacher" }) 
   if (loading) return <Spinner />;
   return (
     <main className="mx-auto min-h-screen max-w-lg px-4 py-8">
-      <Link href="/" className="mb-5 inline-flex items-center gap-2 text-sm text-slate-500"><Trophy className="h-4 w-4" /> {ev?.name || "Winners Meet"}</Link>
-      {!ev || !open ? (
+      <Link href={slug ? `/e/${slug}` : "/"} className="mb-5 inline-flex items-center gap-2 text-sm text-slate-500"><Trophy className="h-4 w-4" /> {ev?.name || "Winners Meet"}</Link>
+      {!ev && data?.events?.length ? (
+        <div className="space-y-3">
+          <p className="text-center text-sm text-slate-500">Choose your event to register</p>
+          {data.events.map((e: any) => (
+            <Link key={e.slug} href={`/e/${e.slug}/register${kind === "teacher" ? "/teacher" : ""}`} className="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-brand-500">
+              <div className="text-lg font-semibold">{e.name}</div>
+              <div className="mt-1 text-sm text-slate-500">{e.date}{e.venue ? ` · ${e.venue}` : ""}</div>
+            </Link>
+          ))}
+        </div>
+      ) : !ev || !open ? (
         <Card className="p-6 text-center text-slate-600">Registration is closed right now.</Card>
       ) : done ? (
         <Card className="p-8 text-center">

@@ -1,4 +1,5 @@
 import json
+import re
 
 from odoo import _, api, fields, models
 
@@ -55,6 +56,8 @@ class WmEvent(models.Model):
         string="Seat Template Has Hat Note",
         help="On: seat template has 5 variables (name, seat, event, hat note, link). "
              "Off: 4 variables (name, seat, event, link).")
+    slug = fields.Char(string="Public URL Name", index=True, copy=False,
+                       help="Used in the registration link: /e/<slug>/register. Letters, numbers and dashes.")
     form_student = fields.Text(string="Student Form Fields (JSON)")
     form_teacher = fields.Text(string="Teacher Form Fields (JSON)")
     item_ids = fields.One2many('otm.wm.item', 'event_id', string="Kit Items")
@@ -86,3 +89,37 @@ class WmEvent(models.Model):
             if saved.get(k) in ('off', 'optional', 'required'):
                 cfg[k] = saved[k]
         return cfg
+
+    _slug_uniq = models.Constraint('unique(slug)', 'This public URL name is already used by another event.')
+
+    @api.model
+    def _slugify(self, text):
+        return re.sub(r'[^a-z0-9]+', '-', (text or '').lower()).strip('-')[:60]
+
+    def ensure_slug(self):
+        """Give every event a unique, URL-safe name (events made before this feature get one lazily)."""
+        for rec in self.sudo():
+            if rec.slug:
+                continue
+            base = self._slugify(rec.name) or 'event'
+            slug, n = base, 2
+            while self.sudo().search_count([('slug', '=', slug), ('id', '!=', rec.id)]):
+                slug, n = '%s-%s' % (base, n), n + 1
+            rec.slug = slug
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('slug'):
+                vals['slug'] = self._slugify(vals['slug'])
+        recs = super().create(vals_list)
+        recs.ensure_slug()
+        return recs
+
+    def write(self, vals):
+        if 'slug' in vals:
+            vals['slug'] = self._slugify(vals['slug']) or False
+        res = super().write(vals)
+        if 'slug' in vals:
+            self.ensure_slug()
+        return res
