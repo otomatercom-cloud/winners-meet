@@ -4,7 +4,7 @@ import { CheckCircle2, RotateCcw, Trophy } from "lucide-react";
 import { api, useFetch } from "@/lib/api";
 import { Badge, Button, Card, Empty, ErrorBox, Modal, Spinner, cx, useToast } from "@/components/ui";
 
-type Item = { id: number; name: string; status: "gray" | "red" | "green"; seat: string; done: boolean };
+type Item = { id: number; name: string; status: "gray" | "red" | "green"; seat: string; done: boolean; origin?: string };
 type Group = { category_id: number; course: string; name: string; color: string; closed: boolean; total: number; done: number; rows: Item[][]; waiting: Item[] };
 type Board = { groups: Group[]; missed: Group };
 type Ask = { kind: "row" | "close"; title: string; text: string; note?: string; ids?: number[]; cat?: number };
@@ -72,10 +72,11 @@ export default function AnnounceBoard({ eventId }: { eventId: number }) {
               <div key={row.map((r) => r.id).join("-")} className={cx("rounded-xl border p-3", idx === 0 && g === shown[0].g ? "border-emerald-300 bg-emerald-50/40" : "border-slate-200")}>
                 <div className="grid grid-cols-2 gap-3">
                   {row.map((r) => (
-                    <div key={r.id} className={cx("min-w-0 rounded-lg p-3 ring-1", r.status === "green" ? "bg-white ring-slate-200" : r.status === "red" ? "bg-rose-50 ring-rose-300" : "bg-slate-50 ring-slate-300")}>
-                      <div className="flex items-center gap-2"><i className={cx("h-2.5 w-2.5 shrink-0 rounded-full", DOT[r.status])} /><span className={cx("truncate text-lg font-bold", r.status === "red" && "text-rose-700", r.status === "gray" && "text-slate-500")}>{r.name}</span></div>
+                    <div key={r.id} className={cx("min-w-0 rounded-lg p-3 ring-1", r.status === "green" ? "bg-emerald-50 ring-emerald-300" : r.status === "red" ? "bg-rose-50 ring-rose-300" : "bg-slate-50 ring-slate-300")}>
+                      {r.origin && <div className="mb-1 inline-block max-w-full truncate rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">{r.origin}</div>}
+                      <div className="flex items-center gap-2"><i className={cx("h-2.5 w-2.5 shrink-0 rounded-full", DOT[r.status])} /><span className={cx("truncate text-lg font-bold", r.status === "red" && "text-rose-700", r.status === "green" && "text-emerald-700", r.status === "gray" && "text-slate-500")}>{r.name}</span></div>
                       {r.status === "green"
-                        ? (r.seat && <div className="mt-0.5 text-xs text-slate-500">Seat {r.seat}</div>)
+                        ? (r.seat && <div className="mt-0.5 text-xs font-medium text-emerald-600">Seat {r.seat}</div>)
                         : <div className={cx("mt-0.5 text-xs font-medium", r.status === "red" ? "text-rose-600" : "text-slate-500")}>{r.status === "red" ? "Registered · not arrived" : "Not registered"}</div>}
                     </div>
                   ))}
@@ -90,7 +91,7 @@ export default function AnnounceBoard({ eventId }: { eventId: number }) {
             ))}
             {g.waiting.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500"><span>Not in the hall:</span>
-                {g.waiting.map((w) => <span key={w.id} className={cx("rounded-full px-2 py-0.5 font-medium", CHIP[w.status])}>{w.name}</span>)}
+                {g.waiting.map((w) => <span key={w.id} className={cx("rounded-full px-2 py-0.5 font-medium", CHIP[w.status])}>{w.name}{w.origin ? ` (${w.origin})` : ""}</span>)}
               </div>
             )}
           </div>

@@ -833,7 +833,10 @@ class WinnersMeetApi(http.Controller):
                 continue
             pairs = [(e, item(e, link(e))) for e in entries]
             pend = [(e, it) for e, it in pairs if not it['done']]
-            missed_pairs += [(e, it) for e, it in pend if e.missed]
+            for e, it in pend:
+                if e.missed:
+                    it['origin'] = ' · '.join(x for x in (c.course_id.name, c.name) if x)
+                    missed_pairs.append((e, it))
             rows, waiting = rows_of([(e, it) for e, it in pend if not e.missed])
             groups.append({'category_id': c.id, 'course': c.course_id.name or '', 'name': c.name, 'color': c.color or '#2563eb',
                            'closed': bool(c.stage_closed), 'total': len(pairs), 'done': len(pairs) - len(pend),
