@@ -11,6 +11,7 @@ class WmSeatBlock(models.Model):
 
     event_id = fields.Many2one('otm.wm.event', required=True, ondelete='cascade', index=True)
     sequence = fields.Integer(default=10, help="Display order on the seat map (stage side first).")
+    is_demo = fields.Boolean(default=False, copy=False)
     name = fields.Char(required=True)
     prefix = fields.Char(required=True, default='S', help="Seat label = prefix + number, e.g. S45")
     start_no = fields.Integer(string="Start Seat", required=True, default=1)

@@ -10,6 +10,7 @@ class WmCourse(models.Model):
     name = fields.Char(string="Course Name", required=True)
     code = fields.Char()
     sequence = fields.Integer(default=10)
+    is_demo = fields.Boolean(default=False, copy=False)
     category_ids = fields.One2many('otm.wm.category', 'course_id', string="Subcategories")
 
     _name_uniq = models.Constraint('unique(event_id, name)', 'Course name must be unique per event.')

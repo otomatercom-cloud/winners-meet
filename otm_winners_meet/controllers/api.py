@@ -874,6 +874,22 @@ class WinnersMeetApi(http.Controller):
             raise MissingError(_("Category not found."))
         return c.action_stage_reopen()
 
+    # ============================================================ demo data
+    @api('/demo/status')
+    def demo_status(self, body=None, event_id=None, **kw):
+        _need_manager()
+        return _event(event_id).demo_counts()
+
+    @api('/demo/load', methods=('POST',))
+    def demo_load(self, body=None, **kw):
+        _need_manager()
+        return _event(body.get('event_id')).action_demo_load()
+
+    @api('/demo/delete', methods=('POST',))
+    def demo_delete(self, body=None, **kw):
+        _need_manager()
+        return _event(body.get('event_id')).action_demo_delete()
+
     # ============================================================ stage staff WhatsApp numbers
     @api('/staff-contacts')
     def staff_contacts(self, body=None, event_id=None, **kw):
@@ -917,8 +933,10 @@ class WinnersMeetApi(http.Controller):
                 name = ' '.join(str(row.get('name') or '').split())
                 ctxt = str(row.get('course') or '').strip().lower()
                 stxt = str(row.get('category') or '').strip().lower()
-                found = [c for c in scats if c.name.strip().lower() == stxt
-                         and (not ctxt or c.course_id.name.strip().lower() == ctxt)]
+                named = [c for c in scats if c.name.strip().lower() == stxt]
+                found = [c for c in named if not ctxt or (c.course_id.name or '').strip().lower() == ctxt]
+                if not found and ctxt:
+                    found = [c for c in named if not c.course_id]      # category created without a course
                 if len(found) > 1:
                     raise UserError(_("'%s' exists in several courses - add the Course column", row.get('category') or ''))
                 cat = found[0] if found else request.env['otm.wm.category']

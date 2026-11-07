@@ -422,3 +422,23 @@ class TestWinnersMeet(TransactionCase):
                                   'claimed_category_id': cat.id})
         self.assertEqual(stranger.match_status, 'not_listed')
         self.assertEqual(Exp._status(Exp._link_map(ev)(e2)), 'red')     # registered (pending review), not arrived
+
+    def test_demo_load_and_delete(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Demo Show', 'state': 'open'})
+        self.env['otm.wm.staff'].create({'event_id': ev.id, 'name': 'S', 'phone': '9876500555'})
+        res = ev.action_demo_load()
+        self.assertEqual(res, {'people': 10, 'winners': 13})
+        with self.assertRaises(UserError):
+            ev.action_demo_load()
+        Exp, Log = self.env['otm.wm.expected'], self.env['otm.wm.message.log']
+        link = Exp._link_map(ev)
+        status = [Exp._status(link(e)) for e in Exp.search([('event_id', '=', ev.id)])]
+        self.assertEqual({s: status.count(s) for s in set(status)}, {'green': 8, 'red': 2, 'gray': 3})
+        self.assertEqual(Log.search_count([('event_id', '=', ev.id)]), 0)       # demo never messages
+        cat = self.env['otm.wm.category'].search([('event_id', '=', ev.id), ('name', 'like', 'Fully')])
+        cat.action_stage_close()
+        self.assertEqual(Log.search_count([('event_id', '=', ev.id)]), 0)
+        self.assertEqual(ev.action_demo_delete(), {'people': 0, 'winners': 0})
+        self.assertFalse(self.env['otm.wm.course'].search([('event_id', '=', ev.id)]))
+        self.assertFalse(self.env['otm.wm.seat.block'].search([('event_id', '=', ev.id)]))
+        self.assertTrue(ev.staff_ids)                                           # real data untouched

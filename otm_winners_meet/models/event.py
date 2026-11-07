@@ -1,6 +1,7 @@
 import json
 import re
 
+from odoo.exceptions import UserError
 from odoo import _, api, fields, models
 
 # Registration form fields an admin can switch: off / optional / required.
@@ -132,3 +133,67 @@ class WmEvent(models.Model):
         if 'slug' in vals:
             self.ensure_slug()
         return res
+
+
+    # ------------------------------------------------------------ demo data
+    def demo_counts(self):
+        self.ensure_one()
+        return {
+            'people': self.env['otm.wm.participant'].sudo().search_count([('event_id', '=', self.id), ('is_demo', '=', True)]),
+            'winners': self.env['otm.wm.expected'].sudo().search_count([('event_id', '=', self.id), ('is_demo', '=', True)]),
+        }
+
+    def action_demo_load(self):
+        """Fake courses, categories, winners list and attendees to try the stage screens. Never sends WhatsApp."""
+        self.ensure_one()
+        if self.demo_counts()['winners']:
+            raise UserError(_("Demo data is already loaded. Delete it first to load it again."))
+        env = self.env
+        Block, Course, Cat = env['otm.wm.seat.block'].sudo(), env['otm.wm.course'].sudo(), env['otm.wm.category'].sudo()
+        Exp, Part = env['otm.wm.expected'].sudo(), env['otm.wm.participant'].sudo()
+        if Block.search_count([('event_id', '=', self.id), ('prefix', '=', 'DM')]):
+            raise UserError(_("Seat prefix 'DM' is already used in this event."))
+        block = Block.create({'event_id': self.id, 'name': 'DEMO seats', 'prefix': 'DM', 'start_no': 1, 'end_no': 40,
+                              'row_layout': '5,5', 'row_names': 'A,B,C,D', 'sequence': 900, 'is_demo': True})
+        plan = [
+            ('DEMO · CMA USA', 1, [('Fully Qualified (Demo)', 10, '#4f46e5', [
+                ('Anita Menon', 'in', '9000000001'), ('Rahul Nair', 'in', '9000000002'), ('Sneha Pillai', 'reg', '9000000003'),
+                ('Arjun Das', 'none', None), ('Meera Joseph', 'in', ''), ('Fahad Ali', 'done', '9000000006')]),
+                ('Partly Qualified (Demo)', 20, '#059669', [
+                    ('Kiran Raj', 'in', '9000000011'), ('Divya Suresh', 'in', ''), ('Faisal K', 'reg', '9000000013'),
+                    ('Lakshmi Prakash', 'none', None)])]),
+            ('DEMO · ACCA', 2, [('Gold (Demo)', 10, '#d97706', [
+                ('Thomas George', 'in', '9000000021'), ('Neha Varma', 'in', '9000000022'), ('Vishnu Mohan', 'none', None)])]),
+        ]
+        n = 0
+        for cname, cseq, cats in plan:
+            course = Course.create({'event_id': self.id, 'name': cname, 'sequence': 900 + cseq, 'is_demo': True})
+            for catname, seq, color, people in cats:
+                cat = Cat.create({'event_id': self.id, 'name': catname, 'course_id': course.id, 'sequence': seq, 'color': color,
+                                  'seat_block_id': block.id, 'self_select': False, 'is_demo': True})
+                for i, (name, mode, phone) in enumerate(people):
+                    n += 1
+                    entry = Exp.create({'event_id': self.id, 'name': name, 'category_id': cat.id, 'sequence': 10 * (i + 1),
+                                        'phone': phone or False, 'is_demo': True})
+                    if mode == 'none':
+                        continue
+                    p = Part.create({'event_id': self.id, 'kind': 'student', 'name': name,
+                                     'phone': phone or '90000001%02d' % n, 'category_id': cat.id,
+                                     'claimed_category_id': cat.id, 'approval_state': 'approved',
+                                     'expected_id': entry.id, 'is_demo': True, 'registered_via': 'admin'})
+                    if mode in ('in', 'done'):
+                        p.action_check_in()
+                    if mode == 'done':
+                        p.action_trophy(True)
+        return self.demo_counts()
+
+    def action_demo_delete(self):
+        self.ensure_one()
+        env = self.env
+        dom = [('event_id', '=', self.id), ('is_demo', '=', True)]
+        env['otm.wm.participant'].sudo().search(dom).unlink()
+        env['otm.wm.expected'].sudo().search(dom).unlink()
+        env['otm.wm.category'].sudo().search(dom).unlink()
+        env['otm.wm.course'].sudo().search(dom).unlink()
+        env['otm.wm.seat.block'].sudo().search(dom).unlink()
+        return self.demo_counts()

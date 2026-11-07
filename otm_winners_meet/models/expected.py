@@ -15,6 +15,7 @@ class WmExpected(models.Model):
         'otm.wm.category', required=True, ondelete='restrict',
         domain="[('event_id', '=', event_id), ('kind', '=', 'student')]")
 
+    is_demo = fields.Boolean(default=False, copy=False)
     sequence = fields.Integer(default=100, help="Announcement order inside the category (lower = called first).")
     missed = fields.Boolean(default=False, copy=False, help="Was not on stage when the category was announced; collects at the very end.")
     missed_on = fields.Datetime(copy=False)

@@ -20,6 +20,8 @@ export default function Winners() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<any>(null);
   const { data, error, loading, reload } = useFetch<any[]>(eventId ? "/expected" : null, { event_id: eventId }, 15000);
+  const demo = useFetch<{ people: number; winners: number }>(eventId ? "/demo/status" : null, { event_id: eventId });
+  const [demoBusy, setDemoBusy] = useState(false);
   if (!me?.manager) return <Empty>Administrators only.</Empty>;
 
   const read = async (f: File) => {
@@ -43,10 +45,24 @@ export default function Winners() {
   };
   const setOrder = async (id: number, sequence: number) => { try { await api("/expected/order", { method: "POST", body: { id, sequence } }); reload(); } catch (e: any) { toast(e.message, "err"); } };
   const del = async (id: number) => { try { await api("/expected/delete", { method: "POST", body: { id } }); reload(); } catch (e: any) { toast(e.message, "err"); } };
+  const runDemo = async (kind: "load" | "delete") => {
+    if (kind === "delete" && !confirm("Delete all demo winners, demo people, demo categories and demo seats? Your real data is not touched.")) return;
+    setDemoBusy(true);
+    try { await api(`/demo/${kind}`, { method: "POST", body: { event_id: eventId } }); toast(kind === "load" ? "Demo data loaded" : "Demo data deleted"); reload(); demo.reload(); }
+    catch (e: any) { toast(e.message, "err"); }
+    setDemoBusy(false);
+  };
   const registered = (data || []).filter((r) => r.registered).length;
   return (
     <div>
       <PageHeader title="Winners list" subtitle="The list is also the announcement order (course, category, then this number). Red = registered, not arrived · Green = in the hall · Gray = not registered." actions={<Button variant="secondary" size="sm" onClick={template}><Download className="h-4 w-4" /> Template</Button>} />
+      <Card className="mb-5 flex flex-wrap items-center justify-between gap-3 border-dashed p-4">
+        <div className="text-sm"><div className="font-semibold">Demo data</div><div className="text-slate-500">{demo.data?.winners ? `${demo.data.winners} demo winners · ${demo.data.people} demo people loaded. No WhatsApp is ever sent for demo people.` : "Try the winners list, colours and Stage announcement with fake data. Delete it with one click."}</div></div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="secondary" loading={demoBusy} disabled={!!demo.data?.winners} onClick={() => runDemo("load")}>Load demo data</Button>
+          <Button size="sm" variant="secondary" loading={demoBusy} disabled={!demo.data?.winners} onClick={() => runDemo("delete")}>Delete demo data</Button>
+        </div>
+      </Card>
       <Card className="mb-5 p-5">
         <input ref={file} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
         {!rows.length ? (

@@ -15,6 +15,7 @@ class WmCategory(models.Model):
     kind = fields.Selection(
         [('student', 'Student'), ('teacher', 'Teacher')], required=True, default='student')
     sequence = fields.Integer(default=10)
+    is_demo = fields.Boolean(default=False, copy=False)
     color = fields.Char(default='#2563eb')
     stage_closed = fields.Boolean(string="Announcement Complete", copy=False)
     stage_closed_on = fields.Datetime(copy=False)

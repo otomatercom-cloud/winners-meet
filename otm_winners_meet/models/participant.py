@@ -25,6 +25,7 @@ class WmParticipant(models.Model):
         [('student', 'Student'), ('teacher', 'Teacher')], required=True, default='student', index=True)
     name = fields.Char(required=True)
     phone = fields.Char(required=True, index=True)
+    is_demo = fields.Boolean(default=False, copy=False, help="Demo record: never sends WhatsApp.")
     place = fields.Char()
     instagram = fields.Char(string="Instagram ID", help="Without the @. Used to tag the person in event photos.")
     institution = fields.Char()

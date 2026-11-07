@@ -103,6 +103,8 @@ class WmMessageLog(models.Model):
     @api.model
     def _queue_for(self, participant, mtype, force=False):
         participant = participant.sudo()
+        if participant.is_demo:
+            return self.browse()          # demo people never get a real WhatsApp
         event = participant.event_id
         cfg = self._get_config()
         teacher = participant.kind == 'teacher'
@@ -168,6 +170,8 @@ class WmMessageLog(models.Model):
 
     @api.model
     def _notify_stage_done(self, category, collected, missed):
+        if category.is_demo:
+            return
         event = category.event_id
         name = category.full_name()
         text = render_message(DEFAULT_STAGE_DONE_MSG, {'category': name, 'event': event.name,
@@ -177,6 +181,8 @@ class WmMessageLog(models.Model):
 
     @api.model
     def _notify_stage_late(self, expected, participant):
+        if participant.is_demo:
+            return
         event = expected.event_id
         name = expected.category_id.full_name()
         text = render_message(DEFAULT_STAGE_LATE_MSG, {'name': participant.name, 'category': name, 'event': event.name})
