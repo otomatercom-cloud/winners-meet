@@ -7,6 +7,7 @@ import { Badge, Button, Card, Empty, ErrorBox, Modal, Spinner, cx, useToast } fr
 type Item = { id: number; name: string; status: "gray" | "red" | "green"; seat: string; done: boolean };
 type Group = { category_id: number; course: string; name: string; color: string; closed: boolean; total: number; done: number; rows: Item[][]; waiting: Item[] };
 type Board = { groups: Group[]; missed: Group };
+type Ask = { kind: "row" | "close"; title: string; text: string; note?: string; ids?: number[]; cat?: number };
 const DOT = { gray: "bg-slate-400", red: "bg-rose-500", green: "bg-emerald-500" } as const;
 const CHIP = { gray: "bg-slate-100 text-slate-600", red: "bg-rose-100 text-rose-700", green: "bg-emerald-100 text-emerald-700" } as const;
 
@@ -15,15 +16,20 @@ export default function AnnounceBoard({ eventId }: { eventId: number }) {
   const toast = useToast();
   const { data, error, loading, reload } = useFetch<Board>("/stage/board", { event_id: eventId }, 4000);
   const [limit, setLimit] = useState(5);
-  const [ask, setAsk] = useState<null | { kind: "row" | "close"; title: string; text: string; ids?: number[]; cat?: number }>(null);
+  const [ask, setAsk] = useState<Ask | null>(null);
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
     if (!ask) return;
     setBusy(true);
     try {
-      if (ask.kind === "row") { await api("/stage/row/complete", { method: "POST", body: { expected_ids: ask.ids } }); toast("Trophy collected"); }
-      else { const r = await api<{ collected: number; missed: number }>("/stage/category/close", { method: "POST", body: { category_id: ask.cat } }); toast(`Category complete · ${r.missed} moved to Missed`); }
+      if (ask.kind === "row") {
+        const r = await api<{ collected: number; missed: number }>("/stage/row/complete", { method: "POST", body: { expected_ids: ask.ids } });
+        toast(`${r.collected} collected${r.missed ? ` · ${r.missed} moved to Missed` : ""}`);
+      } else {
+        const r = await api<{ collected: number; missed: number }>("/stage/category/close", { method: "POST", body: { category_id: ask.cat } });
+        toast(`Category complete · ${r.missed} moved to Missed`);
+      }
       setAsk(null); reload();
     } catch (e: any) { toast(e.message, "err"); }
     setBusy(false);
@@ -63,17 +69,23 @@ export default function AnnounceBoard({ eventId }: { eventId: number }) {
           <div className="space-y-3 p-4">
             {take.length === 0 && <p className="text-sm text-slate-500">Nobody from this category is in the hall right now.</p>}
             {take.map((row, idx) => (
-              <div key={row.map((r) => r.id).join("-")} className={cx("rounded-xl border p-3", idx === 0 && used > 0 && g === shown[0].g ? "border-emerald-300 bg-emerald-50/40" : "border-slate-200")}>
+              <div key={row.map((r) => r.id).join("-")} className={cx("rounded-xl border p-3", idx === 0 && g === shown[0].g ? "border-emerald-300 bg-emerald-50/40" : "border-slate-200")}>
                 <div className="grid grid-cols-2 gap-3">
                   {row.map((r) => (
-                    <div key={r.id} className="min-w-0 rounded-lg bg-white p-3 ring-1 ring-slate-200">
-                      <div className="flex items-center gap-2"><i className={cx("h-2.5 w-2.5 shrink-0 rounded-full", DOT[r.status])} /><span className="truncate text-lg font-bold">{r.name}</span></div>
-                      {r.seat && <div className="mt-0.5 text-xs text-slate-500">Seat {r.seat}</div>}
+                    <div key={r.id} className={cx("min-w-0 rounded-lg p-3 ring-1", r.status === "green" ? "bg-white ring-slate-200" : r.status === "red" ? "bg-rose-50 ring-rose-300" : "bg-slate-50 ring-slate-300")}>
+                      <div className="flex items-center gap-2"><i className={cx("h-2.5 w-2.5 shrink-0 rounded-full", DOT[r.status])} /><span className={cx("truncate text-lg font-bold", r.status === "red" && "text-rose-700", r.status === "gray" && "text-slate-500")}>{r.name}</span></div>
+                      {r.status === "green"
+                        ? (r.seat && <div className="mt-0.5 text-xs text-slate-500">Seat {r.seat}</div>)
+                        : <div className={cx("mt-0.5 text-xs font-medium", r.status === "red" ? "text-rose-600" : "text-slate-500")}>{r.status === "red" ? "Registered · not arrived" : "Not registered"}</div>}
                     </div>
                   ))}
                   {row.length === 1 && <div />}
                 </div>
-                <Button size="lg" variant="success" className="mt-3 w-full" onClick={() => setAsk({ kind: "row", ids: row.map((r) => r.id), title: "Trophy collected?", text: row.map((r) => r.name).join("  &  ") })}><Trophy className="h-5 w-5" /> Row complete</Button>
+                <Button size="lg" variant="success" className="mt-3 w-full" onClick={() => setAsk({
+                  kind: "row", ids: row.map((r) => r.id), title: "Row complete?",
+                  text: row.filter((r) => r.status === "green").map((r) => r.name).join("  &  ") || "Nobody in this row is in the hall",
+                  note: row.some((r) => r.status !== "green") ? `Not here, moves to the Missed list: ${row.filter((r) => r.status !== "green").map((r) => r.name).join(", ")}` : "",
+                })}><Trophy className="h-5 w-5" /> Row complete</Button>
               </div>
             ))}
             {g.waiting.length > 0 && (
@@ -88,8 +100,11 @@ export default function AnnounceBoard({ eventId }: { eventId: number }) {
       {limit > 5 && hidden <= 0 && <Button variant="ghost" className="w-full" onClick={() => setLimit(5)}>Show fewer</Button>}
 
       <Modal open={!!ask} onClose={() => !busy && setAsk(null)} title={ask?.title || ""}>
-        <div className="space-y-4"><p className="text-lg font-semibold">{ask?.text}</p>
-          <div className="grid grid-cols-2 gap-3"><Button variant="secondary" size="lg" onClick={() => setAsk(null)}>Cancel</Button><Button size="lg" variant="success" loading={busy} onClick={run}>Yes, confirm</Button></div></div>
+        <div className="space-y-4">
+          <p className="text-lg font-semibold">{ask?.text}</p>
+          {ask?.note && <p className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{ask.note}</p>}
+          <div className="grid grid-cols-2 gap-3"><Button variant="secondary" size="lg" onClick={() => setAsk(null)}>Cancel</Button><Button size="lg" variant="success" loading={busy} onClick={run}>Yes, confirm</Button></div>
+        </div>
       </Modal>
     </div>
   );

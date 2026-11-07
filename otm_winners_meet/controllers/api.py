@@ -819,10 +819,12 @@ class WinnersMeetApi(http.Controller):
         for e in Exp.search([('event_id', '=', ev.id)]):
             by_cat.setdefault(e.category_id.id, []).append(e)
 
-        def rows_of(pairs):
-            ready = [it for _e, it in pairs if it['status'] == 'green']
-            waiting = [it for _e, it in pairs if it['status'] != 'green']
-            return [ready[i:i + 2] for i in range(0, len(ready), 2)], waiting
+        def rows_of(pairs, only_here=False):
+            """Two per row in list order. Normal groups keep everybody (absent ones show red in their own row);
+            the Missed group only lists people who are in the hall now."""
+            show = [it for _e, it in pairs if (it['status'] == 'green' or not only_here)]
+            waiting = [it for _e, it in pairs if only_here and it['status'] != 'green']
+            return [show[i:i + 2] for i in range(0, len(show), 2)], waiting
 
         groups, missed_pairs = [], []
         for c in cats:
@@ -837,7 +839,7 @@ class WinnersMeetApi(http.Controller):
                            'closed': bool(c.stage_closed), 'total': len(pairs), 'done': len(pairs) - len(pend),
                            'rows': rows, 'waiting': waiting})
         missed_pairs.sort(key=lambda t: (t[0].missed_on or fields.Datetime.now(), t[0].id))
-        rows, waiting = rows_of(missed_pairs)
+        rows, waiting = rows_of(missed_pairs, only_here=True)
         return {'groups': groups, 'missed': {'category_id': 0, 'course': '', 'name': 'Missed / Late collection',
                                              'color': '#f59e0b', 'closed': False, 'total': len(missed_pairs), 'done': 0,
                                              'rows': rows, 'waiting': waiting}}
@@ -850,13 +852,18 @@ class WinnersMeetApi(http.Controller):
         if not exps:
             raise UserError(_("Nothing to complete."))
         link = Exp._link_map(exps[0].event_id)
+        now = fields.Datetime.now()
+        collected = skipped = 0
         for e in exps:
             p = link(e)
-            if not p:
-                raise UserError(_("%s is not registered.", e.name))
-            p.action_trophy(True)
+            if p and p.state == 'checked_in':
+                p.action_trophy(True)
+                collected += 1
+            elif not e.missed:                   # not in the hall: moves to the Missed list at the very end
+                e.sudo().write({'missed': True, 'missed_on': now})
+                skipped += 1
         exps.category_id.sudo()._stage_autoclose()
-        return {'completed': len(exps)}
+        return {'completed': len(exps), 'collected': collected, 'missed': skipped}
 
     @api('/stage/category/close', methods=('POST',))
     def stage_category_close(self, body=None, **kw):

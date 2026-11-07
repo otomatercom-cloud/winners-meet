@@ -442,3 +442,22 @@ class TestWinnersMeet(TransactionCase):
         self.assertFalse(self.env['otm.wm.course'].search([('event_id', '=', ev.id)]))
         self.assertFalse(self.env['otm.wm.seat.block'].search([('event_id', '=', ev.id)]))
         self.assertTrue(ev.staff_ids)                                           # real data untouched
+
+    def test_stage_row_skips_absent(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Row Show', 'state': 'open'})
+        self.env['otm.wm.staff'].create({'event_id': ev.id, 'name': 'S', 'phone': '9876500556'})
+        blk = self.env['otm.wm.seat.block'].create({'event_id': ev.id, 'name': 'B', 'prefix': 'R', 'start_no': 1, 'end_no': 10})
+        cat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'Gold', 'seat_block_id': blk.id})
+        Exp = self.env['otm.wm.expected']
+        a = Exp.create({'event_id': ev.id, 'name': 'Here One', 'category_id': cat.id, 'phone': '9876500601', 'sequence': 1})
+        b = Exp.create({'event_id': ev.id, 'name': 'Absent Two', 'category_id': cat.id, 'phone': '9876500602', 'sequence': 2})
+        pa = self.P.create({'event_id': ev.id, 'kind': 'student', 'name': a.name, 'phone': a.phone, 'category_id': cat.id,
+                            'approval_state': 'approved', 'expected_id': a.id})
+        pb = self.P.create({'event_id': ev.id, 'kind': 'student', 'name': b.name, 'phone': b.phone, 'category_id': cat.id,
+                            'approval_state': 'approved', 'expected_id': b.id})
+        pa.action_check_in()
+        pa.action_trophy(True)                        # what "Row complete" does for the person in the hall
+        b.write({'missed': True, 'missed_on': '2026-11-07 10:00:00'})   # ... and for the one who is absent
+        pb.action_check_in()                          # arrives later: goes to Missed + staff are told
+        self.assertEqual(self.env['otm.wm.message.log'].search_count(
+            [('event_id', '=', ev.id), ('message_type', '=', 'stage_late')]), 1)

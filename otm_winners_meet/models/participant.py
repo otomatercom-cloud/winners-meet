@@ -325,7 +325,7 @@ class WmParticipant(models.Model):
         self.ensure_one()
         Exp = self.env['otm.wm.expected'].sudo()
         exp = self.expected_id or Exp.search([('event_id', '=', self.event_id.id), ('phone', '=', self.phone)], limit=1)
-        if exp and exp.category_id.stage_closed and self.trophy_state != 'given':
+        if exp and (exp.missed or exp.category_id.stage_closed) and self.trophy_state != 'given':
             if not exp.missed:
                 exp.write({'missed': True, 'missed_on': fields.Datetime.now()})
             self.env['otm.wm.message.log']._notify_stage_late(exp, self)
