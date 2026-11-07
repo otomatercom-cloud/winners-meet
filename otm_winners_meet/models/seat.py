@@ -142,6 +142,19 @@ class WmSeat(models.Model):
             size = seat.block_id.row_size
             seat.row_no = ((seat.number - seat.block_id.start_no) // size + 1) if size else 0
 
+    def check_for_category(self, category):
+        """Raise unless this seat belongs to the category's block and seat range (no limits set = any seat)."""
+        self.ensure_one()
+        if not category or not category.seat_block_id:
+            return True
+        blk, lo, hi = category.seat_block_id, category.seat_from, category.seat_to
+        if self.block_id != blk:
+            raise ValidationError(_("Seat %(s)s is not in block '%(b)s' of category '%(c)s'.", s=self.label, b=blk.name, c=category.name))
+        if (lo and self.number < lo) or (hi and self.number > hi):
+            raise ValidationError(_("Seat %(s)s is outside the seats of category '%(c)s' (%(a)s-%(z)s).",
+                                    s=self.label, c=category.name, a=lo or blk.start_no, z=hi or blk.end_no))
+        return True
+
     def row_name(self):
         """Name of this seat's row: the custom name if the block has one, else the row number."""
         if not self or not self.row_no:

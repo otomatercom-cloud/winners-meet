@@ -238,6 +238,12 @@ class WmParticipant(models.Model):
              LIMIT %s""", [block.id, lo or 0, lo or 0, hi or 0, hi or 0, limit])
         return [r[0] for r in self.env.cr.fetchall()]
 
+    @api.constrains('reserved_seat_id', 'category_id')
+    def _check_reserved_in_category(self):
+        for rec in self:
+            if rec.reserved_seat_id and rec.category_id:
+                rec.reserved_seat_id.check_for_category(rec.category_id)
+
     def _preset_seat(self):
         """Seat fixed in advance: the participant's own, else the one on their winners-list entry."""
         self.ensure_one()
@@ -272,11 +278,13 @@ class WmParticipant(models.Model):
                 self.invalidate_recordset(['seat_id'])
         raise UserError(_("Many people are checking in at once. Please tap Check-in again."))
 
-    def _assign_manual_seat(self, seat_id):
+    def _assign_manual_seat(self, seat_id, override=False):
         self.ensure_one()
         seat = self.env['otm.wm.seat'].browse(int(seat_id)).exists()
         if not seat or seat.event_id != self.event_id:
             raise UserError(_("Invalid seat."))
+        if not override:
+            seat.check_for_category(self.category_id)
         self.env.cr.execute("SELECT id FROM otm_wm_seat WHERE id = %s FOR UPDATE", [seat.id])
         if seat.blocked:
             raise UserError(_("Seat %s is blocked.", seat.label))
@@ -293,7 +301,7 @@ class WmParticipant(models.Model):
         return seat
 
     # ------------------------------------------------------------ check-in
-    def action_check_in(self, seat_id=None):
+    def action_check_in(self, seat_id=None, override=False):
         """Check in one participant. Idempotent. Returns {'already': bool}."""
         self.ensure_one()
         self._lock_row()
@@ -304,9 +312,9 @@ class WmParticipant(models.Model):
         cat = self.category_id
         preset = self._preset_seat()
         if seat_id:
-            self._assign_manual_seat(seat_id)
+            self._assign_manual_seat(seat_id, override=override)
         elif preset:
-            self._assign_manual_seat(preset.id)
+            self._assign_manual_seat(preset.id, override=True)  # reserved seats were validated when reserved
         elif cat.seat_block_id and cat.seat_mode == 'auto':
             self._assign_auto_seat(cat.seat_block_id, cat.seat_from, cat.seat_to)
         elif cat.seat_mode == 'manual':
@@ -330,14 +338,14 @@ class WmParticipant(models.Model):
                 exp.write({'missed': True, 'missed_on': fields.Datetime.now()})
             self.env['otm.wm.message.log']._notify_stage_late(exp, self)
 
-    def action_change_seat(self, seat_id):
+    def action_change_seat(self, seat_id, override=False):
         self.ensure_one()
         self._lock_row()
         if self.approval_state != 'approved':
             raise UserError(_("%s is not approved.", self.name))
         if self.seat_id and self.seat_id.id == int(seat_id):
             return True
-        self._assign_manual_seat(seat_id)
+        self._assign_manual_seat(seat_id, override=override)
         if self.state == 'checked_in':
             self._queue_message('seat')
         return True

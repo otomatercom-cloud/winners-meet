@@ -26,6 +26,12 @@ class WmExpected(models.Model):
         help="Pre-set seat. The student gets exactly this seat at check-in.")
 
     _phone_uniq = models.Constraint('unique(event_id, phone)', 'This phone is already in the expected list.')
+    @api.constrains('reserved_seat_id', 'category_id')
+    def _check_reserved_in_category(self):
+        for rec in self:
+            if rec.reserved_seat_id and rec.category_id:
+                rec.reserved_seat_id.check_for_category(rec.category_id)
+
     _seat_uniq = models.Constraint('unique(reserved_seat_id)', 'This seat is already reserved for another winner.')
 
     @api.model

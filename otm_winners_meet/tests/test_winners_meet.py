@@ -348,6 +348,41 @@ class TestWinnersMeet(TransactionCase):
         with self.assertRaises(Exception), self.env.cr.savepoint():
             cat.seat_to = 100
 
+    def test_seat_range_enforced_everywhere(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Strict Show'})
+        blk = self.env['otm.wm.seat.block'].create({'event_id': ev.id, 'name': 'Bal', 'prefix': 'Y', 'start_no': 460, 'end_no': 520})
+        other = self.env['otm.wm.seat.block'].create({'event_id': ev.id, 'name': 'Oth', 'prefix': 'O', 'start_no': 1, 'end_no': 10})
+        cat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'CMA USA', 'kind': 'student', 'seat_mode': 'manual',
+                                                  'seat_block_id': blk.id, 'seat_from': 469, 'seat_to': 476})
+        seat = {x.number: x for x in blk.seat_ids}
+        P = self.env['otm.wm.participant']
+        p = P.create({'event_id': ev.id, 'name': 'S1', 'phone': '919900100001', 'kind': 'student',
+                      'category_id': cat.id, 'approval_state': 'approved'})
+        # manual pick outside range / other block is refused, inside works
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            p.action_check_in(seat_id=seat[460].id)
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            p.action_check_in(seat_id=other.seat_ids[0].id)
+        p.action_check_in(seat_id=seat[470].id)
+        self.assertEqual(p.seat_id.number, 470)
+        # change seat: same rules; manager override allowed
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            p.action_change_seat(seat[500].id)
+        p.action_change_seat(seat[500].id, override=True)
+        self.assertEqual(p.seat_id.number, 500)
+        # reserved seat on participant and on winners-list entry (covers Excel import too)
+        p2 = P.create({'event_id': ev.id, 'name': 'S2', 'phone': '919900100002', 'kind': 'student',
+                       'category_id': cat.id, 'approval_state': 'approved'})
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            p2.write({'reserved_seat_id': seat[512].id})
+        p2.write({'reserved_seat_id': seat[472].id})
+        Exp = self.env['otm.wm.expected']
+        with self.assertRaises(ValidationError), self.env.cr.savepoint():
+            Exp.create({'event_id': ev.id, 'name': 'W1', 'phone': '919900100003', 'category_id': cat.id,
+                        'reserved_seat_id': seat[477].id})
+        Exp.create({'event_id': ev.id, 'name': 'W2', 'phone': '919900100004', 'category_id': cat.id,
+                    'reserved_seat_id': seat[476].id})
+
     def test_row_names_and_instagram(self):
         ev = self.env['otm.wm.event'].create({'name': 'Names Show'})
         b = self.env['otm.wm.seat.block'].create({'event_id': ev.id, 'name': 'N', 'prefix': 'N', 'start_no': 1, 'end_no': 30,
