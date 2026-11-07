@@ -402,3 +402,23 @@ class TestWinnersMeet(TransactionCase):
         cat2._stage_autoclose()
         self.assertTrue(cat2.stage_closed)
         self.assertFalse(e2.missed)
+
+    def test_winners_list_without_phone(self):
+        ev = self.env['otm.wm.event'].create({'name': 'NoPhone Show', 'state': 'open'})
+        cat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'Fully Qualified'})
+        other = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'Partly Qualified'})
+        Exp = self.env['otm.wm.expected']
+        e1 = Exp.create({'event_id': ev.id, 'name': 'Vaiga P Ajesh', 'category_id': cat.id})
+        e2 = Exp.create({'event_id': ev.id, 'name': 'Advaith', 'category_id': cat.id, 'phone': ''})
+        self.assertFalse(e1.phone)
+        p = self.P.create({'event_id': ev.id, 'kind': 'student', 'name': 'Vaiga P Ajesh', 'phone': '9876500777',
+                           'claimed_category_id': cat.id})
+        self.assertEqual((p.match_status, p.approval_state, p.expected_id), ('matched', 'approved', e1))
+        self.assertEqual(e1.phone, '919876500777')
+        wrong = self.P.create({'event_id': ev.id, 'kind': 'student', 'name': 'Advaith', 'phone': '9876500778',
+                               'claimed_category_id': other.id})
+        self.assertEqual((wrong.match_status, wrong.approval_state), ('category_mismatch', 'pending'))
+        stranger = self.P.create({'event_id': ev.id, 'kind': 'student', 'name': 'Zed Unknown', 'phone': '9876500779',
+                                  'claimed_category_id': cat.id})
+        self.assertEqual(stranger.match_status, 'not_listed')
+        self.assertEqual(Exp._status(Exp._link_map(ev)(e2)), 'red')     # registered (pending review), not arrived

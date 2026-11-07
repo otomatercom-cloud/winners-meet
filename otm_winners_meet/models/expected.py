@@ -10,7 +10,7 @@ class WmExpected(models.Model):
 
     event_id = fields.Many2one('otm.wm.event', required=True, ondelete='cascade', index=True)
     name = fields.Char(required=True)
-    phone = fields.Char(required=True, index=True)
+    phone = fields.Char(index=True, help="Optional. Without it the student is matched by name + course + category.")
     category_id = fields.Many2one(
         'otm.wm.category', required=True, ondelete='restrict',
         domain="[('event_id', '=', event_id), ('kind', '=', 'student')]")
@@ -34,7 +34,7 @@ class WmExpected(models.Model):
         by_exp = {p.expected_id.id: p for p in parts if p.expected_id}
         by_phone = {p.phone: p for p in parts}
         empty = self.env['otm.wm.participant']
-        return lambda e: by_exp.get(e.id) or by_phone.get(e.phone) or empty
+        return lambda e: by_exp.get(e.id) or (by_phone.get(e.phone) if e.phone else None) or empty
 
     @api.model
     def _status(self, participant):
@@ -46,12 +46,12 @@ class WmExpected(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            vals['phone'] = self._norm(vals.get('phone'))
+            vals['phone'] = self._norm(vals.get('phone')) if (vals.get('phone') or '').strip() else False
         return super().create(vals_list)
 
     def write(self, vals):
         if 'phone' in vals:
-            vals['phone'] = self._norm(vals['phone'])
+            vals['phone'] = self._norm(vals['phone']) if (vals['phone'] or '').strip() else False
         return super().write(vals)
 
     @api.model

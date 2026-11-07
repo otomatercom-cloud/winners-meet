@@ -144,8 +144,10 @@ class WmParticipant(models.Model):
                 else:
                     exp = Expected.search([('event_id', '=', event.id), ('phone', '=', rec.phone)], limit=1)
                     if not exp:
+                        exp = rec._match_unphoned_entry()
+                    if not exp:
                         status = 'not_listed'
-                        note = _("Phone not found in the uploaded winners list.")
+                        note = _("Not found in the uploaded winners list (phone or name + course + category).")
                     else:
                         score = name_score(rec.name, exp.name)
                         if score < NAME_MATCH_THRESHOLD:
@@ -158,12 +160,28 @@ class WmParticipant(models.Model):
                                      c=exp.category_id.name, s=rec.claimed_category_id.name)
                         else:
                             status, auto = 'matched', True
+                            if not exp.phone:
+                                exp.write({'phone': rec.phone})     # remember the number once matched by name
                     rec.category_id = exp.category_id if (exp and status == 'matched') else rec.claimed_category_id
             rec.write({'match_status': status, 'match_note': note, 'expected_id': exp.id or False})
             if auto and rec.category_id:
                 rec.write({'approval_state': 'approved', 'approved_on': fields.Datetime.now()})
                 rec._queue_message('confirm')
         return True
+
+    def _match_unphoned_entry(self):
+        """Winners-list entry without a phone number whose name (and course/category) fits this student."""
+        self.ensure_one()
+        Expected = self.env['otm.wm.expected'].sudo()
+        taken = self.sudo().search([('event_id', '=', self.event_id.id), ('expected_id', '!=', False)]).mapped('expected_id')
+        best, best_score = Expected, 0.0
+        for e in Expected.search([('event_id', '=', self.event_id.id), ('phone', '=', False)]) - taken:
+            score = name_score(self.name, e.name)
+            if self.claimed_category_id and e.category_id == self.claimed_category_id:
+                score += 0.05            # same course + category wins ties
+            if score >= NAME_MATCH_THRESHOLD and score > best_score:
+                best, best_score = e, score
+        return best
 
     def action_rematch_pending(self):
         """Re-run matching (e.g. after the winners list was uploaded) for pending rows."""

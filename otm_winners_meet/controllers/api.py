@@ -922,10 +922,11 @@ class WinnersMeetApi(http.Controller):
                 if len(found) > 1:
                     raise UserError(_("'%s' exists in several courses - add the Course column", row.get('category') or ''))
                 cat = found[0] if found else request.env['otm.wm.category']
-                phone = normalize_phone(str(row.get('phone') or ''))
+                raw_phone = str(row.get('phone') or '').strip()
+                phone = normalize_phone(raw_phone) if raw_phone else False
                 if not name:
                     raise UserError(_("Name missing"))
-                if not phone:
+                if raw_phone and not phone:
                     raise UserError(_("Invalid phone"))
                 if not cat:
                     raise UserError(_("Unknown category '%s'", row.get('category') or ''))
@@ -938,7 +939,11 @@ class WinnersMeetApi(http.Controller):
                     if not seat:
                         raise UserError(_("Unknown seat '%s'", seat_txt))
                 with request.env.cr.savepoint():
-                    ex = Expected.search([('event_id', '=', ev.id), ('phone', '=', phone)], limit=1)
+                    if phone:
+                        ex = Expected.search([('event_id', '=', ev.id), ('phone', '=', phone)], limit=1)
+                    else:
+                        ex = Expected.search([('event_id', '=', ev.id), ('phone', '=', False), ('category_id', '=', cat.id)]
+                                             ).filtered(lambda x: ' '.join(x.name.lower().split()) == name.lower())[:1]
                     vals = {'name': name, 'category_id': cat.id}
                     if seat_txt:
                         vals['reserved_seat_id'] = seat.id
@@ -946,7 +951,7 @@ class WinnersMeetApi(http.Controller):
                         ex.write(vals)
                         updated += 1
                     else:
-                        Expected.create(dict(vals, event_id=ev.id, phone=phone))
+                        Expected.create(dict(vals, event_id=ev.id, phone=phone or False))
                         created += 1
             except (UserError, ValidationError) as e:
                 errors.append({'row': idx, 'error': str(e.args[0]) if e.args else str(e)})
