@@ -41,11 +41,12 @@ export default function Winners() {
     const ws = XLSX.utils.aoa_to_sheet([["Name", "Phone", "Course", "Category", "Seat"], ["Anu Krishnan", "9876543210", "CPA USA", "Partly Qualified", "G12"]]);
     const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Winners"); XLSX.writeFile(wb, "winners-list-template.xlsx");
   };
+  const setOrder = async (id: number, sequence: number) => { try { await api("/expected/order", { method: "POST", body: { id, sequence } }); reload(); } catch (e: any) { toast(e.message, "err"); } };
   const del = async (id: number) => { try { await api("/expected/delete", { method: "POST", body: { id } }); reload(); } catch (e: any) { toast(e.message, "err"); } };
   const registered = (data || []).filter((r) => r.registered).length;
   return (
     <div>
-      <PageHeader title="Winners list" subtitle="Upload winners with their category. Registrations that do not match appear in the review queue." actions={<Button variant="secondary" size="sm" onClick={template}><Download className="h-4 w-4" /> Template</Button>} />
+      <PageHeader title="Winners list" subtitle="The list is also the announcement order (course, category, then this number). Red = registered, not arrived · Green = in the hall · Gray = not registered." actions={<Button variant="secondary" size="sm" onClick={template}><Download className="h-4 w-4" /> Template</Button>} />
       <Card className="mb-5 p-5">
         <input ref={file} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
         {!rows.length ? (
@@ -69,8 +70,12 @@ export default function Winners() {
           <div className="divide-y divide-slate-100">
             {data.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
-                <div className="min-w-0"><div className="truncate font-medium">{r.name}</div><div className="text-xs text-slate-500">{fmtPhone(r.phone)} · {r.category}{r.seat ? ` · Seat ${r.seat}` : ""}</div></div>
-                <div className="flex items-center gap-2">{r.registered ? <Badge tone="green">Registered</Badge> : <Badge tone="amber">Not yet</Badge>}<button className="text-xs text-slate-400 hover:text-rose-600" onClick={() => del(r.id)}>Remove</button></div>
+                <div className="flex min-w-0 items-center gap-2.5"><i className={`h-3 w-3 shrink-0 rounded-full ${r.collected ? "bg-violet-500" : r.status === "green" ? "bg-emerald-500" : r.status === "red" ? "bg-rose-500" : "bg-slate-400"}`} /><div className="min-w-0"><div className="truncate font-medium">{r.name}</div><div className="text-xs text-slate-500">{fmtPhone(r.phone)} · {r.category}{r.seat ? ` · Seat ${r.seat}` : ""}</div></div></div>
+                <div className="flex items-center gap-2">
+                  {r.collected ? <Badge tone="violet">Trophy collected</Badge> : r.status === "green" ? <Badge tone="green">In the hall</Badge> : r.status === "red" ? <Badge tone="red">Registered · not arrived</Badge> : <Badge>Not registered</Badge>}
+                  {r.missed && <Badge tone="amber">Missed</Badge>}
+                  <input type="number" title="Announcement order inside the category" defaultValue={r.sequence} className="h-8 w-16 rounded-md border border-slate-300 px-2 text-xs" onBlur={(e) => { const v = Number(e.target.value); if (v !== r.sequence) setOrder(r.id, v); }} />
+                  <button className="text-xs text-slate-400 hover:text-rose-600" onClick={() => del(r.id)}>Remove</button></div>
               </div>
             ))}
           </div>

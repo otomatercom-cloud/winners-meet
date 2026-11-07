@@ -115,7 +115,8 @@ def _cat(c):
             'item_ids': c.item_ids.ids, 'items': [{'id': i.id, 'name': i.name} for i in c.item_ids],
             'hat_label': c.hat_label or '', 'seat_mode': c.seat_mode, 'self_select': c.self_select,
             'seat_block_id': c.seat_block_id.id or False, 'seat_block': c.seat_block_id.name or '',
-            'seat_from': c.seat_from or 0, 'seat_to': c.seat_to or 0}
+            'seat_from': c.seat_from or 0, 'seat_to': c.seat_to or 0, 'sequence': c.sequence,
+            'course_sequence': c.course_id.sequence if c.course_id else 0, 'stage_closed': bool(c.stage_closed)}
 
 
 def _event_dict(e):
@@ -127,6 +128,7 @@ def _event_dict(e):
             'wa_tpl_confirm': e.wa_tpl_confirm or '', 'wa_tpl_seat': e.wa_tpl_seat or '',
             'wa_msg_confirm': e.wa_msg_confirm or '', 'wa_msg_seat': e.wa_msg_seat or '',
             'wa_seat_hat_param': bool(e.wa_seat_hat_param),
+            'wa_tpl_stage_done': e.wa_tpl_stage_done or '', 'wa_tpl_stage_late': e.wa_tpl_stage_late or '',
             'form_student': e.form_config('student'), 'form_teacher': e.form_config('teacher'),
             'wa_tpl_confirm_teacher': e.wa_tpl_confirm_teacher or '', 'wa_tpl_seat_teacher': e.wa_tpl_seat_teacher or '',
             'wa_msg_confirm_teacher': e.wa_msg_confirm_teacher or '', 'wa_msg_seat_teacher': e.wa_msg_seat_teacher or ''}
@@ -323,6 +325,8 @@ class WinnersMeetApi(http.Controller):
             'name': p.name, 'kind': p.kind, 'phone': _mask(p.phone), 'approval_state': p.approval_state,
             'state': p.state,
             'seat': p.seat_id.label or '', 'seat_row': p.seat_id.row_no or 0, 'seat_row_name': p.seat_id.row_name(), 'hat': bool(p.category_id.hat), 'hat_state': p.hat_state,
+            'trophy_state': p.trophy_state,
+            'stage_note': bool(p.expected_id and p.expected_id.category_id.stage_closed and p.trophy_state != 'given'),
             'items': [{'name': l.item_id.name, 'state': l.state} for l in p.issue_ids],
             'planned_items': [i.name for i in p.category_id.item_ids],
             'token': p.qr_token,
@@ -348,7 +352,8 @@ class WinnersMeetApi(http.Controller):
         allowed = ('name', 'time_text', 'venue', 'state', 'reg_student_open', 'reg_teacher_open',
                    'teacher_needs_approval', 'frontend_url', 'frontend_url_teacher', 'wa_tpl_confirm', 'wa_tpl_seat',
                    'wa_msg_confirm', 'wa_msg_seat', 'wa_tpl_confirm_teacher', 'wa_tpl_seat_teacher',
-                   'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param', 'slug')
+                   'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param', 'slug',
+                   'wa_tpl_stage_done', 'wa_tpl_stage_late')
         vals = {k: body[k] for k in allowed if k in body}
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):
@@ -392,7 +397,8 @@ class WinnersMeetApi(http.Controller):
                 'self_select': bool(body.get('self_select', True)),
                 'course_id': _int(body.get('course_id')) or False,
                 'seat_block_id': _int(body.get('seat_block_id')) or False,
-                'seat_from': max(0, _int(body.get('seat_from'), 0)), 'seat_to': max(0, _int(body.get('seat_to'), 0))}
+                'seat_from': max(0, _int(body.get('seat_from'), 0)), 'seat_to': max(0, _int(body.get('seat_to'), 0)),
+                'sequence': _int(body.get('sequence'), 10)}
         if not vals['name']:
             raise UserError(_("Category name is required."))
         if body.get('id'):
@@ -420,13 +426,15 @@ class WinnersMeetApi(http.Controller):
     def courses(self, body=None, event_id=None, **kw):
         _need_staff()
         ev = _event(event_id)
-        return [{'id': c.id, 'name': c.name, 'code': c.code or '', 'subs': len(c.category_ids)} for c in ev.course_ids]
+        return [{'id': c.id, 'name': c.name, 'code': c.code or '', 'subs': len(c.category_ids), 'sequence': c.sequence}
+                for c in ev.course_ids]
 
     @api('/courses/save', methods=('POST',))
     def course_save(self, body=None, **kw):
         _need_manager()
         ev = _event(body.get('event_id'))
-        vals = {'name': (body.get('name') or '').strip(), 'code': (body.get('code') or '').strip() or False}
+        vals = {'name': (body.get('name') or '').strip(), 'code': (body.get('code') or '').strip() or False,
+                'sequence': _int(body.get('sequence'), 10)}
         if not vals['name']:
             raise UserError(_("Course name is required."))
         if body.get('id'):
@@ -768,11 +776,132 @@ class WinnersMeetApi(http.Controller):
     def expected(self, body=None, event_id=None, **kw):
         _need_staff()
         ev = _event(event_id)
-        reg = {p.phone: p for p in request.env['otm.wm.participant'].search([('event_id', '=', ev.id)])}
-        return [{'id': e.id, 'name': e.name, 'phone': e.phone, 'category': e.category_id.full_name(),
-                 'seat': e.reserved_seat_id.label or '',
-                 'registered': e.phone in reg, 'participant_id': reg[e.phone].id if e.phone in reg else False}
-                for e in request.env['otm.wm.expected'].search([('event_id', '=', ev.id)])]
+        Exp = request.env['otm.wm.expected']
+        link = Exp._link_map(ev)
+        rows = Exp.search([('event_id', '=', ev.id)])
+        rows = rows.sorted(lambda e: (e.category_id.course_id.sequence if e.category_id.course_id else 0,
+                                      e.category_id.course_id.id or 0, e.category_id.sequence, e.category_id.id, e.sequence, e.id))
+        out = []
+        for e in rows:
+            p = link(e)
+            out.append({'id': e.id, 'name': e.name, 'phone': e.phone, 'category': e.category_id.full_name(),
+                        'seat': e.reserved_seat_id.label or '', 'sequence': e.sequence,
+                        'registered': bool(p), 'participant_id': p.id or False,
+                        'status': Exp._status(p), 'collected': bool(p and p.trophy_state == 'given'),
+                        'missed': bool(e.missed)})
+        return out
+
+    @api('/expected/order', methods=('POST',))
+    def expected_order(self, body=None, **kw):
+        _need_manager()
+        e = request.env['otm.wm.expected'].browse(_int(body.get('id'), 0)).exists()
+        if not e:
+            raise MissingError(_("Entry not found."))
+        e.write({'sequence': _int(body.get('sequence'), 100)})
+        return True
+
+    # ============================================================ stage: announcement queue
+    @api('/stage/board')
+    def stage_board(self, body=None, event_id=None, **kw):
+        """Trophy announcement queue: groups in the fixed order, two winners per row, Missed list last."""
+        _need_staff()
+        ev = _event(event_id)
+        Exp = request.env['otm.wm.expected']
+        link = Exp._link_map(ev)
+
+        def item(e, p):
+            return {'id': e.id, 'name': e.name, 'status': Exp._status(p), 'seat': p.seat_id.label or '',
+                    'done': bool(p and p.trophy_state == 'given')}
+
+        cats = ev.category_ids.filtered(lambda c: c.kind == 'student').sorted(
+            lambda c: (c.course_id.sequence if c.course_id else 0, c.course_id.id or 0, c.sequence, c.id))
+        by_cat = {}
+        for e in Exp.search([('event_id', '=', ev.id)]):
+            by_cat.setdefault(e.category_id.id, []).append(e)
+
+        def rows_of(pairs):
+            ready = [it for _e, it in pairs if it['status'] == 'green']
+            waiting = [it for _e, it in pairs if it['status'] != 'green']
+            return [ready[i:i + 2] for i in range(0, len(ready), 2)], waiting
+
+        groups, missed_pairs = [], []
+        for c in cats:
+            entries = by_cat.get(c.id) or []
+            if not entries:
+                continue
+            pairs = [(e, item(e, link(e))) for e in entries]
+            pend = [(e, it) for e, it in pairs if not it['done']]
+            missed_pairs += [(e, it) for e, it in pend if e.missed]
+            rows, waiting = rows_of([(e, it) for e, it in pend if not e.missed])
+            groups.append({'category_id': c.id, 'course': c.course_id.name or '', 'name': c.name, 'color': c.color or '#2563eb',
+                           'closed': bool(c.stage_closed), 'total': len(pairs), 'done': len(pairs) - len(pend),
+                           'rows': rows, 'waiting': waiting})
+        missed_pairs.sort(key=lambda t: (t[0].missed_on or fields.Datetime.now(), t[0].id))
+        rows, waiting = rows_of(missed_pairs)
+        return {'groups': groups, 'missed': {'category_id': 0, 'course': '', 'name': 'Missed / Late collection',
+                                             'color': '#f59e0b', 'closed': False, 'total': len(missed_pairs), 'done': 0,
+                                             'rows': rows, 'waiting': waiting}}
+
+    @api('/stage/row/complete', methods=('POST',))
+    def stage_row_complete(self, body=None, **kw):
+        _need_staff()
+        Exp = request.env['otm.wm.expected']
+        exps = Exp.browse([_int(i, 0) for i in (body.get('expected_ids') or [])][:4]).exists()
+        if not exps:
+            raise UserError(_("Nothing to complete."))
+        link = Exp._link_map(exps[0].event_id)
+        for e in exps:
+            p = link(e)
+            if not p:
+                raise UserError(_("%s is not registered.", e.name))
+            p.action_trophy(True)
+        exps.category_id.sudo()._stage_autoclose()
+        return {'completed': len(exps)}
+
+    @api('/stage/category/close', methods=('POST',))
+    def stage_category_close(self, body=None, **kw):
+        _need_staff()
+        c = request.env['otm.wm.category'].browse(_int(body.get('category_id'), 0)).exists()
+        if not c:
+            raise MissingError(_("Category not found."))
+        return c.action_stage_close()
+
+    @api('/stage/category/reopen', methods=('POST',))
+    def stage_category_reopen(self, body=None, **kw):
+        _need_staff()
+        c = request.env['otm.wm.category'].browse(_int(body.get('category_id'), 0)).exists()
+        if not c:
+            raise MissingError(_("Category not found."))
+        return c.action_stage_reopen()
+
+    # ============================================================ stage staff WhatsApp numbers
+    @api('/staff-contacts')
+    def staff_contacts(self, body=None, event_id=None, **kw):
+        _need_manager()
+        ev = _event(event_id)
+        return [{'id': s.id, 'name': s.name, 'phone': s.phone, 'active': s.active} for s in ev.staff_ids]
+
+    @api('/staff-contacts/save', methods=('POST',))
+    def staff_save(self, body=None, **kw):
+        _need_manager()
+        ev = _event(body.get('event_id'))
+        vals = {'name': (body.get('name') or '').strip(), 'phone': body.get('phone') or ''}
+        if not vals['name']:
+            raise UserError(_("Name is required."))
+        if body.get('id'):
+            s = request.env['otm.wm.staff'].browse(_int(body['id'], 0)).exists()
+            if not s:
+                raise MissingError(_("Not found."))
+            s.write(vals)
+        else:
+            request.env['otm.wm.staff'].create(dict(vals, event_id=ev.id))
+        return True
+
+    @api('/staff-contacts/delete', methods=('POST',))
+    def staff_delete(self, body=None, **kw):
+        _need_manager()
+        request.env['otm.wm.staff'].browse(_int(body.get('id'), 0)).exists().unlink()
+        return True
 
     @api('/expected/bulk', methods=('POST',))
     def expected_bulk(self, body=None, **kw):
@@ -852,7 +981,7 @@ class WinnersMeetApi(http.Controller):
         domain = [('event_id', '=', ev.id)]
         if state in ('queued', 'sent', 'failed', 'skipped'):
             domain.append(('state', '=', state))
-        return [{'id': l.id, 'participant': l.participant_id.name, 'participant_id': l.participant_id.id,
+        return [{'id': l.id, 'participant': l.participant_id.name or l.staff_name or '', 'participant_id': l.participant_id.id or False,
                  'type': l.message_type, 'number': l.number, 'state': l.state, 'error': (l.error or '') if l.state in ('failed', 'skipped') else '',
                  'retries': l.retries, 'created': fields.Datetime.to_string(l.create_date)}
                 for l in request.env['otm.wm.message.log'].search(domain, limit=200)]

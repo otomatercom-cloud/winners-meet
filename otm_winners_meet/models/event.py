@@ -12,6 +12,12 @@ FORM_DEFAULTS = {
                 'food_pref': 'required', 'accompany': 'off', 'instagram': 'off'},
 }
 
+DEFAULT_STAGE_DONE_MSG = (
+    "Stage update: the {category} announcement at {event} is complete. "
+    "Trophies collected: {collected}. Moved to the Missed list: {missed}.")
+DEFAULT_STAGE_LATE_MSG = (
+    "Stage update: {name} ({category}) arrived after the {category} announcement at {event}. "
+    "Added to the Missed list for collection at the end.")
 DEFAULT_CONFIRM_MSG = (
     "Hi {name}, your registration for {event} on {date} at {venue} is confirmed. "
     "Your entry pass: {link}")
@@ -52,6 +58,9 @@ class WmEvent(models.Model):
     wa_tpl_seat_teacher = fields.Char(string="Teacher Seat Template", help="Blank = use the student template.")
     wa_msg_confirm_teacher = fields.Text(string="Teacher Confirm Message", default=DEFAULT_CONFIRM_MSG)
     wa_msg_seat_teacher = fields.Text(string="Teacher Seat Message", default=DEFAULT_SEAT_MSG)
+    wa_tpl_stage_done = fields.Char(string="Staff: Category Complete Template", help="Variables: 1 category, 2 collected, 3 missed, 4 event.")
+    wa_tpl_stage_late = fields.Char(string="Staff: Late Arrival Template", help="Variables: 1 name, 2 category, 3 event.")
+    staff_ids = fields.One2many('otm.wm.staff', 'event_id', string="Stage Staff WhatsApp")
     wa_seat_hat_param = fields.Boolean(
         string="Seat Template Has Hat Note",
         help="On: seat template has 5 variables (name, seat, event, hat note, link). "

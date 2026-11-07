@@ -298,7 +298,18 @@ class WmParticipant(models.Model):
         self.write(vals)
         self._issue_items()
         self._queue_message('seat')
+        self._stage_on_checkin()
         return {'already': False}
+
+    def _stage_on_checkin(self):
+        """Arriving after the category's announcement: goes to the Missed list and the stage staff are told."""
+        self.ensure_one()
+        Exp = self.env['otm.wm.expected'].sudo()
+        exp = self.expected_id or Exp.search([('event_id', '=', self.event_id.id), ('phone', '=', self.phone)], limit=1)
+        if exp and exp.category_id.stage_closed and self.trophy_state != 'given':
+            if not exp.missed:
+                exp.write({'missed': True, 'missed_on': fields.Datetime.now()})
+            self.env['otm.wm.message.log']._notify_stage_late(exp, self)
 
     def action_change_seat(self, seat_id):
         self.ensure_one()

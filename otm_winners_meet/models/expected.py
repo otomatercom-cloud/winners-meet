@@ -6,7 +6,7 @@ from .utils import normalize_phone
 class WmExpected(models.Model):
     _name = 'otm.wm.expected'
     _description = 'Expected Winner (pre-uploaded)'
-    _order = 'name, id'
+    _order = 'sequence, id'
 
     event_id = fields.Many2one('otm.wm.event', required=True, ondelete='cascade', index=True)
     name = fields.Char(required=True)
@@ -15,6 +15,10 @@ class WmExpected(models.Model):
         'otm.wm.category', required=True, ondelete='restrict',
         domain="[('event_id', '=', event_id), ('kind', '=', 'student')]")
 
+    sequence = fields.Integer(default=100, help="Announcement order inside the category (lower = called first).")
+    missed = fields.Boolean(default=False, copy=False, help="Was not on stage when the category was announced; collects at the very end.")
+    missed_on = fields.Datetime(copy=False)
+
     reserved_seat_id = fields.Many2one(
         'otm.wm.seat', string="Reserved Seat", ondelete='set null', copy=False,
         domain="[('event_id', '=', event_id)]",
@@ -22,6 +26,22 @@ class WmExpected(models.Model):
 
     _phone_uniq = models.Constraint('unique(event_id, phone)', 'This phone is already in the expected list.')
     _seat_uniq = models.Constraint('unique(reserved_seat_id)', 'This seat is already reserved for another winner.')
+
+    @api.model
+    def _link_map(self, event):
+        """Returns f(expected) -> registered participant (or empty): linked entry first, then same phone."""
+        parts = self.env['otm.wm.participant'].sudo().search([('event_id', '=', event.id)])
+        by_exp = {p.expected_id.id: p for p in parts if p.expected_id}
+        by_phone = {p.phone: p for p in parts}
+        empty = self.env['otm.wm.participant']
+        return lambda e: by_exp.get(e.id) or by_phone.get(e.phone) or empty
+
+    @api.model
+    def _status(self, participant):
+        """gray = not registered, red = registered but not here, green = checked in."""
+        if not participant:
+            return 'gray'
+        return 'green' if participant.state == 'checked_in' else 'red'
 
     @api.model_create_multi
     def create(self, vals_list):

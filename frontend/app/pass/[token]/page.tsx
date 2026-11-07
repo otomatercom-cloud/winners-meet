@@ -44,6 +44,8 @@ export default function Pass() {
               {data.seat_row > 0 && <div className="mt-1 text-lg font-semibold text-emerald-800">Row {data.seat_row_name || data.seat_row}</div>}
             </div>
           )}
+          {data.trophy_state === "given" && <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200">🏆 Trophy collected — congratulations!</div>}
+          {data.stage_note && <div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">Your category's announcement is complete. Your trophy will be given at the end of the programme.</div>}
           {approved && data.items?.length > 0 ? (
             <div className={`mt-4 rounded-xl p-3 text-sm ring-1 ${data.hat_state === "returned" ? "bg-emerald-50 text-emerald-800 ring-emerald-200" : "bg-amber-50 text-amber-800 ring-amber-200"}`}>
               <div className="flex items-center justify-center gap-1.5 font-semibold"><Crown className="h-4 w-4" />

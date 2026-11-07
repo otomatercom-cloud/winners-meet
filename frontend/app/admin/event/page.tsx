@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Copy, Plus } from "lucide-react";
 import { useEvent } from "@/components/EventContext";
-import { api } from "@/lib/api";
+import { api, useFetch } from "@/lib/api";
 import { Button, Card, Empty, Field, PageHeader, Toggle, inputCls, useToast } from "@/components/ui";
 import type { EventInfo } from "@/lib/types";
 
@@ -82,6 +82,16 @@ export default function EventSettings() {
         <Field label="Confirmation text (used when no template)" hint="{name} {event} {date} {venue} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_confirm_teacher} onChange={(e) => set("wa_msg_confirm_teacher", e.target.value)} /></Field>
         <Field label="Seat text (used when no template)" hint="{name} {event} {seat} {hat} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_seat_teacher} onChange={(e) => set("wa_msg_seat_teacher", e.target.value)} /></Field>
       </Card>
+      <Card className="mb-5 space-y-4 p-5">
+        <h3 className="font-semibold">WhatsApp - Stage staff</h3>
+        <p className="text-xs text-slate-500">Registered staff numbers get a message when a category's announcement is complete and when someone arrives after their category was announced. Utility templates; blank name = plain text.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Category complete template" hint="Params: 1 category, 2 collected, 3 moved to Missed, 4 event"><input className={inputCls} value={f.wa_tpl_stage_done || ""} onChange={(e) => set("wa_tpl_stage_done", e.target.value)} /></Field>
+          <Field label="Late arrival template" hint="Params: 1 name, 2 category, 3 event"><input className={inputCls} value={f.wa_tpl_stage_late || ""} onChange={(e) => set("wa_tpl_stage_late", e.target.value)} /></Field>
+        </div>
+        {f.id && <StaffContacts eventId={f.id} />}
+        {!f.id && <p className="text-xs text-slate-500">Save the event first, then add staff numbers.</p>}
+      </Card>
       <Button size="lg" className="w-full sm:w-auto" loading={busy} onClick={save}>Save event</Button>
       {f.id && (
         <Card className="mt-6 space-y-2 p-5 text-sm">
@@ -91,6 +101,29 @@ export default function EventSettings() {
           ))}
         </Card>
       )}
+    </div>
+  );
+}
+
+function StaffContacts({ eventId }: { eventId: number }) {
+  const toast = useToast();
+  const { data, reload } = useFetch<any[]>("/staff-contacts", { event_id: eventId });
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const add = async () => {
+    setBusy(true);
+    try { await api("/staff-contacts/save", { method: "POST", body: { event_id: eventId, name, phone } }); setName(""); setPhone(""); reload(); toast("Added"); }
+    catch (e: any) { toast(e.message, "err"); }
+    setBusy(false);
+  };
+  const del = async (id: number) => { try { await api("/staff-contacts/delete", { method: "POST", body: { id } }); reload(); } catch (e: any) { toast(e.message, "err"); } };
+  return (
+    <div>
+      <div className="space-y-1.5">{(data || []).map((s) => (
+        <div key={s.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"><span>{s.name} · {s.phone}</span><button className="text-xs text-slate-400 hover:text-rose-600" onClick={() => del(s.id)}>Remove</button></div>
+      ))}</div>
+      <div className="mt-2 flex gap-2"><input className={inputCls} placeholder="Staff name" value={name} onChange={(e) => setName(e.target.value)} /><input className={inputCls} placeholder="WhatsApp number" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /><Button disabled={!name || !phone} loading={busy} onClick={add}>Add</Button></div>
     </div>
   );
 }

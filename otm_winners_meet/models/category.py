@@ -16,6 +16,8 @@ class WmCategory(models.Model):
         [('student', 'Student'), ('teacher', 'Teacher')], required=True, default='student')
     sequence = fields.Integer(default=10)
     color = fields.Char(default='#2563eb')
+    stage_closed = fields.Boolean(string="Announcement Complete", copy=False)
+    stage_closed_on = fields.Datetime(copy=False)
     item_ids = fields.Many2many(
         'otm.wm.item', 'otm_wm_category_item_rel', 'category_id', 'item_id', string="Kit Items",
         domain="[('event_id', '=', event_id)]", help="Issued automatically at check-in, collected back later.")
@@ -74,3 +76,42 @@ class WmCategory(models.Model):
         for rec in self:
             if rec.seat_block_id and rec.seat_block_id.event_id != rec.event_id:
                 raise ValidationError(_("Seat block must belong to the same event."))
+
+    # ------------------------------------------------------------ stage announcement
+    def action_stage_close(self):
+        """The category's announcement is over: whoever has not collected moves to the Missed list."""
+        self.ensure_one()
+        if self.stage_closed:
+            return {'collected': 0, 'missed': 0}
+        Exp = self.env['otm.wm.expected'].sudo()
+        link = Exp._link_map(self.event_id)
+        collected, missed = 0, Exp
+        for e in Exp.search([('event_id', '=', self.event_id.id), ('category_id', '=', self.id)]):
+            p = link(e)
+            if p and p.trophy_state == 'given':
+                collected += 1
+            else:
+                missed |= e
+        now = fields.Datetime.now()
+        missed.write({'missed': True, 'missed_on': now})
+        self.sudo().write({'stage_closed': True, 'stage_closed_on': now})
+        self.env['otm.wm.message.log']._notify_stage_done(self, collected, len(missed))
+        return {'collected': collected, 'missed': len(missed)}
+
+    def action_stage_reopen(self):
+        self.ensure_one()
+        Exp = self.env['otm.wm.expected'].sudo()
+        Exp.search([('category_id', '=', self.id), ('missed', '=', True)]).write({'missed': False, 'missed_on': False})
+        self.sudo().write({'stage_closed': False, 'stage_closed_on': False})
+        return True
+
+    def _stage_autoclose(self):
+        """Close the category by itself once every winner of it has collected."""
+        Exp = self.env['otm.wm.expected'].sudo()
+        for cat in self.filtered(lambda c: not c.stage_closed):
+            entries = Exp.search([('event_id', '=', cat.event_id.id), ('category_id', '=', cat.id)])
+            if not entries:
+                continue
+            link = Exp._link_map(cat.event_id)
+            if all(link(e).trophy_state == 'given' for e in entries):
+                cat.action_stage_close()

@@ -8,7 +8,7 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.modules import module
-from .event import DEFAULT_CONFIRM_MSG, DEFAULT_SEAT_MSG
+from .event import DEFAULT_CONFIRM_MSG, DEFAULT_SEAT_MSG, DEFAULT_STAGE_DONE_MSG, DEFAULT_STAGE_LATE_MSG
 
 _logger = logging.getLogger(__name__)
 PARAM = 'otm_winners_meet.'
@@ -26,8 +26,10 @@ class WmMessageLog(models.Model):
     _order = 'id desc'
 
     event_id = fields.Many2one('otm.wm.event', required=True, ondelete='cascade', index=True)
-    participant_id = fields.Many2one('otm.wm.participant', required=True, ondelete='cascade', index=True)
-    message_type = fields.Selection([('confirm', 'Registration Confirmation'), ('seat', 'Seat Details')],
+    participant_id = fields.Many2one('otm.wm.participant', ondelete='cascade', index=True)
+    staff_name = fields.Char()
+    message_type = fields.Selection([('confirm', 'Registration Confirmation'), ('seat', 'Seat Details'),
+                                     ('stage_done', 'Staff: Category Complete'), ('stage_late', 'Staff: Late Arrival')],
                                     required=True)
     number = fields.Char(string="WhatsApp Number")
     message = fields.Text()
@@ -145,6 +147,41 @@ class WmMessageLog(models.Model):
         if log.state == 'queued':
             self._trigger_queue_cron()
         return log
+
+    @api.model
+    def _queue_staff(self, event, mtype, key, params, text, tpl):
+        """One WhatsApp per registered stage-staff number (deduplicated by key)."""
+        event = event.sudo()
+        cfg = self._get_config()
+        queued = False
+        for staff in event.staff_ids.filtered('active'):
+            k = '%s:%s' % (key, staff.id)
+            if self.sudo().search_count([('dedup_key', '=', k)]):
+                continue
+            self.sudo().create({
+                'event_id': event.id, 'staff_name': staff.name, 'message_type': mtype, 'number': staff.phone,
+                'message': text, 'template_name': (tpl or '') if cfg['provider'] == 'meta' else '',
+                'template_params': json.dumps([str(p) for p in params]), 'state': 'queued', 'dedup_key': k})
+            queued = True
+        if queued:
+            self._trigger_queue_cron()
+
+    @api.model
+    def _notify_stage_done(self, category, collected, missed):
+        event = category.event_id
+        name = category.full_name()
+        text = render_message(DEFAULT_STAGE_DONE_MSG, {'category': name, 'event': event.name,
+                                                       'collected': collected, 'missed': missed})
+        self._queue_staff(event, 'stage_done', 'stagedone:%s:%s' % (category.id, int(time.time())),
+                          [name, collected, missed, event.name], text, event.wa_tpl_stage_done)
+
+    @api.model
+    def _notify_stage_late(self, expected, participant):
+        event = expected.event_id
+        name = expected.category_id.full_name()
+        text = render_message(DEFAULT_STAGE_LATE_MSG, {'name': participant.name, 'category': name, 'event': event.name})
+        self._queue_staff(event, 'stage_late', 'stagelate:%s' % expected.id,
+                          [participant.name, name, event.name], text, event.wa_tpl_stage_late)
 
     @api.model
     def _trigger_queue_cron(self):

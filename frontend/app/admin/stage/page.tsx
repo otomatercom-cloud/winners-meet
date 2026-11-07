@@ -4,6 +4,7 @@ import { Armchair, Trophy, Undo2 } from "lucide-react";
 import { useEvent } from "@/components/EventContext";
 import { api, useFetch } from "@/lib/api";
 import { Badge, Button, Card, Empty, ErrorBox, PageHeader, Spinner, cx, inputCls, useToast } from "@/components/ui";
+import AnnounceBoard from "@/components/AnnounceBoard";
 import type { Participant } from "@/lib/types";
 
 type Summary = { categories: { id: number; name: string; color: string; present: number; collected: number; absent: number }[]; present: number; collected: number; absent: number };
@@ -12,6 +13,7 @@ const TABS = [["present", "Present · waiting"], ["collected", "Collected"], ["a
 export default function Stage() {
   const { eventId } = useEvent();
   const toast = useToast();
+  const [mode, setMode] = useState<"announce" | "lists">("announce");
   const [tab, setTab] = useState<"present" | "collected" | "absent">("present");
   const [kind, setKind] = useState("");
   const [cat, setCat] = useState("");
@@ -35,9 +37,22 @@ export default function Stage() {
   const s = sum.data;
   const count = (k: string) => (s ? (k === "present" ? s.present : k === "collected" ? s.collected : s.absent) : 0);
   const sel = "h-10 rounded-lg border border-slate-300 bg-white px-2 text-sm";
+  const switcher = (
+    <div className="mb-4 inline-flex rounded-lg bg-slate-100 p-1 text-sm font-medium">
+      {([["announce", "Announcement"], ["lists", "Lists (all)"]] as const).map(([k, l]) => <button key={k} onClick={() => setMode(k)} className={cx("rounded-md px-4 py-1.5", mode === k ? "bg-white shadow-sm" : "text-slate-500")}>{l}</button>)}
+    </div>
+  );
+  if (mode === "announce") return (
+    <div>
+      <PageHeader title="Stage" subtitle="Winners are called two at a time in the fixed order. Mark a row complete when both have collected." />
+      {switcher}
+      <AnnounceBoard eventId={eventId} />
+    </div>
+  );
   return (
     <div>
       <PageHeader title="Stage" subtitle="Who is present to collect the trophy. Mark each winner when they collect it." />
+      {switcher}
       <div className="mb-4 grid grid-cols-3 gap-3">
         {TABS.map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)} className={cx("rounded-xl border p-3 text-left transition", tab === k ? "border-brand-600 bg-brand-50" : "border-slate-200 bg-white")}>

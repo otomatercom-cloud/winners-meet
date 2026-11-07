@@ -360,3 +360,45 @@ class TestWinnersMeet(TransactionCase):
         self.assertEqual(self.env['otm.wm.seat'].browse().row_name(), '')
         self.assertEqual(ev.form_config('student')['instagram'], 'required')
         self.assertEqual(ev.form_config('teacher')['instagram'], 'off')
+
+    def test_stage_announcement_flow(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Stage Show', 'state': 'open'})
+        blk = self.env['otm.wm.seat.block'].create({'event_id': ev.id, 'name': 'B', 'prefix': 'Q', 'start_no': 1, 'end_no': 20})
+        cat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'Fully Qualified', 'seat_block_id': blk.id})
+        Exp, Log = self.env['otm.wm.expected'], self.env['otm.wm.message.log']
+        self.env['otm.wm.staff'].create({'event_id': ev.id, 'name': 'Stage One', 'phone': '9876500111'})
+        self.env['otm.wm.staff'].create({'event_id': ev.id, 'name': 'Stage Two', 'phone': '9876500222'})
+        ex = [Exp.create({'event_id': ev.id, 'name': 'Winner %s' % i, 'phone': '98765001%02d' % i,
+                          'category_id': cat.id, 'sequence': 10 * (4 - i)}) for i in range(4)]
+        self.assertEqual(Exp.search([('event_id', '=', ev.id)]).mapped('name'),
+                         ['Winner 3', 'Winner 2', 'Winner 1', 'Winner 0'])      # manual order wins
+        parts = []
+        for e in ex[:3]:
+            parts.append(self.P.create({'event_id': ev.id, 'kind': 'student', 'name': e.name, 'phone': e.phone,
+                                        'category_id': cat.id, 'approval_state': 'approved', 'expected_id': e.id}))
+        link = Exp._link_map(ev)
+        self.assertEqual([Exp._status(link(e)) for e in ex], ['red', 'red', 'red', 'gray'])
+        parts[0].action_check_in()
+        parts[1].action_check_in()
+        self.assertEqual([Exp._status(link(e)) for e in ex], ['green', 'green', 'red', 'gray'])
+        parts[0].action_trophy(True)
+        res = cat.action_stage_close()
+        self.assertEqual(res, {'collected': 1, 'missed': 3})
+        self.assertTrue(cat.stage_closed)
+        self.assertEqual(ex[1].missed and ex[2].missed and ex[3].missed, True)
+        self.assertFalse(ex[0].missed)
+        self.assertEqual(Log.search_count([('event_id', '=', ev.id), ('message_type', '=', 'stage_done')]), 2)
+        parts[2].action_check_in()                                            # arrives after the announcement
+        self.assertEqual(Log.search_count([('event_id', '=', ev.id), ('message_type', '=', 'stage_late')]), 2)
+        cat.action_stage_reopen()
+        self.assertFalse(any(Exp.browse(ex[i].id).missed for i in range(4)))
+        # autoclose when everybody collected
+        cat2 = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'Merit', 'seat_block_id': blk.id})
+        e2 = Exp.create({'event_id': ev.id, 'name': 'Solo', 'phone': '9876500199', 'category_id': cat2.id})
+        p2 = self.P.create({'event_id': ev.id, 'kind': 'student', 'name': 'Solo', 'phone': e2.phone,
+                            'category_id': cat2.id, 'approval_state': 'approved', 'expected_id': e2.id})
+        p2.action_check_in()
+        p2.action_trophy(True)
+        cat2._stage_autoclose()
+        self.assertTrue(cat2.stage_closed)
+        self.assertFalse(e2.missed)

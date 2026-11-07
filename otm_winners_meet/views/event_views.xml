@@ -96,7 +96,18 @@
                                 <field name="wa_tpl_seat_teacher"/>
                                 <field name="wa_seat_hat_param"/>
                                 <field name="wa_msg_seat_teacher"/>
+                                <field name="wa_tpl_stage_done"/>
+                                <field name="wa_tpl_stage_late"/>
                             </group>
+                        </page>
+                        <page string="Stage Staff WhatsApp" name="page_staff">
+                            <field name="staff_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="phone"/>
+                                    <field name="active"/>
+                                </list>
+                            </field>
                         </page>
                     </notebook>
                 </sheet>

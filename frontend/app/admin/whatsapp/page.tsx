@@ -33,7 +33,7 @@ export default function Whatsapp() {
             <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
               <div className="min-w-0">
                 <Link href={`/admin/participants/${l.participant_id}`} className="font-medium hover:text-brand-600">{l.participant}</Link>
-                <div className="text-xs text-slate-500">{l.type === "confirm" ? "Confirmation" : "Seat"} · {fmtPhone(l.number)} · {fmtTime(l.created)}</div>
+                <div className="text-xs text-slate-500">{l.type === "confirm" ? "Confirmation" : l.type === "seat" ? "Seat" : l.type === "stage_done" ? "Staff · category complete" : "Staff · late arrival"} · {fmtPhone(l.number)} · {fmtTime(l.created)}</div>
                 {l.state === "failed" && l.error && <div className="mt-1 max-w-xl text-xs text-rose-600">{l.error}</div>}
               </div>
               <div className="flex items-center gap-2"><Badge tone={tone(l.state) as any}>{l.state}</Badge>{(l.state === "failed" || l.state === "skipped") && <Button size="sm" variant="secondary" onClick={() => retry([l.id])}>Retry</Button>}</div>

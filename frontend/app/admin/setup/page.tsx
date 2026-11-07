@@ -37,7 +37,7 @@ export default function Setup() {
     if (!confirm("Delete this course?")) return;
     try { await api("/courses/delete", { method: "POST", body: { id } }); courses.reload(); } catch (e: any) { toast(e.message, "err"); }
   };
-  const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_from: 0, seat_to: 0, seat_mode: "auto", self_select: true };
+  const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_from: 0, seat_to: 0, sequence: 10, seat_mode: "auto", self_select: true };
   const newBlk = { name: "", prefix: "S", start_no: 1, end_no: 100, row_size: 0, row_layout: "", row_names: "", sequence: 10 };
   return (
     <div className="space-y-8">
@@ -57,7 +57,7 @@ export default function Setup() {
       </section>
       <section>
         <PageHeader title="Courses" subtitle="Students pick a course first, then a winner subcategory of that course."
-          actions={<Button size="sm" onClick={() => setCrs({ name: "", code: "" })}><Plus className="h-4 w-4" /> Course</Button>} />
+          actions={<Button size="sm" onClick={() => setCrs({ name: "", code: "", sequence: 10 })}><Plus className="h-4 w-4" /> Course</Button>} />
         {!courses.data?.length ? <Empty>No courses yet. Add CPA USA, ACCA… (optional)</Empty> : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {courses.data.map((c) => (
@@ -76,7 +76,7 @@ export default function Setup() {
           <div className="grid gap-3 sm:grid-cols-2">
             {cats.data.map((c) => (
               <Card key={c.id} className="p-4">
-                <div className="flex items-start justify-between"><CategoryChip name={c.name} color={c.color} /><div className="flex gap-1"><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setCat({ ...c, name: c.sub, course_id: c.course_id || "", seat_block_id: c.seat_block_id || "", seat_from: c.seat_from || 0, seat_to: c.seat_to || 0 })}><Pencil className="h-4 w-4" /></button></div></div>
+                <div className="flex items-start justify-between"><CategoryChip name={c.name} color={c.color} /><div className="flex gap-1"><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setCat({ ...c, name: c.sub, course_id: c.course_id || "", seat_block_id: c.seat_block_id || "", seat_from: c.seat_from || 0, seat_to: c.seat_to || 0, sequence: c.sequence ?? 10 })}><Pencil className="h-4 w-4" /></button></div></div>
                 <div className="mt-3 flex flex-wrap gap-1.5"><Badge tone="violet">{c.kind}</Badge>{c.items?.map((i) => <Badge key={i.id} tone="amber">{i.name}</Badge>)}<Badge tone="blue">{c.seat_block || "no block"}</Badge><Badge>{c.seat_mode === "auto" ? "auto seat" : "manual seat"}</Badge>{!c.self_select && <Badge>admin only</Badge>}</div>
                 <button className="mt-3 text-xs text-slate-400 hover:text-rose-600" onClick={() => del(c.id)}>Delete</button>
               </Card>
@@ -115,6 +115,7 @@ export default function Setup() {
                 <Field label="Seats to"><input type="number" min={0} className={inputCls} value={cat.seat_to || ""} onChange={(e) => setCat({ ...cat, seat_to: e.target.value })} placeholder="end" /></Field>
               </div>
             )}
+            <Field label="Announcement order" hint="Inside its course, categories are called on stage in this order (smaller number first)."><input type="number" className={inputCls} value={cat.sequence ?? 10} onChange={(e) => setCat({ ...cat, sequence: e.target.value })} /></Field>
             <Field label="Seat assignment" hint="Automatic gives the next free seat of the block at check-in."><select className={inputCls} value={cat.seat_mode} onChange={(e) => setCat({ ...cat, seat_mode: e.target.value })}><option value="auto">Automatic (next free seat)</option><option value="manual">Manual (desk picks the seat)</option></select></Field>
             <Field label="Kit items given at check-in" hint="Collected back later. Add items in the Kit items section above.">
               <div className="flex flex-wrap gap-2">
@@ -144,6 +145,7 @@ export default function Setup() {
           <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save("/courses/save", crs, () => setCrs(null), courses.reload); }}>
             <Field label="Course name"><input className={inputCls} value={crs.name} onChange={(e) => setCrs({ ...crs, name: e.target.value })} placeholder="CPA USA" required /></Field>
             <Field label="Code (optional)"><input className={inputCls} value={crs.code} onChange={(e) => setCrs({ ...crs, code: e.target.value })} /></Field>
+            <Field label="Announcement order" hint="Courses are called on stage in this order (smaller number first)."><input type="number" className={inputCls} value={crs.sequence ?? 10} onChange={(e) => setCrs({ ...crs, sequence: e.target.value })} /></Field>
             <Button size="lg" className="w-full" loading={busy}>Save course</Button>
           </form>
         )}
