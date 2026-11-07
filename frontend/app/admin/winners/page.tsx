@@ -28,7 +28,7 @@ export default function Winners() {
     try {
       const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
       const json = XLSX.utils.sheet_to_json<Record<string, any>>(wb.Sheets[wb.SheetNames[0]], { defval: "", raw: false });
-      const parsed = json.map((r) => ({ name: pick(r, ["name", "student name", "student"]), phone: pick(r, ["phone", "mobile", "whatsapp", "phone number", "mobile number"]), course: pick(r, ["course", "course name"]), category: pick(r, ["category", "winner category", "subcategory", "sub category", "rank", "prize"]), seat: pick(r, ["seat", "seat no", "seat number", "seat no."]) })).filter((r) => r.name || r.phone);
+      const parsed = json.map((r) => ({ name: pick(r, ["name", "student name", "student", "teacher name", "teacher", "faculty", "faculty name"]), phone: pick(r, ["phone", "mobile", "whatsapp", "phone number", "mobile number"]), course: pick(r, ["course", "course name"]), category: pick(r, ["category", "winner category", "subcategory", "sub category", "rank", "prize"]), seat: pick(r, ["seat", "seat no", "seat number", "seat no."]) })).filter((r) => r.name || r.phone);
       if (!parsed.length) toast("No rows found. Use columns: Name, Course, Category", "err");
       setRows(parsed); setResult(null);
     } catch { toast("Could not read this file. Use .xlsx or .csv", "err"); }
@@ -66,7 +66,7 @@ export default function Winners() {
       <Card className="mb-5 p-5">
         <input ref={file} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
         {!rows.length ? (
-          <button onClick={() => file.current?.click()} className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 py-10 text-slate-500 hover:border-brand-500 hover:text-brand-600"><Upload className="h-7 w-7" /><span className="font-medium">Upload Excel / CSV</span><span className="text-xs">Columns: Name, Course, Category (subcategory), Phone (optional), Seat (optional, e.g. G12). Without a phone, students are matched by name + course + category</span></button>
+          <button onClick={() => file.current?.click()} className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-300 py-10 text-slate-500 hover:border-brand-500 hover:text-brand-600"><Upload className="h-7 w-7" /><span className="font-medium">Upload Excel / CSV</span><span className="text-xs">Columns: Name, Course, Category (subcategory), Phone (optional), Seat (optional, e.g. G12). Students and teachers use the same sheet: for teachers write the teacher category name. Without a phone, people are matched by name + course + category</span></button>
         ) : (
           <div>
             <div className="mb-3 flex items-center justify-between"><span className="font-medium">{rows.length} rows ready</span><div className="flex gap-2"><Button variant="secondary" size="sm" onClick={() => setRows([])}>Cancel</Button><Button size="sm" loading={busy} onClick={upload}>Import {rows.length} rows</Button></div></div>

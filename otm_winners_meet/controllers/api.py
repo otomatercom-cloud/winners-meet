@@ -788,7 +788,7 @@ class WinnersMeetApi(http.Controller):
                         'seat': e.reserved_seat_id.label or '', 'sequence': e.sequence,
                         'registered': bool(p), 'participant_id': p.id or False,
                         'status': Exp._status(p), 'collected': bool(p and p.trophy_state == 'given'),
-                        'missed': bool(e.missed)})
+                        'missed': bool(e.missed), 'kind': e.category_id.kind})
         return out
 
     @api('/expected/order', methods=('POST',))
@@ -813,8 +813,8 @@ class WinnersMeetApi(http.Controller):
             return {'id': e.id, 'name': e.name, 'status': Exp._status(p), 'seat': p.seat_id.label or '',
                     'done': bool(p and p.trophy_state == 'given')}
 
-        cats = ev.category_ids.filtered(lambda c: c.kind == 'student').sorted(
-            lambda c: (c.course_id.sequence if c.course_id else 0, c.course_id.id or 0, c.sequence, c.id))
+        cats = ev.category_ids.sorted(     # students first, teachers after them
+            lambda c: (c.kind == 'teacher', c.course_id.sequence if c.course_id else 0, c.course_id.id or 0, c.sequence, c.id))
         by_cat = {}
         for e in Exp.search([('event_id', '=', ev.id)]):
             by_cat.setdefault(e.category_id.id, []).append(e)
@@ -838,7 +838,7 @@ class WinnersMeetApi(http.Controller):
                     it['origin'] = ' · '.join(x for x in (c.course_id.name, c.name) if x)
                     missed_pairs.append((e, it))
             rows, waiting = rows_of([(e, it) for e, it in pend if not e.missed])
-            groups.append({'category_id': c.id, 'course': c.course_id.name or '', 'name': c.name, 'color': c.color or '#2563eb',
+            groups.append({'category_id': c.id, 'kind': c.kind, 'course': c.course_id.name or '', 'name': c.name, 'color': c.color or '#2563eb',
                            'closed': bool(c.stage_closed), 'total': len(pairs), 'done': len(pairs) - len(pend),
                            'rows': rows, 'waiting': waiting})
         missed_pairs.sort(key=lambda t: (t[0].missed_on or fields.Datetime.now(), t[0].id))
@@ -933,7 +933,7 @@ class WinnersMeetApi(http.Controller):
     def expected_bulk(self, body=None, **kw):
         _need_manager()
         ev = _event(body.get('event_id'))
-        scats = [c for c in ev.category_ids if c.kind == 'student']
+        scats = list(ev.category_ids)       # student and teacher categories
         Expected = request.env['otm.wm.expected']
         seats_by_label = {x.label.lower(): x for x in request.env['otm.wm.seat'].search([('event_id', '=', ev.id)])}
         created = updated = 0

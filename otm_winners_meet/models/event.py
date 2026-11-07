@@ -185,6 +185,20 @@ class WmEvent(models.Model):
                         p.action_check_in()
                     if mode == 'done':
                         p.action_trophy(True)
+        # a teacher category: same queue, same colours
+        tcat = Cat.create({'event_id': self.id, 'name': 'Teachers (Demo)', 'kind': 'teacher', 'sequence': 10, 'color': '#be185d',
+                           'seat_block_id': block.id, 'self_select': False, 'is_demo': True})
+        for i, (name, mode, phone) in enumerate([('Teacher Asha', 'in', '9000000031'), ('Teacher Biju', 'reg', ''),
+                                                 ('Teacher Celine', 'none', None)]):
+            entry = Exp.create({'event_id': self.id, 'name': name, 'category_id': tcat.id, 'sequence': 10 * (i + 1),
+                                'phone': phone or False, 'is_demo': True})
+            if mode == 'none':
+                continue
+            p = Part.create({'event_id': self.id, 'kind': 'teacher', 'name': name, 'phone': phone or '9000000039',
+                             'category_id': tcat.id, 'claimed_category_id': tcat.id, 'approval_state': 'approved',
+                             'expected_id': entry.id, 'is_demo': True, 'registered_via': 'admin'})
+            if mode == 'in':
+                p.action_check_in()
         return self.demo_counts()
 
     def action_demo_delete(self):

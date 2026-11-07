@@ -5,7 +5,7 @@ import { api, useFetch } from "@/lib/api";
 import { Badge, Button, Card, Empty, ErrorBox, Modal, Spinner, cx, useToast } from "@/components/ui";
 
 type Item = { id: number; name: string; status: "gray" | "red" | "green"; seat: string; done: boolean; origin?: string };
-type Group = { category_id: number; course: string; name: string; color: string; closed: boolean; total: number; done: number; rows: Item[][]; waiting: Item[] };
+type Group = { category_id: number; kind?: string; course: string; name: string; color: string; closed: boolean; total: number; done: number; rows: Item[][]; waiting: Item[] };
 type Board = { groups: Group[]; missed: Group };
 type Ask = { kind: "row" | "close"; title: string; text: string; note?: string; ids?: number[]; cat?: number };
 const DOT = { gray: "bg-slate-400", red: "bg-rose-500", green: "bg-emerald-500" } as const;
@@ -59,7 +59,7 @@ export default function AnnounceBoard({ eventId }: { eventId: number }) {
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-4 py-3">
             <div className="min-w-0">
               {g.course && <div className="text-sm font-semibold uppercase tracking-wide text-slate-500">{g.course}</div>}
-              <div className="flex items-center gap-2 text-xl font-bold"><i className="h-3 w-3 rounded-full" style={{ background: g.color }} />{g.name}{g.closed && <Badge tone="green">announced</Badge>}</div>
+              <div className="flex items-center gap-2 text-xl font-bold"><i className="h-3 w-3 rounded-full" style={{ background: g.color }} />{g.name}{g.kind === "teacher" && <Badge tone="amber">Teachers</Badge>}{g.closed && <Badge tone="green">announced</Badge>}</div>
               <div className="text-xs text-slate-500">{g.category_id ? `${g.done}/${g.total} collected` : `${g.total} waiting for the final round`}</div>
             </div>
             {g.category_id !== 0 && (g.closed

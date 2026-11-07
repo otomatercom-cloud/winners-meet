@@ -138,6 +138,10 @@ class WmParticipant(models.Model):
                 auto = not event.teacher_needs_approval
                 if not rec.category_id:
                     rec.category_id = rec.claimed_category_id
+                # link to the winners-list entry (stage trophy queue); never changes the approval decision
+                exp = Expected.search([('event_id', '=', event.id), ('phone', '=', rec.phone)], limit=1) or rec._match_unphoned_entry()
+                if exp and not exp.phone:
+                    exp.write({'phone': rec.phone})
             else:
                 if not Expected.search_count([('event_id', '=', event.id)], limit=1):
                     auto = True  # no winners list uploaded: trust the self-selected category
@@ -176,9 +180,12 @@ class WmParticipant(models.Model):
         Expected = self.env['otm.wm.expected'].sudo()
         taken = self.sudo().search([('event_id', '=', self.event_id.id), ('expected_id', '!=', False)]).mapped('expected_id')
         best, best_score = Expected, 0.0
+        want = self.claimed_category_id or self.category_id
         for e in Expected.search([('event_id', '=', self.event_id.id), ('phone', '=', False)]) - taken:
+            if e.category_id.kind != self.kind:
+                continue
             score = name_score(self.name, e.name)
-            if self.claimed_category_id and e.category_id == self.claimed_category_id:
+            if want and e.category_id == want:
                 score += 0.05            # same course + category wins ties
             if score >= NAME_MATCH_THRESHOLD and score > best_score:
                 best, best_score = e, score

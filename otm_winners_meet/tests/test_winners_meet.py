@@ -458,17 +458,42 @@ class TestWinnersMeet(TransactionCase):
         self.assertEqual(stranger.match_status, 'not_listed')
         self.assertEqual(Exp._status(Exp._link_map(ev)(e2)), 'red')     # registered (pending review), not arrived
 
+    def test_teachers_in_stage_queue(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Teach Show', 'state': 'open'})
+        blk = self.env['otm.wm.seat.block'].create({'event_id': ev.id, 'name': 'T', 'prefix': 'T', 'start_no': 1, 'end_no': 20})
+        tcat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'Best Teacher', 'kind': 'teacher', 'seat_block_id': blk.id})
+        scat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'Rank 1', 'kind': 'student', 'seat_block_id': blk.id})
+        Exp, P = self.env['otm.wm.expected'], self.env['otm.wm.participant']
+        e1 = Exp.create({'event_id': ev.id, 'name': 'Asha Teacher', 'phone': '919811100001', 'category_id': tcat.id})
+        e2 = Exp.create({'event_id': ev.id, 'name': 'Biju Thomas', 'category_id': tcat.id})          # no phone
+        es = Exp.create({'event_id': ev.id, 'name': 'Biju Thomas', 'category_id': scat.id})          # same name, student list
+        t1 = P.create({'event_id': ev.id, 'kind': 'teacher', 'name': 'Asha Teacher', 'phone': '919811100001',
+                       'category_id': tcat.id, 'claimed_category_id': tcat.id})
+        t2 = P.create({'event_id': ev.id, 'kind': 'teacher', 'name': 'Biju Thomas', 'phone': '919811100002',
+                       'category_id': tcat.id, 'claimed_category_id': tcat.id})
+        self.assertEqual(t1.expected_id, e1)
+        self.assertEqual(t2.expected_id, e2)                 # linked by name inside the teacher list, not the student one
+        self.assertEqual(e2.phone, '919811100002')
+        link = Exp._link_map(ev)
+        self.assertEqual(Exp._status(link(es)), 'gray')
+        t1.write({'approval_state': 'approved'})
+        t1.action_check_in()
+        self.assertEqual(Exp._status(link(e1)), 'green')
+        t1.action_trophy(True)
+        tcat._stage_autoclose()
+        self.assertFalse(tcat.stage_closed)                  # Biju has not collected yet
+
     def test_demo_load_and_delete(self):
         ev = self.env['otm.wm.event'].create({'name': 'Demo Show', 'state': 'open'})
         self.env['otm.wm.staff'].create({'event_id': ev.id, 'name': 'S', 'phone': '9876500555'})
         res = ev.action_demo_load()
-        self.assertEqual(res, {'people': 10, 'winners': 13})
+        self.assertEqual(res, {'people': 12, 'winners': 16})
         with self.assertRaises(UserError):
             ev.action_demo_load()
         Exp, Log = self.env['otm.wm.expected'], self.env['otm.wm.message.log']
         link = Exp._link_map(ev)
         status = [Exp._status(link(e)) for e in Exp.search([('event_id', '=', ev.id)])]
-        self.assertEqual({s: status.count(s) for s in set(status)}, {'green': 8, 'red': 2, 'gray': 3})
+        self.assertEqual({s: status.count(s) for s in set(status)}, {'green': 9, 'red': 3, 'gray': 4})
         self.assertEqual(Log.search_count([('event_id', '=', ev.id)]), 0)       # demo never messages
         cat = self.env['otm.wm.category'].search([('event_id', '=', ev.id), ('name', 'like', 'Fully')])
         cat.action_stage_close()

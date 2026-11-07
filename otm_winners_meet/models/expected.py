@@ -10,10 +10,10 @@ class WmExpected(models.Model):
 
     event_id = fields.Many2one('otm.wm.event', required=True, ondelete='cascade', index=True)
     name = fields.Char(required=True)
-    phone = fields.Char(index=True, help="Optional. Without it the student is matched by name + course + category.")
+    phone = fields.Char(index=True, help="Optional. Without it the student/teacher is matched by name + course + category.")
     category_id = fields.Many2one(
         'otm.wm.category', required=True, ondelete='restrict',
-        domain="[('event_id', '=', event_id), ('kind', '=', 'student')]")
+        domain="[('event_id', '=', event_id)]")
 
     is_demo = fields.Boolean(default=False, copy=False)
     sequence = fields.Integer(default=100, help="Announcement order inside the category (lower = called first).")
