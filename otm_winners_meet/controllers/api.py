@@ -149,7 +149,7 @@ def _p(p, detail=False):
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'instagram': p.instagram or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
-        'has_photo': bool(p.photo), 'contact': p.contact_id.name or '', 'profile_name': p.profile_filename or '' if p.profile_file else '',
+        'has_photo': bool(p.photo), 'bio': p.bio or '', 'contact': p.contact_id.name or '', 'profile_name': p.profile_filename or '' if p.profile_file else '',
         'trophy_state': p.trophy_state, 'trophy_on': fields.Datetime.to_string(p.trophy_on) if p.trophy_on else '',
         'items': [{'item_id': l.item_id.id, 'name': l.item_id.name, 'state': l.state} for l in p.sudo().issue_ids],
         'create_date': fields.Datetime.to_string(p.create_date),
@@ -308,7 +308,7 @@ class WinnersMeetApi(http.Controller):
         cfg = ev.form_config(kind)
         extra = {}
         labels = {'place': _("place"), 'institution': _("school / institution"), 'email': _("email"),
-                  'photo': _("photo"), 'profile': _("short profile"), 'contact': _("point of contact"), 'food_pref': _("food preference"), 'instagram': _("Instagram ID")}
+                  'photo': _("photo"), 'profile': _("short profile"), 'contact': _("point of contact"), 'bio': _("short profile"), 'food_pref': _("food preference"), 'instagram': _("Instagram ID")}
 
         def need(field, value):
             if cfg[field] == 'required' and not value:
@@ -339,6 +339,13 @@ class WinnersMeetApi(http.Controller):
             if cid and not contact:
                 raise UserError(_("Please choose a valid point of contact."))
             extra['contact_id'] = contact.id or False
+        if cfg['bio'] != 'off':
+            bio = '\n'.join(line.strip() for line in (body.get('bio') or '').strip().splitlines())
+            bio = re.sub(r'\n{3,}', '\n\n', bio)
+            need('bio', bio)
+            if len(bio) > 1500:
+                raise UserError(_("Your short profile is too long. Please keep it within 1500 characters."))
+            extra['bio'] = bio or False
         if cfg['profile'] != 'off':
             extra['profile_file'], extra['profile_filename'] = _profile_from_body(
                 body.get('profile_file'), required=cfg['profile'] == 'required')
@@ -405,7 +412,7 @@ class WinnersMeetApi(http.Controller):
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):
                 vals[key] = json.dumps({k: v for k, v in body[key].items()
-                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile', 'contact')
+                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile', 'contact', 'bio')
                                         and v in ('off', 'optional', 'required')})
         if vals.get('slug'):
             clash = request.env['otm.wm.event'].search(

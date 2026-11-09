@@ -505,6 +505,10 @@ class TestWinnersMeet(TransactionCase):
         p = self.env['otm.wm.participant'].create({'event_id': ev.id, 'kind': 'teacher', 'name': 'T One', 'phone': '919822200001',
                                                    'profile_file': data, 'profile_filename': name})
         self.assertEqual(base64.b64decode(p.profile_file), b'%PDF-1.4 hello')
+        self.assertEqual(ev.form_config('teacher')['bio'], 'optional')
+        self.assertEqual(ev.form_config('student')['bio'], 'off')
+        p.bio = 'I teach accountancy.'
+        self.assertEqual(p.bio, 'I teach accountancy.')
 
     def test_marketing_manager_contact(self):
         ev = self.env['otm.wm.event'].create({'name': 'Contact Show', 'state': 'open'})

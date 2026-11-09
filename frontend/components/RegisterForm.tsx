@@ -28,7 +28,7 @@ const PROFILE_MAX_KB = Number(process.env.NEXT_PUBLIC_PROFILE_MAX_KB) || 700;
 
 export default function RegisterForm({ kind, slug }: { kind: "student" | "teacher"; slug?: string }) {
   const { data, loading } = useFetch<any>("/public/event", slug ? { slug } : undefined);
-  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", instagram: "", accompany_type: "none", accompany_count: "", photo: "", contact_id: "" });
+  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", instagram: "", accompany_type: "none", accompany_count: "", photo: "", contact_id: "", bio: "" });
   const [profile, setProfile] = useState<{ name: string; data: string } | null>(null);
   const [profileErr, setProfileErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -150,8 +150,14 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
                 </Field>
               </>
             )}
+            {on("bio") && (
+              <Field label="Short profile" hint="Write a short paragraph about yourself, your teaching and achievements.">
+                <textarea className="min-h-[7rem] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" rows={5} maxLength={1500} value={f.bio} onChange={(e) => set("bio", e.target.value)} required={req("bio")} placeholder="Example: I teach Accountancy at ... for 12 years ..." />
+                <div className="mt-1 text-right text-xs text-slate-400">{f.bio.length}/1500</div>
+              </Field>
+            )}
             {on("profile") && (
-              <Field label="Short profile" hint={`Upload a short profile of yourself as a Word or PDF file (max ${PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}).`}>
+              <Field label="Profile document (Word / PDF)" hint={`Upload a short profile of yourself as a Word or PDF file (max ${PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}).`}>
                 <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-slate-300 p-3 hover:border-brand-500">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><FileText className="h-6 w-6" /></span>
                   <span className="min-w-0 text-sm"><span className="block truncate font-medium text-slate-700">{profile ? profile.name : "No file chosen"}</span><span className="font-medium text-brand-600">{profile ? "Change file" : "Choose Word / PDF file"}</span></span>

@@ -61,6 +61,7 @@ class WmParticipant(models.Model):
 
     contact_id = fields.Many2one('otm.wm.contact', string="Point of Contact", ondelete='set null', copy=False,
                                  help="The Marketing Manager the teacher chose as point of contact.")
+    bio = fields.Text(string="Short Profile (paragraph)", copy=False)
     profile_file = fields.Binary(string="Short Profile (Word/PDF)", attachment=True, copy=False)
     profile_filename = fields.Char(string="Profile File Name", copy=False)
     photo = fields.Image(string="Photo", max_width=600, max_height=600, copy=False)
