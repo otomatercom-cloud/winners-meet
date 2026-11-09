@@ -28,7 +28,8 @@ export async function api<T = any>(path: string, opts: { method?: "GET" | "POST"
   }
   const json = await res.json().catch(() => null);
   if (!json || json.ok === false || !res.ok) {
-    const err = new ApiError(json?.error || "Something went wrong.", res.status, json?.code);
+    const msg = res.status === 413 ? "That file is too large for the server. Please upload a smaller file." : json?.error || "Something went wrong.";
+    const err = new ApiError(msg, res.status, json?.code);
     if (res.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/login") && window.location.pathname.startsWith("/admin")) {
       window.location.href = "/login";
     }

@@ -40,6 +40,7 @@
                             <field name="phone"/>
                             <field name="place"/>
                             <field name="instagram"/>
+                            <field name="contact_id"/>
                             <field name="profile_filename" invisible="1"/>
                             <field name="profile_file" filename="profile_filename"/>
                             <field name="institution"/>

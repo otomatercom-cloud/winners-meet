@@ -149,7 +149,7 @@ def _p(p, detail=False):
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'instagram': p.instagram or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
-        'has_photo': bool(p.photo), 'profile_name': p.profile_filename or '' if p.profile_file else '',
+        'has_photo': bool(p.photo), 'contact': p.contact_id.name or '', 'profile_name': p.profile_filename or '' if p.profile_file else '',
         'trophy_state': p.trophy_state, 'trophy_on': fields.Datetime.to_string(p.trophy_on) if p.trophy_on else '',
         'items': [{'item_id': l.item_id.id, 'name': l.item_id.name, 'state': l.state} for l in p.sudo().issue_ids],
         'create_date': fields.Datetime.to_string(p.create_date),
@@ -273,6 +273,7 @@ class WinnersMeetApi(http.Controller):
             'courses': [{'id': c.id, 'name': c.name, 'code': c.code or ''}
                         for c in ev.course_ids if any(k.kind == 'student' and k.self_select for k in c.category_ids)],
             'teacher_categories': [{'id': c.id, 'name': c.name, 'color': c.color} for c in cats if c.kind == 'teacher'],
+            'contacts': [{'id': c.id, 'name': c.name} for c in ev.contact_ids],
         }
 
     @api('/public/register', methods=('POST',), auth='public')
@@ -307,7 +308,7 @@ class WinnersMeetApi(http.Controller):
         cfg = ev.form_config(kind)
         extra = {}
         labels = {'place': _("place"), 'institution': _("school / institution"), 'email': _("email"),
-                  'photo': _("photo"), 'profile': _("short profile"), 'food_pref': _("food preference"), 'instagram': _("Instagram ID")}
+                  'photo': _("photo"), 'profile': _("short profile"), 'contact': _("point of contact"), 'food_pref': _("food preference"), 'instagram': _("Instagram ID")}
 
         def need(field, value):
             if cfg[field] == 'required' and not value:
@@ -331,6 +332,13 @@ class WinnersMeetApi(http.Controller):
             extra['food_pref'] = fp or False
         if cfg['photo'] != 'off':
             extra['photo'] = _photo_from_body(body.get('photo'), required=cfg['photo'] == 'required')
+        if cfg['contact'] != 'off' and ev.contact_ids:
+            cid = _int(body.get('contact_id'), 0)
+            contact = ev.contact_ids.filtered(lambda c: c.id == cid)
+            need('contact', contact)
+            if cid and not contact:
+                raise UserError(_("Please choose a valid point of contact."))
+            extra['contact_id'] = contact.id or False
         if cfg['profile'] != 'off':
             extra['profile_file'], extra['profile_filename'] = _profile_from_body(
                 body.get('profile_file'), required=cfg['profile'] == 'required')
@@ -397,7 +405,7 @@ class WinnersMeetApi(http.Controller):
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):
                 vals[key] = json.dumps({k: v for k, v in body[key].items()
-                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile')
+                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile', 'contact')
                                         and v in ('off', 'optional', 'required')})
         if vals.get('slug'):
             clash = request.env['otm.wm.event'].search(
@@ -976,6 +984,36 @@ class WinnersMeetApi(http.Controller):
     def staff_delete(self, body=None, **kw):
         _need_manager()
         request.env['otm.wm.staff'].browse(_int(body.get('id'), 0)).exists().unlink()
+        return True
+
+    # ============================================================ marketing managers (point of contact)
+    @api('/contacts')
+    def contacts(self, body=None, event_id=None, **kw):
+        _need_manager()
+        return [{'id': c.id, 'name': c.name, 'phone': c.phone or '',
+                 'teachers': request.env['otm.wm.participant'].search_count([('contact_id', '=', c.id)])}
+                for c in _event(event_id).contact_ids]
+
+    @api('/contacts/save', methods=('POST',))
+    def contact_save(self, body=None, **kw):
+        _need_manager()
+        ev = _event(body.get('event_id'))
+        vals = {'name': (body.get('name') or '').strip(), 'phone': (body.get('phone') or '').strip() or False}
+        if not vals['name']:
+            raise UserError(_("Name is required."))
+        if body.get('id'):
+            c = request.env['otm.wm.contact'].browse(_int(body['id'], 0)).exists()
+            if not c:
+                raise MissingError(_("Not found."))
+            c.write(vals)
+        else:
+            request.env['otm.wm.contact'].create(dict(vals, event_id=ev.id))
+        return True
+
+    @api('/contacts/delete', methods=('POST',))
+    def contact_delete(self, body=None, **kw):
+        _need_manager()
+        request.env['otm.wm.contact'].browse(_int(body.get('id'), 0)).exists().unlink()
         return True
 
     @api('/expected/bulk', methods=('POST',))

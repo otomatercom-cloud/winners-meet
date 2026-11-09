@@ -506,6 +506,23 @@ class TestWinnersMeet(TransactionCase):
                                                    'profile_file': data, 'profile_filename': name})
         self.assertEqual(base64.b64decode(p.profile_file), b'%PDF-1.4 hello')
 
+    def test_marketing_manager_contact(self):
+        ev = self.env['otm.wm.event'].create({'name': 'Contact Show', 'state': 'open'})
+        C = self.env['otm.wm.contact']
+        m1 = C.create({'event_id': ev.id, 'name': '  Anil   Kumar ', 'phone': '9847000001'})
+        C.create({'event_id': ev.id, 'name': 'Reshma'})
+        self.assertEqual(m1.name, 'Anil Kumar')
+        self.assertEqual(len(ev.contact_ids), 2)
+        with self.assertRaises(Exception), self.env.cr.savepoint():
+            C.create({'event_id': ev.id, 'name': 'Anil Kumar'})
+        self.assertEqual(ev.form_config('teacher')['contact'], 'optional')
+        self.assertEqual(ev.form_config('student')['contact'], 'off')
+        t = self.env['otm.wm.participant'].create({'event_id': ev.id, 'kind': 'teacher', 'name': 'T Two', 'phone': '919833300001',
+                                                   'contact_id': m1.id})
+        self.assertEqual(t.contact_id, m1)
+        m1.unlink()
+        self.assertFalse(t.contact_id)           # removing a manager keeps the teacher
+
     def test_demo_load_and_delete(self):
         ev = self.env['otm.wm.event'].create({'name': 'Demo Show', 'state': 'open'})
         self.env['otm.wm.staff'].create({'event_id': ev.id, 'name': 'S', 'phone': '9876500555'})

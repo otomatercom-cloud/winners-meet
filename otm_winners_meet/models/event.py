@@ -5,12 +5,12 @@ from odoo.exceptions import UserError
 from odoo import _, api, fields, models
 
 # Registration form fields an admin can switch: off / optional / required.
-FORM_FIELDS = ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile')
+FORM_FIELDS = ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile', 'contact')
 FORM_DEFAULTS = {
     'student': {'place': 'optional', 'institution': 'off', 'email': 'off', 'photo': 'off',
-                'food_pref': 'off', 'accompany': 'optional', 'instagram': 'required', 'profile': 'off'},
+                'food_pref': 'off', 'accompany': 'optional', 'instagram': 'required', 'profile': 'off', 'contact': 'off'},
     'teacher': {'place': 'off', 'institution': 'optional', 'email': 'off', 'photo': 'required',
-                'food_pref': 'required', 'accompany': 'off', 'instagram': 'off', 'profile': 'optional'},
+                'food_pref': 'required', 'accompany': 'off', 'instagram': 'off', 'profile': 'optional', 'contact': 'optional'},
 }
 
 DEFAULT_STAGE_DONE_MSG = (
@@ -62,6 +62,7 @@ class WmEvent(models.Model):
     wa_tpl_stage_done = fields.Char(string="Staff: Category Complete Template", help="Variables: 1 category, 2 collected, 3 missed, 4 event.")
     wa_tpl_stage_late = fields.Char(string="Staff: Late Arrival Template", help="Variables: 1 name, 2 category, 3 event.")
     staff_ids = fields.One2many('otm.wm.staff', 'event_id', string="Stage Staff WhatsApp")
+    contact_ids = fields.One2many('otm.wm.contact', 'event_id', string="Marketing Managers")
     wa_seat_hat_param = fields.Boolean(
         string="Seat Template Has Hat Note",
         help="On: seat template has 5 variables (name, seat, event, hat note, link). "

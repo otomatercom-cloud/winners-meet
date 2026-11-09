@@ -50,7 +50,7 @@ export default function EventSettings() {
         <h3 className="font-semibold">Registration form fields</h3>
         <p className="mb-3 mt-1 text-xs text-slate-500">Name and WhatsApp number are always asked. Choose what else each form shows. Students also always choose course / category.</p>
         <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="text-left text-xs text-slate-500"><th className="py-1.5 pr-3">Field</th><th className="px-2">Students</th><th className="px-2">Teachers</th></tr></thead><tbody className="divide-y divide-slate-100">
-          {([["place", "Place"], ["institution", "School / institution"], ["email", "Email"], ["photo", "Photo"], ["food_pref", "Food preference (veg / non-veg)"], ["accompany", "Coming with friend / guardian"], ["instagram", "Instagram ID (to tag in photos)"], ["profile", "Short profile upload (Word / PDF)"]] as const).map(([k, label]) => (
+          {([["place", "Place"], ["institution", "School / institution"], ["email", "Email"], ["photo", "Photo"], ["food_pref", "Food preference (veg / non-veg)"], ["accompany", "Coming with friend / guardian"], ["instagram", "Instagram ID (to tag in photos)"], ["profile", "Short profile upload (Word / PDF)"], ["contact", "Point of contact (Marketing Manager)"]] as const).map(([k, label]) => (
             <tr key={k}><td className="py-2 pr-3">{label}</td>
               {(["form_student", "form_teacher"] as const).map((fk) => (
                 <td key={fk} className="px-2 py-1.5"><select className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2 text-sm" value={f[fk]?.[k] || "off"} onChange={(e) => set(fk, { ...f[fk], [k]: e.target.value })}>
@@ -92,6 +92,11 @@ export default function EventSettings() {
         {f.id && <StaffContacts eventId={f.id} />}
         {!f.id && <p className="text-xs text-slate-500">Save the event first, then add staff numbers.</p>}
       </Card>
+      <Card className="mb-5 space-y-3 p-5">
+        <h3 className="font-semibold">Marketing Managers (teacher point of contact)</h3>
+        <p className="text-xs text-slate-500">Teachers pick one of these on their registration form. Turn the field on, optional or required in "Registration form fields" above. The form hides it while this list is empty.</p>
+        {f.id ? <MarketingManagers eventId={f.id} /> : <p className="text-xs text-slate-500">Save the event first, then add Marketing Managers.</p>}
+      </Card>
       <Button size="lg" className="w-full sm:w-auto" loading={busy} onClick={save}>Save event</Button>
       {f.id && (
         <Card className="mt-6 space-y-2 p-5 text-sm">
@@ -101,6 +106,29 @@ export default function EventSettings() {
           ))}
         </Card>
       )}
+    </div>
+  );
+}
+
+function MarketingManagers({ eventId }: { eventId: number }) {
+  const toast = useToast();
+  const { data, reload } = useFetch<any[]>("/contacts", { event_id: eventId });
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const add = async () => {
+    setBusy(true);
+    try { await api("/contacts/save", { method: "POST", body: { event_id: eventId, name, phone } }); setName(""); setPhone(""); reload(); toast("Added"); }
+    catch (e: any) { toast(e.message, "err"); }
+    setBusy(false);
+  };
+  const del = async (id: number) => { try { await api("/contacts/delete", { method: "POST", body: { id } }); reload(); } catch (e: any) { toast(e.message, "err"); } };
+  return (
+    <div>
+      <div className="space-y-1.5">{(data || []).map((s) => (
+        <div key={s.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"><span>{s.name}{s.phone ? ` · ${s.phone}` : ""} <span className="text-xs text-slate-400">· {s.teachers} teacher{s.teachers === 1 ? "" : "s"}</span></span><button className="text-xs text-slate-400 hover:text-rose-600" onClick={() => del(s.id)}>Remove</button></div>
+      ))}</div>
+      <div className="mt-2 flex gap-2"><input className={inputCls} placeholder="Marketing Manager name" value={name} onChange={(e) => setName(e.target.value)} /><input className={inputCls} placeholder="Phone (optional)" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /><Button disabled={!name} loading={busy} onClick={add}>Add</Button></div>
     </div>
   );
 }

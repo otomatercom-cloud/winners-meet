@@ -21,3 +21,5 @@ access_wm_issue_user,wm.issue user,model_otm_wm_issue,group_wm_user,1,0,0,0
 access_wm_issue_mgr,wm.issue manager,model_otm_wm_issue,group_wm_manager,1,1,1,1
 access_wm_staff_user,wm.staff user,model_otm_wm_staff,group_wm_user,1,0,0,0
 access_wm_staff_mgr,wm.staff manager,model_otm_wm_staff,group_wm_manager,1,1,1,1
+access_wm_contact_user,wm.contact user,model_otm_wm_contact,group_wm_user,1,0,0,0
+access_wm_contact_mgr,wm.contact manager,model_otm_wm_contact,group_wm_manager,1,1,1,1

@@ -5,6 +5,7 @@ from . import item
 from . import category
 from . import seat
 from . import staff
+from . import contact
 from . import expected
 from . import participant
 from . import message_log

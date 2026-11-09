@@ -20,3 +20,4 @@ Stage update: {{1}} has arrived late for {{2}} at {{3}}. Added to the Missed lis
 
 ## Teacher short-profile upload
 Teachers can upload a Word/PDF short profile (max 2 MB). Switch it off / optional / required per event in Event settings > Registration form fields. If uploads fail with "Unexpected server response", raise the nginx limit: `client_max_body_size 5m;` (server block of the frontend and of Odoo), then `nginx -s reload`.
+The browser accepts profile files up to 700 KB by default (safe with nginx's default 1 MB limit). After raising nginx `client_max_body_size` to 5m, set `NEXT_PUBLIC_PROFILE_MAX_KB=2000` in the frontend `.env.local` and rebuild to allow the full 2 MB.

@@ -23,10 +23,14 @@ function shrink(file: File): Promise<string> {
   });
 }
 
+/** Largest profile file the browser accepts. Keep it under the nginx client_max_body_size (default 1 MB, base64 adds 33%). */
+const PROFILE_MAX_KB = Number(process.env.NEXT_PUBLIC_PROFILE_MAX_KB) || 700;
+
 export default function RegisterForm({ kind, slug }: { kind: "student" | "teacher"; slug?: string }) {
   const { data, loading } = useFetch<any>("/public/event", slug ? { slug } : undefined);
-  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", instagram: "", accompany_type: "none", accompany_count: "", photo: "" });
+  const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", instagram: "", accompany_type: "none", accompany_count: "", photo: "", contact_id: "" });
   const [profile, setProfile] = useState<{ name: string; data: string } | null>(null);
+  const [profileErr, setProfileErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<any>(null);
@@ -46,11 +50,12 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
   };
   const pickProfile = (file?: File) => {
     if (!file) return;
-    if (!/\.(pdf|docx?)$/i.test(file.name)) { setErr("Please upload the profile as a PDF or Word file (.pdf, .doc, .docx)."); return; }
-    if (file.size > 2 * 1024 * 1024) { setErr("The profile file is too large. Maximum size is 2 MB."); return; }
+    setProfileErr("");
+    if (!/\.(pdf|docx?)$/i.test(file.name)) { setProfileErr("Please upload the profile as a PDF or Word file (.pdf, .doc, .docx)."); return; }
+    if (file.size > PROFILE_MAX_KB * 1024) { setProfileErr(`This file is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please upload a smaller Word / PDF file, maximum ${PROFILE_MAX_KB >= 1024 ? (PROFILE_MAX_KB / 1024).toFixed(0) + " MB" : PROFILE_MAX_KB + " KB"}.`); return; }
     const rd = new FileReader();
-    rd.onload = () => { setProfile({ name: file.name, data: String(rd.result).split(",")[1] || "" }); setErr(""); };
-    rd.onerror = () => setErr("Could not read that file. Please try again.");
+    rd.onload = () => { setProfile({ name: file.name, data: String(rd.result).split(",")[1] || "" }); setErr(""); setProfileErr(""); };
+    rd.onerror = () => setProfileErr("Could not read that file. Please try again.");
     rd.readAsDataURL(file);
   };
   const submit = async (e: React.FormEvent) => {
@@ -126,6 +131,14 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
             {on("place") && <Field label="Place"><input className={inputCls} value={f.place} onChange={(e) => set("place", e.target.value)} required={req("place")} /></Field>}
             {on("institution") && <Field label="School / institution"><input className={inputCls} value={f.institution} onChange={(e) => set("institution", e.target.value)} required={req("institution")} /></Field>}
             {on("email") && <Field label="Email"><input type="email" className={inputCls} value={f.email} onChange={(e) => set("email", e.target.value)} required={req("email")} autoComplete="email" /></Field>}
+            {on("contact") && (data?.contacts?.length ?? 0) > 0 && (
+              <Field label="Point of contact" hint="Choose the Marketing Manager you are in touch with.">
+                <select className={inputCls} value={f.contact_id} onChange={(e) => set("contact_id", e.target.value)} required={req("contact")}>
+                  <option value="">Select Marketing Manager</option>
+                  {data.contacts.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
+            )}
             {on("photo") && (
               <>
                 <Field label="Your photo" hint="A clear face photo. It is shown at the entry desk.">
@@ -138,12 +151,13 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
               </>
             )}
             {on("profile") && (
-              <Field label="Short profile" hint="Upload a short profile of yourself as a Word or PDF file (max 2 MB).">
+              <Field label="Short profile" hint={`Upload a short profile of yourself as a Word or PDF file (max ${PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}).`}>
                 <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-slate-300 p-3 hover:border-brand-500">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><FileText className="h-6 w-6" /></span>
                   <span className="min-w-0 text-sm"><span className="block truncate font-medium text-slate-700">{profile ? profile.name : "No file chosen"}</span><span className="font-medium text-brand-600">{profile ? "Change file" : "Choose Word / PDF file"}</span></span>
                   <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={(e) => { pickProfile(e.target.files?.[0]); e.target.value = ""; }} />
                 </label>
+                {profileErr && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{profileErr}</p>}
               </Field>
             )}
             {on("instagram") && (
