@@ -16,6 +16,16 @@ export default function Detail() {
   const { data, error, loading, reload, setData } = useFetch<Participant>(`/participants/${id}`);
   const [qr, setQr] = useState("");
   useEffect(() => { if (data?.token) QRCode.toDataURL(`${window.location.origin}/pass/${data.token}`, { width: 300, margin: 1 }).then(setQr); }, [data?.token]);
+  const downloadProfile = async () => {
+    try {
+      const f: any = await api("/participants/profile", { method: "POST", body: { id: Number(id) } });
+      const bin = atob(f.data); const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([buf], { type: f.mime }));
+      const a = document.createElement("a"); a.href = url; a.download = f.name; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    } catch (e: any) { alert(e.message); }
+  };
   const remove = async () => {
     if (!data || !confirm(`Delete ${data.name}? The registration, seat and WhatsApp history will be removed permanently.`)) return;
     try { await api(`/participants/${id}/delete`, { method: "POST", body: {} }); router.replace("/admin/participants"); }
@@ -43,6 +53,7 @@ export default function Detail() {
             <dl className="space-y-1.5 text-slate-600">
               <div className="flex justify-between"><dt>Registered</dt><dd>{fmtTime(data.create_date)}</dd></div>
               <div className="flex justify-between"><dt>Via</dt><dd>{data.registered_via}</dd></div>
+              {data.profile_name && <div className="flex justify-between gap-3"><dt>Short profile</dt><dd className="min-w-0 truncate"><button className="text-brand-600 underline" onClick={downloadProfile}>{data.profile_name}</button></dd></div>}
               {data.instagram && <div className="flex justify-between"><dt>Instagram</dt><dd><a className="text-brand-600 underline" target="_blank" href={`https://instagram.com/${data.instagram}`}>@{data.instagram}</a></dd></div>}
               {data.food_pref && <div className="flex justify-between"><dt>Food</dt><dd>{data.food_pref === "veg" ? "Veg" : "Non-veg"}</dd></div>}
               {data.accompany_count > 0 && <div className="flex justify-between"><dt>Coming with</dt><dd>{data.accompany_count} {data.accompany_type}</dd></div>}

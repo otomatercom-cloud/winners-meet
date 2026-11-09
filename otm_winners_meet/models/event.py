@@ -5,12 +5,12 @@ from odoo.exceptions import UserError
 from odoo import _, api, fields, models
 
 # Registration form fields an admin can switch: off / optional / required.
-FORM_FIELDS = ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram')
+FORM_FIELDS = ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile')
 FORM_DEFAULTS = {
     'student': {'place': 'optional', 'institution': 'off', 'email': 'off', 'photo': 'off',
-                'food_pref': 'off', 'accompany': 'optional', 'instagram': 'required'},
+                'food_pref': 'off', 'accompany': 'optional', 'instagram': 'required', 'profile': 'off'},
     'teacher': {'place': 'off', 'institution': 'optional', 'email': 'off', 'photo': 'required',
-                'food_pref': 'required', 'accompany': 'off', 'instagram': 'off'},
+                'food_pref': 'required', 'accompany': 'off', 'instagram': 'off', 'profile': 'optional'},
 }
 
 DEFAULT_STAGE_DONE_MSG = (

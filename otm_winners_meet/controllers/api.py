@@ -5,6 +5,7 @@ to Odoo). Public routes (registration form, entry pass) are limited to what a gu
 """
 import functools
 import json
+import os
 import re
 import logging
 
@@ -148,7 +149,7 @@ def _p(p, detail=False):
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'instagram': p.instagram or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
-        'has_photo': bool(p.photo),
+        'has_photo': bool(p.photo), 'profile_name': p.profile_filename or '' if p.profile_file else '',
         'trophy_state': p.trophy_state, 'trophy_on': fields.Datetime.to_string(p.trophy_on) if p.trophy_on else '',
         'items': [{'item_id': l.item_id.id, 'name': l.item_id.name, 'state': l.state} for l in p.sudo().issue_ids],
         'create_date': fields.Datetime.to_string(p.create_date),
@@ -189,6 +190,41 @@ def _photo_from_body(raw, required=False):
     except Exception:  # noqa: BLE001 - any decoding problem means "not a usable image"
         raise UserError(_("That file is not a valid image. Please upload a JPG or PNG photo."))
     return base64.b64encode(data).decode()
+
+
+PROFILE_MAX_BYTES = 2 * 1024 * 1024
+PROFILE_TYPES = {      # extension -> (magic prefix, mime)
+    'pdf': (b'%PDF', 'application/pdf'),
+    'doc': (b'\xd0\xcf\x11\xe0', 'application/msword'),
+    'docx': (b'PK\x03\x04', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+}
+
+
+def _profile_from_body(raw, required=False):
+    """Accept {name, data(base64)} of a Word/PDF short profile. Returns (base64, safe file name) or (False, False)."""
+    import base64
+    if not raw or not isinstance(raw, dict) or not raw.get('data'):
+        if required:
+            raise UserError(_("Please upload your short profile (Word or PDF)."))
+        return False, False
+    name = re.sub(r'[^A-Za-z0-9._ -]', '_', os.path.basename(str(raw.get('name') or 'profile'))).strip()[:80] or 'profile'
+    ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+    if ext not in PROFILE_TYPES:
+        raise UserError(_("Please upload the profile as a PDF or Word file (.pdf, .doc, .docx)."))
+    data_b64 = str(raw['data'])
+    if data_b64.startswith('data:'):
+        data_b64 = data_b64.split(',', 1)[-1]
+    if len(data_b64) > PROFILE_MAX_BYTES * 4 // 3 + 16:
+        raise UserError(_("The profile file is too large. Maximum size is 2 MB."))
+    try:
+        data = base64.b64decode(data_b64, validate=False)
+    except Exception:  # noqa: BLE001
+        raise UserError(_("That file could not be read. Please upload it again."))
+    if len(data) > PROFILE_MAX_BYTES:
+        raise UserError(_("The profile file is too large. Maximum size is 2 MB."))
+    if not data.startswith(PROFILE_TYPES[ext][0]):
+        raise UserError(_("That file is not a valid %s document.", ext.upper()))
+    return base64.b64encode(data).decode(), name
 
 
 def _participant(pid):
@@ -271,7 +307,7 @@ class WinnersMeetApi(http.Controller):
         cfg = ev.form_config(kind)
         extra = {}
         labels = {'place': _("place"), 'institution': _("school / institution"), 'email': _("email"),
-                  'photo': _("photo"), 'food_pref': _("food preference"), 'instagram': _("Instagram ID")}
+                  'photo': _("photo"), 'profile': _("short profile"), 'food_pref': _("food preference"), 'instagram': _("Instagram ID")}
 
         def need(field, value):
             if cfg[field] == 'required' and not value:
@@ -295,6 +331,9 @@ class WinnersMeetApi(http.Controller):
             extra['food_pref'] = fp or False
         if cfg['photo'] != 'off':
             extra['photo'] = _photo_from_body(body.get('photo'), required=cfg['photo'] == 'required')
+        if cfg['profile'] != 'off':
+            extra['profile_file'], extra['profile_filename'] = _profile_from_body(
+                body.get('profile_file'), required=cfg['profile'] == 'required')
         if cfg['accompany'] != 'off':
             acc = body.get('accompany_type') or 'none'
             if acc not in ('none', 'friend', 'guardian'):
@@ -358,7 +397,7 @@ class WinnersMeetApi(http.Controller):
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):
                 vals[key] = json.dumps({k: v for k, v in body[key].items()
-                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram')
+                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile')
                                         and v in ('off', 'optional', 'required')})
         if vals.get('slug'):
             clash = request.env['otm.wm.event'].search(
@@ -772,6 +811,16 @@ class WinnersMeetApi(http.Controller):
         return _p(p, detail=True)
 
     # ============================================================ winners list (expected)
+    @api('/participants/profile', methods=('POST',))
+    def participant_profile(self, body=None, **kw):
+        _need_staff()
+        p = _participant(_int(body.get('id'), 0))
+        if not p.profile_file:
+            raise MissingError(_("No profile uploaded."))
+        ext = (p.profile_filename or '').rsplit('.', 1)[-1].lower()
+        return {'name': p.profile_filename or 'profile.' + (ext or 'pdf'), 'mime': PROFILE_TYPES.get(ext, ('', 'application/octet-stream'))[1],
+                'data': p.profile_file.decode()}
+
     @api('/expected')
     def expected(self, body=None, event_id=None, **kw):
         _need_staff()

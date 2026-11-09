@@ -483,6 +483,29 @@ class TestWinnersMeet(TransactionCase):
         tcat._stage_autoclose()
         self.assertFalse(tcat.stage_closed)                  # Biju has not collected yet
 
+    def test_teacher_profile_upload(self):
+        import base64
+        from odoo.addons.otm_winners_meet.controllers.api import _profile_from_body
+        enc = lambda b: base64.b64encode(b).decode()
+        data, name = _profile_from_body({'name': '../My CV.pdf', 'data': enc(b'%PDF-1.4 hello')})
+        self.assertEqual(name, 'My CV.pdf')
+        self.assertEqual(_profile_from_body({'name': 'a.docx', 'data': enc(b'PK\x03\x04xx')})[1], 'a.docx')
+        self.assertEqual(_profile_from_body(None), (False, False))
+        with self.assertRaises(UserError):
+            _profile_from_body(None, required=True)
+        with self.assertRaises(UserError):
+            _profile_from_body({'name': 'virus.exe', 'data': enc(b'MZ..')})
+        with self.assertRaises(UserError):
+            _profile_from_body({'name': 'fake.pdf', 'data': enc(b'not a pdf')})
+        with self.assertRaises(UserError):
+            _profile_from_body({'name': 'big.pdf', 'data': enc(b'%PDF' + b'0' * (2 * 1024 * 1024))})
+        ev = self.env['otm.wm.event'].create({'name': 'Prof Show', 'state': 'open'})
+        self.assertEqual(ev.form_config('teacher')['profile'], 'optional')
+        self.assertEqual(ev.form_config('student')['profile'], 'off')
+        p = self.env['otm.wm.participant'].create({'event_id': ev.id, 'kind': 'teacher', 'name': 'T One', 'phone': '919822200001',
+                                                   'profile_file': data, 'profile_filename': name})
+        self.assertEqual(base64.b64decode(p.profile_file), b'%PDF-1.4 hello')
+
     def test_demo_load_and_delete(self):
         ev = self.env['otm.wm.event'].create({'name': 'Demo Show', 'state': 'open'})
         self.env['otm.wm.staff'].create({'event_id': ev.id, 'name': 'S', 'phone': '9876500555'})

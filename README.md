@@ -17,3 +17,6 @@ Stage update: the {{1}} announcement is complete. Trophies collected: {{2}}. Mov
 ```
 Stage update: {{1}} has arrived late for {{2}} at {{3}}. Added to the Missed list for collection at the end.
 ```
+
+## Teacher short-profile upload
+Teachers can upload a Word/PDF short profile (max 2 MB). Switch it off / optional / required per event in Event settings > Registration form fields. If uploads fail with "Unexpected server response", raise the nginx limit: `client_max_body_size 5m;` (server block of the frontend and of Odoo), then `nginx -s reload`.

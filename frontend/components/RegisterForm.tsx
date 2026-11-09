@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Camera, CheckCircle2, Clock, Trophy } from "lucide-react";
+import { Camera, CheckCircle2, Clock, FileText, Trophy } from "lucide-react";
 import { api, useFetch } from "@/lib/api";
 import { Button, Card, Field, Spinner, inputCls } from "@/components/ui";
 
@@ -26,6 +26,7 @@ function shrink(file: File): Promise<string> {
 export default function RegisterForm({ kind, slug }: { kind: "student" | "teacher"; slug?: string }) {
   const { data, loading } = useFetch<any>("/public/event", slug ? { slug } : undefined);
   const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", instagram: "", accompany_type: "none", accompany_count: "", photo: "" });
+  const [profile, setProfile] = useState<{ name: string; data: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState<any>(null);
@@ -43,16 +44,26 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
     if (!file) return;
     try { set("photo", await shrink(file)); setErr(""); } catch { setErr("Could not read that photo. Please choose a JPG or PNG image."); }
   };
+  const pickProfile = (file?: File) => {
+    if (!file) return;
+    if (!/\.(pdf|docx?)$/i.test(file.name)) { setErr("Please upload the profile as a PDF or Word file (.pdf, .doc, .docx)."); return; }
+    if (file.size > 2 * 1024 * 1024) { setErr("The profile file is too large. Maximum size is 2 MB."); return; }
+    const rd = new FileReader();
+    rd.onload = () => { setProfile({ name: file.name, data: String(rd.result).split(",")[1] || "" }); setErr(""); };
+    rd.onerror = () => setErr("Could not read that file. Please try again.");
+    rd.readAsDataURL(file);
+  };
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
     if (req("photo") && !f.photo) { setErr("Please upload your photo."); return; }
+    if (req("profile") && !profile) { setErr("Please upload your short profile (Word or PDF)."); return; }
     if (req("food_pref") && !f.food_pref) { setErr("Please choose your food preference."); return; }
     setBusy(true);
     setErr("");
     try {
       const catId = f.category_id || (cats.length === 1 ? String(cats[0].id) : "");
-      setDone(await api("/public/register", { method: "POST", body: { ...f, category_id: catId, kind, event_id: ev.id } }));
+      setDone(await api("/public/register", { method: "POST", body: { ...f, category_id: catId, kind, event_id: ev.id, profile_file: profile } }));
     } catch (e: any) {
       setErr(e.message);
     }
@@ -125,6 +136,15 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
                   </label>
                 </Field>
               </>
+            )}
+            {on("profile") && (
+              <Field label="Short profile" hint="Upload a short profile of yourself as a Word or PDF file (max 2 MB).">
+                <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-slate-300 p-3 hover:border-brand-500">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><FileText className="h-6 w-6" /></span>
+                  <span className="min-w-0 text-sm"><span className="block truncate font-medium text-slate-700">{profile ? profile.name : "No file chosen"}</span><span className="font-medium text-brand-600">{profile ? "Change file" : "Choose Word / PDF file"}</span></span>
+                  <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={(e) => { pickProfile(e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
+              </Field>
             )}
             {on("instagram") && (
               <Field label="Instagram ID" hint="Required so we can tag you in your event photos."><div className="flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500"><span className="pl-3 text-slate-400">@</span><input className="h-11 w-full rounded-lg bg-transparent px-2 outline-none" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/\s/g, ""))} required={req("instagram")} placeholder="your_instagram_id" autoCapitalize="none" autoCorrect="off" maxLength={60} /></div></Field>

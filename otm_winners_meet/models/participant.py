@@ -59,6 +59,8 @@ class WmParticipant(models.Model):
     checkin_on = fields.Datetime()
     checkin_by = fields.Many2one('res.users', ondelete='set null')
 
+    profile_file = fields.Binary(string="Short Profile (Word/PDF)", attachment=True, copy=False)
+    profile_filename = fields.Char(string="Profile File Name", copy=False)
     photo = fields.Image(string="Photo", max_width=600, max_height=600, copy=False)
     food_pref = fields.Selection([('veg', 'Vegetarian'), ('nonveg', 'Non-Vegetarian')], string="Food Preference")
     accompany_type = fields.Selection(
