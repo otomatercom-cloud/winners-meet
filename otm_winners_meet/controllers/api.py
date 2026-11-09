@@ -349,6 +349,9 @@ class WinnersMeetApi(http.Controller):
         if cfg['profile'] != 'off':
             extra['profile_file'], extra['profile_filename'] = _profile_from_body(
                 body.get('profile_file'), required=cfg['profile'] == 'required')
+        if cfg['profile_either'] == 'required' and (cfg['bio'] != 'off' or cfg['profile'] != 'off'):
+            if not extra.get('bio') and not extra.get('profile_file'):
+                raise UserError(_("Please write a short profile or upload a profile document (one of the two is enough)."))
         if cfg['accompany'] != 'off':
             acc = body.get('accompany_type') or 'none'
             if acc not in ('none', 'friend', 'guardian'):
@@ -412,7 +415,7 @@ class WinnersMeetApi(http.Controller):
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):
                 vals[key] = json.dumps({k: v for k, v in body[key].items()
-                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile', 'contact', 'bio')
+                                        if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile', 'contact', 'bio', 'profile_either')
                                         and v in ('off', 'optional', 'required')})
         if vals.get('slug'):
             clash = request.env['otm.wm.event'].search(

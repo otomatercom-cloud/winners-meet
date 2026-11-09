@@ -62,6 +62,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
     e.preventDefault();
     if (busy) return;
     if (req("photo") && !f.photo) { setErr("Please upload your photo."); return; }
+    if (req("profile_either") && (on("bio") || on("profile")) && !f.bio.trim() && !profile) { setErr("Please write a short profile or upload a profile document (one of the two is enough)."); return; }
     if (req("profile") && !profile) { setErr("Please upload your short profile (Word or PDF)."); return; }
     if (req("food_pref") && !f.food_pref) { setErr("Please choose your food preference."); return; }
     setBusy(true);
@@ -151,13 +152,13 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
               </>
             )}
             {on("bio") && (
-              <Field label="Short profile" hint="Write a short paragraph about yourself, your teaching and achievements.">
+              <Field label="Short profile" hint={req("profile_either") && on("profile") ? "Write a short paragraph about yourself, or upload a Word / PDF file below. One of the two is enough." : "Write a short paragraph about yourself, your teaching and achievements."}>
                 <textarea className="min-h-[7rem] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" rows={5} maxLength={1500} value={f.bio} onChange={(e) => set("bio", e.target.value)} required={req("bio")} placeholder="Example: I teach Accountancy at ... for 12 years ..." />
                 <div className="mt-1 text-right text-xs text-slate-400">{f.bio.length}/1500</div>
               </Field>
             )}
             {on("profile") && (
-              <Field label="Profile document (Word / PDF)" hint={`Upload a short profile of yourself as a Word or PDF file (max ${PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}).`}>
+              <Field label="Profile document (Word / PDF)" hint={`${req("profile_either") && on("bio") ? "Or upload" : "Upload"} a short profile of yourself as a Word or PDF file (max ${PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}).`}>
                 <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-slate-300 p-3 hover:border-brand-500">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><FileText className="h-6 w-6" /></span>
                   <span className="min-w-0 text-sm"><span className="block truncate font-medium text-slate-700">{profile ? profile.name : "No file chosen"}</span><span className="font-medium text-brand-600">{profile ? "Change file" : "Choose Word / PDF file"}</span></span>

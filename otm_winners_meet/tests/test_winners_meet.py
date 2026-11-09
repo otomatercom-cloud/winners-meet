@@ -507,6 +507,8 @@ class TestWinnersMeet(TransactionCase):
         self.assertEqual(base64.b64decode(p.profile_file), b'%PDF-1.4 hello')
         self.assertEqual(ev.form_config('teacher')['bio'], 'optional')
         self.assertEqual(ev.form_config('student')['bio'], 'off')
+        self.assertEqual(ev.form_config('teacher')['profile_either'], 'required')
+        self.assertEqual(ev.form_config('student')['profile_either'], 'off')
         p.bio = 'I teach accountancy.'
         self.assertEqual(p.bio, 'I teach accountancy.')
 
