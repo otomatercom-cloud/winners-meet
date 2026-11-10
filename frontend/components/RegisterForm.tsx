@@ -157,6 +157,13 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
                 <div className="mt-1 text-right text-xs text-slate-400">{f.bio.length}/1500</div>
               </Field>
             )}
+            {on("bio") && on("profile") && (
+              <div className="flex items-center gap-3" aria-hidden="true">
+                <span className="h-px flex-1 bg-slate-200" />
+                <span className="rounded-full bg-slate-100 px-3 py-0.5 text-xs font-semibold tracking-widest text-slate-500">OR</span>
+                <span className="h-px flex-1 bg-slate-200" />
+              </div>
+            )}
             {on("profile") && (
               <Field label="Profile document (Word / PDF)" hint={`${req("profile_either") && on("bio") ? "Or upload" : "Upload"} a short profile of yourself as a Word or PDF file (max ${PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}).`}>
                 <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-slate-300 p-3 hover:border-brand-500">
