@@ -48,3 +48,5 @@ input, select, textarea, button { font: inherit; }
 .wm-card button:not([type=button]):hover { filter: brightness(1.04); }
 .wm-card .bg-rose-50 { background: rgba(255,90,90,.16); }
 .wm-card .text-rose-700 { color: #ffd9d9; }
+.wm-card .text-emerald-600, .wm-card .text-amber-500 { color: #ffd84d; }
+.wm-card a { text-decoration: none; }
