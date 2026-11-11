@@ -73,9 +73,9 @@ export function Modal({ open, onClose, title, children, wide }: { open: boolean;
 
 export const inputCls = "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({ label, hint, children, className }: { label: string; hint?: string; children: ReactNode; className?: string }) {
   return (
-    <label className="block">
+    <label className={cx("block", className)}>
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}

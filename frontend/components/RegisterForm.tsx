@@ -26,6 +26,20 @@ function shrink(file: File): Promise<string> {
 /** Largest profile file the browser accepts. Keep it under the nginx client_max_body_size (default 1 MB, base64 adds 33%). */
 const PROFILE_MAX_KB = Number(process.env.NEXT_PUBLIC_PROFILE_MAX_KB) || 700;
 
+function Section({ children }: { children: React.ReactNode }) {
+  return <h2 className="mt-1 border-b border-slate-100 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 first:mt-0 sm:col-span-2">{children}</h2>;
+}
+
+function Seg({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[][] }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {options.map(([v, l]) => (
+        <button type="button" key={v} onClick={() => onChange(v)} className={cx("h-10 rounded-lg border text-sm font-medium transition", value === v ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-600 hover:border-slate-400")}>{l}</button>
+      ))}
+    </div>
+  );
+}
+
 export default function RegisterForm({ kind, slug }: { kind: "student" | "teacher"; slug?: string }) {
   const { data, loading } = useFetch<any>("/public/event", slug ? { slug } : undefined);
   const [f, setF] = useState({ name: "", phone: "", place: "", institution: "", category_id: "", course_id: "", website: "", email: "", food_pref: "", instagram: "", accompany_type: "none", accompany_count: "", photo: "", contact_id: "", bio: "" });
@@ -78,7 +92,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
 
   if (loading) return <Spinner />;
   return (
-    <main className="mx-auto min-h-screen max-w-lg px-4 py-8">
+    <main className="mx-auto min-h-screen max-w-2xl px-4 py-8">
       <Link href={slug ? `/e/${slug}` : "/"} className="mb-5 inline-flex items-center gap-2 text-sm text-slate-500"><Trophy className="h-4 w-4" /> {ev?.name || "Winners Meet"}</Link>
       {!ev && data?.events?.length ? (
         <div className="space-y-3">
@@ -107,8 +121,9 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
       ) : (
         <Card className="p-5 sm:p-6">
           <h1 className="text-xl font-semibold">{kind === "student" ? "Student" : "Teacher"} registration</h1>
-          <p className="mb-5 mt-1 text-sm text-slate-500">{ev.date}{ev.time ? ` · ${ev.time}` : ""}{ev.venue ? ` · ${ev.venue}` : ""}</p>
-          <form onSubmit={submit} className="space-y-4">
+          <p className="mb-4 mt-1 border-b border-slate-100 pb-4 text-sm text-slate-500">{ev.date}{ev.time ? ` · ${ev.time}` : ""}{ev.venue ? ` · ${ev.venue}` : ""}</p>
+          <form onSubmit={submit} className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+            <Section>Your details</Section>
             <Field label="Full name"><input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} required minLength={2} maxLength={100} autoComplete="name" /></Field>
             <Field label="WhatsApp number" hint="Your entry pass and seat details will be sent here.">
               <input className={inputCls} value={f.phone} onChange={(e) => set("phone", e.target.value)} inputMode="tel" required placeholder="10-digit mobile number" autoComplete="tel" />
@@ -122,85 +137,76 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
               </Field>
             )}
             {kind === "student" && (courses.length === 0 ? cats.length > 1 : !!f.course_id) && (
-              <Field label={kind === "student" ? "Winner category" : "Category"}>
+              <Field label="Winner category">
                 <select className={inputCls} value={f.category_id} onChange={(e) => set("category_id", e.target.value)} required>
                   <option value="">Select…</option>
                   {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </Field>
             )}
-            {on("place") && <Field label="Place"><input className={inputCls} value={f.place} onChange={(e) => set("place", e.target.value)} required={req("place")} /></Field>}
             {on("institution") && <Field label="School / institution"><input className={inputCls} value={f.institution} onChange={(e) => set("institution", e.target.value)} required={req("institution")} /></Field>}
             {on("email") && <Field label="Email"><input type="email" className={inputCls} value={f.email} onChange={(e) => set("email", e.target.value)} required={req("email")} autoComplete="email" /></Field>}
-            {on("contact") && (data?.contacts?.length ?? 0) > 0 && (
-              <Field label="Point of contact" hint="Choose the Marketing Manager you are in touch with.">
-                <select className={inputCls} value={f.contact_id} onChange={(e) => set("contact_id", e.target.value)} required={req("contact")}>
-                  <option value="">Select Marketing Manager</option>
-                  {data.contacts.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+            {on("place") && <Field label="Place"><input className={inputCls} value={f.place} onChange={(e) => set("place", e.target.value)} required={req("place")} /></Field>}
+            {on("instagram") && (
+              <Field label="Instagram ID" hint="So we can tag you in your event photos."><div className="flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500"><span className="pl-3 text-slate-400">@</span><input className="h-10 w-full rounded-lg bg-transparent px-2 text-sm outline-none" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/\s/g, ""))} required={req("instagram")} placeholder="your_instagram_id" autoCapitalize="none" autoCorrect="off" maxLength={60} /></div></Field>
+            )}
+
+            {(on("photo") || on("bio") || on("profile")) && <Section>{on("bio") || on("profile") ? "Photo & profile" : "Photo"}</Section>}
+            {on("photo") && (
+              <Field className="sm:col-span-2" label="Your photo">
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 p-2.5 hover:border-brand-500">
+                  {f.photo ? <img src={f.photo} alt="Your photo" className="h-14 w-14 rounded-lg object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera className="h-6 w-6" /></span>}
+                  <span className="min-w-0 text-sm"><span className="block font-medium text-brand-600">{f.photo ? "Change photo" : "Take or choose photo"}</span><span className="block text-xs text-slate-500">A clear face photo. It is shown at the entry desk.</span></span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
+                </label>
               </Field>
             )}
-            {on("photo") && (
-              <>
-                <Field label="Your photo" hint="A clear face photo. It is shown at the entry desk.">
-                  <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-slate-300 p-3 hover:border-brand-500">
-                    {f.photo ? <img src={f.photo} alt="Your photo" className="h-20 w-20 rounded-lg object-cover" /> : <span className="flex h-20 w-20 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera className="h-7 w-7" /></span>}
-                    <span className="text-sm font-medium text-brand-600">{f.photo ? "Change photo" : "Take or choose photo"}</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
-                  </label>
-                </Field>
-              </>
-            )}
             {on("bio") && (
-              <Field label="Short profile" hint={req("profile_either") && on("profile") ? "Write a short paragraph about yourself, or upload a Word / PDF file below. One of the two is enough." : "Write a short paragraph about yourself, your teaching and achievements."}>
-                <textarea className="min-h-[7rem] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" rows={5} maxLength={1500} value={f.bio} onChange={(e) => set("bio", e.target.value)} required={req("bio")} placeholder="Example: I teach Accountancy at ... for 12 years ..." />
-                <div className="mt-1 text-right text-xs text-slate-400">{f.bio.length}/1500</div>
+              <Field className="sm:col-span-2" label="Short profile" hint={req("profile_either") && on("profile") ? "Write a short paragraph about yourself, or upload a Word / PDF file below. One of the two is enough." : "Write a short paragraph about yourself, your teaching and achievements."}>
+                <textarea className="min-h-[5.5rem] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" rows={4} maxLength={1500} value={f.bio} onChange={(e) => set("bio", e.target.value)} required={req("bio")} placeholder="Example: I teach Accountancy at ... for 12 years ..." />
+                <div className="mt-0.5 text-right text-[11px] text-slate-400">{f.bio.length}/1500</div>
               </Field>
             )}
             {on("bio") && on("profile") && (
-              <div className="flex items-center gap-3" aria-hidden="true">
+              <div className="-my-1 flex items-center gap-3 sm:col-span-2" aria-hidden="true">
                 <span className="h-px flex-1 bg-slate-200" />
                 <span className="rounded-full bg-slate-100 px-3 py-0.5 text-xs font-semibold tracking-widest text-slate-500">OR</span>
                 <span className="h-px flex-1 bg-slate-200" />
               </div>
             )}
             {on("profile") && (
-              <Field label="Profile document (Word / PDF)" hint={`${req("profile_either") && on("bio") ? "Or upload" : "Upload"} a short profile of yourself as a Word or PDF file (max ${PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}).`}>
-                <label className="flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-slate-300 p-3 hover:border-brand-500">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><FileText className="h-6 w-6" /></span>
-                  <span className="min-w-0 text-sm"><span className="block truncate font-medium text-slate-700">{profile ? profile.name : "No file chosen"}</span><span className="font-medium text-brand-600">{profile ? "Change file" : "Choose Word / PDF file"}</span></span>
+              <Field className="sm:col-span-2" label="Profile document (Word / PDF)">
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 p-2.5 hover:border-brand-500">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><FileText className="h-5 w-5" /></span>
+                  <span className="min-w-0 text-sm"><span className="block truncate font-medium text-slate-700">{profile ? profile.name : "No file chosen"}</span><span className="block text-xs"><span className="font-medium text-brand-600">{profile ? "Change file" : "Choose Word / PDF file"}</span><span className="text-slate-500"> · max {PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}</span></span></span>
                   <input type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" className="hidden" onChange={(e) => { pickProfile(e.target.files?.[0]); e.target.value = ""; }} />
                 </label>
                 {profileErr && <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{profileErr}</p>}
               </Field>
             )}
-            {on("instagram") && (
-              <Field label="Instagram ID" hint="Required so we can tag you in your event photos."><div className="flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500"><span className="pl-3 text-slate-400">@</span><input className="h-11 w-full rounded-lg bg-transparent px-2 outline-none" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/\s/g, ""))} required={req("instagram")} placeholder="your_instagram_id" autoCapitalize="none" autoCorrect="off" maxLength={60} /></div></Field>
+
+            {(on("contact") && (data?.contacts?.length ?? 0) > 0 || on("food_pref") || on("accompany")) && <Section>Event details</Section>}
+            {on("contact") && (data?.contacts?.length ?? 0) > 0 && (
+              <Field label="Point of contact" hint="The Marketing Manager you are in touch with.">
+                <select className={inputCls} value={f.contact_id} onChange={(e) => set("contact_id", e.target.value)} required={req("contact")}>
+                  <option value="">Select Marketing Manager</option>
+                  {data.contacts.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </Field>
             )}
             {on("food_pref") && (
-              <>
-                <Field label="Food preference">
-                  <div className="grid grid-cols-2 gap-2">
-                    {[["veg", "Veg"], ["nonveg", "Non-veg"]].map(([v, l]) => (
-                      <button type="button" key={v} onClick={() => set("food_pref", v)} className={`h-11 rounded-lg border text-sm font-medium ${f.food_pref === v ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-700"}`}>{l}</button>
-                    ))}
-                  </div>
-                </Field>
-              </>
+              <Field label="Food preference">
+                <Seg value={f.food_pref} onChange={(v) => set("food_pref", v)} options={[["veg", "Veg"], ["nonveg", "Non-veg"]]} />
+              </Field>
             )}
             {on("accompany") && kind === "teacher" && (
               <>
-                <Field label="Are you coming with anyone?">
-                  <div className="grid grid-cols-2 gap-2">
-                    {[["none", "No"], ["guest", "Yes"]].map(([v, l]) => (
-                      <button type="button" key={v} onClick={() => setF((x) => ({ ...x, accompany_type: v, accompany_count: v === "none" ? "" : x.accompany_count }))}
-                        className={cx("h-11 rounded-lg border text-sm font-medium transition", f.accompany_type === v ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-600")}>{l}</button>
-                    ))}
-                  </div>
+                <Field label="Coming with anyone?">
+                  <Seg value={f.accompany_type} onChange={(v) => setF((x) => ({ ...x, accompany_type: v, accompany_count: v === "none" ? "" : x.accompany_count }))} options={[["none", "No"], ["guest", "Yes"]]} />
                 </Field>
                 {f.accompany_type === "guest" && (
-                  <Field label="How many people are coming with you?">
-                    <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required />
+                  <Field label="How many people?">
+                    <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required placeholder="1 - 10" />
                   </Field>
                 )}
               </>
@@ -215,15 +221,15 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
                   </select>
                 </Field>
                 {f.accompany_type !== "none" && (
-                  <Field label={`How many ${f.accompany_type === "friend" ? "friends" : "guardians"} are coming?`}>
-                    <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required />
+                  <Field label={`How many ${f.accompany_type === "friend" ? "friends" : "guardians"}?`}>
+                    <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required placeholder="1 - 10" />
                   </Field>
                 )}
               </>
             )}
             <input type="text" tabIndex={-1} autoComplete="off" value={f.website} onChange={(e) => set("website", e.target.value)} className="hidden" aria-hidden />
-            {err && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{err}</p>}
-            <Button size="lg" className="w-full" loading={busy}>Register</Button>
+            {err && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 sm:col-span-2">{err}</p>}
+            <Button size="lg" className="w-full sm:col-span-2" loading={busy}>Register</Button>
           </form>
         </Card>
       )}
