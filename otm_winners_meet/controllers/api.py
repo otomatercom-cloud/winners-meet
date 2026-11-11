@@ -354,7 +354,7 @@ class WinnersMeetApi(http.Controller):
                 raise UserError(_("Please write a short profile or upload a profile document (one of the two is enough)."))
         if cfg['accompany'] != 'off':
             acc = body.get('accompany_type') or 'none'
-            if acc not in ('none', 'friend', 'guardian'):
+            if acc not in (('none', 'guest') if kind == 'teacher' else ('none', 'friend', 'guardian')):
                 raise UserError(_("Invalid selection."))
             cnt = _int(body.get('accompany_count'), 0) if acc != 'none' else 0
             if acc != 'none' and not (1 <= cnt <= 10):
@@ -657,6 +657,8 @@ class WinnersMeetApi(http.Controller):
                 'nonveg': Part.search_count([('event_id', '=', ev.id), ('kind', '=', 'teacher'), ('food_pref', '=', 'nonveg')]),
                 'guests': sum(Part.search([('event_id', '=', ev.id), ('kind', '=', 'student'),
                                            ('approval_state', '!=', 'rejected')]).mapped('accompany_count')),
+                'teacher_guests': sum(Part.search([('event_id', '=', ev.id), ('kind', '=', 'teacher'),
+                                                   ('approval_state', '!=', 'rejected')]).mapped('accompany_count')),
             },
             'recent': [_p(p) for p in recent],
         }

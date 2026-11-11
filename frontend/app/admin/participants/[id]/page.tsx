@@ -57,7 +57,7 @@ export default function Detail() {
               {data.profile_name && <div className="flex justify-between gap-3"><dt>Profile document</dt><dd className="min-w-0 truncate"><button className="text-brand-600 underline" onClick={downloadProfile}>{data.profile_name}</button></dd></div>}
               {data.instagram && <div className="flex justify-between"><dt>Instagram</dt><dd><a className="text-brand-600 underline" target="_blank" href={`https://instagram.com/${data.instagram}`}>@{data.instagram}</a></dd></div>}
               {data.food_pref && <div className="flex justify-between"><dt>Food</dt><dd>{data.food_pref === "veg" ? "Veg" : "Non-veg"}</dd></div>}
-              {data.accompany_count > 0 && <div className="flex justify-between"><dt>Coming with</dt><dd>{data.accompany_count} {data.accompany_type}</dd></div>}
+              {data.accompany_count > 0 && <div className="flex justify-between"><dt>Coming with</dt><dd>{data.accompany_count} {data.accompany_type === "guest" ? "guest(s)" : data.accompany_type}</dd></div>}
               {data.claimed_category && <div className="flex justify-between"><dt>Chose</dt><dd>{data.claimed_category.name}</dd></div>}
               {data.expected && <div className="flex justify-between"><dt>Winners list</dt><dd>{data.expected.category}</dd></div>}
               {data.approved_by && <div className="flex justify-between"><dt>Approved by</dt><dd>{data.approved_by}</dd></div>}

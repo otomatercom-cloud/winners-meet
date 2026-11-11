@@ -232,7 +232,7 @@ class TestWinnersMeet(TransactionCase):
 
     def test_form_config(self):
         cfg = self.event.form_config('teacher')
-        self.assertEqual((cfg['photo'], cfg['food_pref'], cfg['accompany']), ('required', 'required', 'off'))
+        self.assertEqual((cfg['photo'], cfg['food_pref'], cfg['accompany']), ('required', 'required', 'optional'))
         self.event.form_teacher = '{"photo": "off", "bogus": "required", "email": "weird"}'
         cfg = self.event.form_config('teacher')
         self.assertEqual((cfg['photo'], cfg['email'], cfg.get('bogus')), ('off', 'off', None))
@@ -505,6 +505,12 @@ class TestWinnersMeet(TransactionCase):
         p = self.env['otm.wm.participant'].create({'event_id': ev.id, 'kind': 'teacher', 'name': 'T One', 'phone': '919822200001',
                                                    'profile_file': data, 'profile_filename': name})
         self.assertEqual(base64.b64decode(p.profile_file), b'%PDF-1.4 hello')
+        self.assertEqual(ev.form_config('teacher')['accompany'], 'optional')
+        tg = self.env['otm.wm.participant'].create({'event_id': ev.id, 'kind': 'teacher', 'name': 'T Guest', 'phone': '919844400001',
+                                                    'accompany_type': 'guest', 'accompany_count': 2})
+        self.assertEqual(tg.accompany_count, 2)
+        with self.assertRaises(Exception), self.env.cr.savepoint():
+            tg.accompany_count = 0
         self.assertEqual(ev.form_config('teacher')['bio'], 'optional')
         self.assertEqual(ev.form_config('student')['bio'], 'off')
         self.assertEqual(ev.form_config('teacher')['profile_either'], 'required')

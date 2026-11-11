@@ -48,6 +48,7 @@ export default function Dashboard() {
           <Stat label="Teachers · Veg" value={d.extras.veg} icon={Users} />
           <Stat label="Teachers · Non-veg" value={d.extras.nonveg} icon={Users} />
           <Stat label="Students' guests (friends / guardians)" value={d.extras.guests} icon={Users} />
+          <Stat label="Teachers' guests" value={d.extras.teacher_guests ?? 0} icon={Users} />
         </div>
       )}
       <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">

@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Camera, CheckCircle2, Clock, FileText, Trophy } from "lucide-react";
 import { api, useFetch } from "@/lib/api";
-import { Button, Card, Field, Spinner, inputCls } from "@/components/ui";
+import { Button, Card, Field, Spinner, cx, inputCls } from "@/components/ui";
 
 /** Shrink a chosen photo in the browser (max 600px JPEG) so uploads stay small and fast on mobile data. */
 function shrink(file: File): Promise<string> {
@@ -188,7 +188,24 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
                 </Field>
               </>
             )}
-            {on("accompany") && (
+            {on("accompany") && kind === "teacher" && (
+              <>
+                <Field label="Are you coming with anyone?">
+                  <div className="grid grid-cols-2 gap-2">
+                    {[["none", "No"], ["guest", "Yes"]].map(([v, l]) => (
+                      <button type="button" key={v} onClick={() => setF((x) => ({ ...x, accompany_type: v, accompany_count: v === "none" ? "" : x.accompany_count }))}
+                        className={cx("h-11 rounded-lg border text-sm font-medium transition", f.accompany_type === v ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-600")}>{l}</button>
+                    ))}
+                  </div>
+                </Field>
+                {f.accompany_type === "guest" && (
+                  <Field label="How many people are coming with you?">
+                    <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required />
+                  </Field>
+                )}
+              </>
+            )}
+            {on("accompany") && kind !== "teacher" && (
               <>
                 <Field label="Coming with">
                   <select className={inputCls} value={f.accompany_type} onChange={(e) => setF((x) => ({ ...x, accompany_type: e.target.value, accompany_count: e.target.value === "none" ? "" : x.accompany_count }))}>

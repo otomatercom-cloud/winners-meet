@@ -10,7 +10,7 @@ FORM_DEFAULTS = {
     'student': {'place': 'optional', 'institution': 'off', 'email': 'off', 'photo': 'off',
                 'food_pref': 'off', 'accompany': 'optional', 'instagram': 'required', 'profile': 'off', 'contact': 'off', 'bio': 'off', 'profile_either': 'off'},
     'teacher': {'place': 'off', 'institution': 'optional', 'email': 'off', 'photo': 'required',
-                'food_pref': 'required', 'accompany': 'off', 'instagram': 'off', 'profile': 'optional', 'contact': 'optional', 'bio': 'optional', 'profile_either': 'required'},
+                'food_pref': 'required', 'accompany': 'optional', 'instagram': 'off', 'profile': 'optional', 'contact': 'optional', 'bio': 'optional', 'profile_either': 'required'},
 }
 
 DEFAULT_STAGE_DONE_MSG = (

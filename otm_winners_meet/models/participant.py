@@ -67,7 +67,7 @@ class WmParticipant(models.Model):
     photo = fields.Image(string="Photo", max_width=600, max_height=600, copy=False)
     food_pref = fields.Selection([('veg', 'Vegetarian'), ('nonveg', 'Non-Vegetarian')], string="Food Preference")
     accompany_type = fields.Selection(
-        [('none', 'Alone'), ('friend', 'With Friend'), ('guardian', 'With Guardian')],
+        [('none', 'Alone'), ('friend', 'With Friend'), ('guardian', 'With Guardian'), ('guest', 'With Guests (teacher)')],
         string="Accompanied By", default='none', required=True)
     accompany_count = fields.Integer(string="Accompanying Persons", default=0)
 
