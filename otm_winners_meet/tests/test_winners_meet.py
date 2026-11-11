@@ -573,3 +573,55 @@ class TestWinnersMeet(TransactionCase):
         pb.action_check_in()                          # arrives later: goes to Missed + staff are told
         self.assertEqual(self.env['otm.wm.message.log'].search_count(
             [('event_id', '=', ev.id), ('message_type', '=', 'stage_late')]), 1)
+
+    # ---------------------------------------------------------------- college visits (Marketing Managers)
+    def _mkt_user(self, login, group='group_wm_marketing'):
+        return self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': login, 'login': login, 'group_ids': [(6, 0, [self.env.ref('otm_winners_meet.' + group).id])]})
+
+    def test_college_visit_lock_and_scope(self):
+        from odoo.exceptions import AccessError
+        u1, u2 = self._mkt_user('mkt1'), self._mkt_user('mkt2')
+        College = self.env['otm.wm.college']
+        col = College.create({'name': 'St Thomas College', 'district': 'thrissur'})
+        # everyone sees all colleges, but cannot edit the list
+        self.assertEqual(College.with_user(u2).search_count([]), 1)
+        with self.assertRaises(AccessError):
+            col.with_user(u1).write({'name': 'X'})
+        with self.assertRaises(AccessError):
+            College.with_user(u1).create({'name': 'New'})
+        v = self.env['otm.wm.visit'].with_user(u1).create(
+            {'college_id': col.id, 'person_met': 'Dr Mary', 'user_id': u2.id})
+        self.assertEqual(v.user_id, u1)                       # cannot forge another user
+        self.assertTrue(col.visited)
+        self.assertEqual(col.last_user_id, u1)
+        for u in (u1, u2):                                    # saved visit locked for everyone but admin
+            with self.assertRaises(AccessError):
+                v.with_user(u).write({'person_met': 'Changed'})
+            with self.assertRaises(AccessError):
+                v.with_user(u).unlink()
+        admin = self._mkt_user('wmadm', 'group_wm_manager')
+        v.with_user(admin).write({'person_met': 'Changed'})
+        # marketing manager has no access to Winners Meet data
+        with self.assertRaises(AccessError):
+            self.env['otm.wm.participant'].with_user(u1).search([])
+
+    def test_college_visit_proof_modes_and_import(self):
+        College = self.env['otm.wm.college']
+        col = College.create({'name': 'MES College', 'district': 'Malappuram'})
+        Visit = self.env['otm.wm.visit']
+        icp = self.env['ir.config_parameter'].sudo()
+        icp.set_param('otm_winners_meet.visit_proof', 'both')
+        with self.assertRaises(ValidationError):
+            Visit.create({'college_id': col.id, 'person_met': 'A'})
+        import base64, io
+        from PIL import Image
+        buf = io.BytesIO(); Image.new('RGB', (10, 10), 'red').save(buf, 'PNG')
+        with self.assertRaises(ValidationError):
+            Visit.create({'college_id': col.id, 'person_met': 'A', 'proof_photo': base64.b64encode(buf.getvalue())})
+        Visit.create({'college_id': col.id, 'person_met': 'A', 'proof_photo': base64.b64encode(buf.getvalue()),
+                      'latitude': 10.5, 'longitude': 76.2})
+        icp.set_param('otm_winners_meet.visit_proof', 'none')
+        res = College.import_rows([{'name': ' MES  College ', 'district': 'malappuram'},
+                                   {'name': 'Govt College', 'district': 'palakkad'}, {'name': ''}])
+        self.assertEqual(res, {'created': 1, 'skipped': 1})

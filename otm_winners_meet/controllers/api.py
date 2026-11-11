@@ -83,6 +83,15 @@ def _is_staff():
     return bool(_is_manager() or request.env.user.has_group('otm_winners_meet.group_wm_user'))
 
 
+def _is_marketing():
+    return bool(_is_manager() or request.env.user.has_group('otm_winners_meet.group_wm_marketing'))
+
+
+def _need_marketing():
+    if not _is_marketing():
+        raise AccessError(_("College visit access only."))
+
+
 def _need_staff():
     if not _is_staff():
         raise AccessError(_("Winners Meet staff only."))
@@ -395,7 +404,7 @@ class WinnersMeetApi(http.Controller):
     @api('/me')
     def me(self, body=None, **kw):
         u = request.env.user
-        return {'id': u.id, 'name': u.name, 'manager': _is_manager(), 'staff': _is_staff()}
+        return {'id': u.id, 'name': u.name, 'manager': _is_manager(), 'staff': _is_staff(), 'marketing': _is_marketing()}
 
     # ============================================================ events / config
     @api('/events')
@@ -1130,3 +1139,195 @@ class WinnersMeetApi(http.Controller):
             logs = Log.search([('event_id', '=', ev.id), ('state', 'in', ('failed', 'skipped'))])
         logs.action_retry()
         return {'requeued': len(logs)}
+
+
+    # ============================================================ college visits (Marketing Managers)
+    COLLEGE_COLS = {
+        'name': ('college name', 'college', 'name', 'institution', 'institution name'),
+        'district': ('district', 'place', 'location', 'city'),
+        'college_type': ('type', 'college type', 'category'),
+        'address': ('address',),
+        'phone': ('phone', 'mobile', 'phone number', 'contact number'),
+        'email': ('email', 'email id', 'e-mail'),
+        'contact_person': ('contact person', 'contact', 'principal', 'person'),
+    }
+
+    @staticmethod
+    def _college_dict(c):
+        return {'id': c.id, 'name': c.name, 'district': c.district or '', 'type': c.college_type or '',
+                'address': c.address or '', 'phone': c.phone or '', 'email': c.email or '',
+                'contact_person': c.contact_person or '', 'visited': c.visited, 'visit_count': c.visit_count,
+                'last_visit': fields.Date.to_string(c.last_visit_date) if c.last_visit_date else '',
+                'last_by': c.last_user_id.name or '', 'last_person': c.last_person_met or ''}
+
+    @api('/colleges')
+    def colleges(self, body=None, q='', status='', district='', mine='', limit='60', offset='0', **kw):
+        _need_marketing()
+        College = request.env['otm.wm.college']
+        dom = []
+        if q:
+            dom += ['|', '|', ('name', 'ilike', q), ('district', 'ilike', q), ('contact_person', 'ilike', q)]
+        if status == 'pending':
+            dom.append(('visited', '=', False))
+        elif status == 'done':
+            dom.append(('visited', '=', True))
+        if district:
+            dom.append(('district', '=', district))
+        if mine:
+            dom.append(('visit_ids.user_id', '=', request.env.uid))
+        lim = max(1, min(_int(limit, 60), 200))
+        rows = College.search(dom, limit=lim, offset=max(0, _int(offset, 0)))
+        groups = College.read_group([], ['district'], ['district'])
+        return {'items': [self._college_dict(c) for c in rows], 'total': College.search_count(dom),
+                'districts': sorted({g['district'] for g in groups if g['district']}),
+                'all': College.search_count([]), 'done': College.search_count([('visited', '=', True)]),
+                'proof': College.get_proof_mode()}
+
+    @api('/colleges/save', methods=('POST',))
+    def college_save(self, body=None, **kw):
+        _need_manager()
+        College = request.env['otm.wm.college']
+        vals = {k: (str(body[k]).strip() if body[k] else False) for k in
+                ('name', 'district', 'college_type', 'address', 'phone', 'email', 'contact_person') if k in body}
+        if body.get('id'):
+            c = College.browse(_int(body['id'], 0)).exists()
+            if not c:
+                raise MissingError(_("College not found."))
+            if 'active' in body:
+                vals['active'] = bool(body['active'])
+            c.write(vals)
+        else:
+            if not vals.get('name'):
+                raise UserError(_("College name is required."))
+            c = College.create(vals)
+        return self._college_dict(c)
+
+    @api('/colleges/import', methods=('POST',))
+    def college_import(self, body=None, **kw):
+        _need_manager()
+        import base64
+        import csv
+        import io
+        name = str(body.get('name') or '').lower()
+        raw64 = str(body.get('data') or '')
+        if raw64.startswith('data:'):
+            raw64 = raw64.split(',', 1)[-1]
+        if not raw64:
+            raise UserError(_("Please choose a file."))
+        try:
+            raw = base64.b64decode(raw64)
+        except Exception:  # noqa: BLE001
+            raise UserError(_("Could not read the file."))
+        if len(raw) > 5 * 1024 * 1024:
+            raise UserError(_("File is too large (max 5 MB)."))
+        if name.endswith(('.xlsx', '.xlsm')):
+            import openpyxl
+            try:
+                wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+                rows = [list(r) for r in wb.worksheets[0].iter_rows(values_only=True)]
+            except Exception:  # noqa: BLE001
+                raise UserError(_("That is not a valid Excel file."))
+        elif name.endswith('.csv'):
+            rows = list(csv.reader(io.StringIO(raw.decode('utf-8-sig', errors='replace'))))
+        else:
+            raise UserError(_("Please upload an .xlsx or .csv file."))
+        rows = [r for r in rows if any(c not in (None, '') for c in r)]
+        if len(rows) < 2:
+            raise UserError(_("The file has no data rows."))
+        header = [str(h or '').strip().lower() for h in rows[0]]
+        col = {}
+        for field, names in self.COLLEGE_COLS.items():
+            for i, h in enumerate(header):
+                if h in names and field not in col:
+                    col[field] = i
+        if 'name' not in col:
+            raise UserError(_("Could not find a 'College Name' column. Needed: College Name, District "
+                              "(optional: Type, Address, Phone, Email, Contact Person)."))
+        data = []
+        for r in rows[1:]:
+            data.append({f: (r[i] if i < len(r) and r[i] not in (None, '') else '') for f, i in col.items()})
+        return request.env['otm.wm.college'].import_rows(data)
+
+    @api('/colleges/visits')
+    def college_visits(self, body=None, college_id='', **kw):
+        _need_marketing()
+        visits = request.env['otm.wm.visit'].search([('college_id', '=', _int(college_id, 0))], limit=50)
+        return [{'id': v.id, 'date': fields.Date.to_string(v.visit_date), 'by': v.user_id.name,
+                 'person': v.person_met, 'designation': v.designation or '', 'phone': v.person_phone or '',
+                 'notes': v.notes or '', 'has_photo': bool(v.proof_photo),
+                 'lat': v.latitude or None, 'lng': v.longitude or None} for v in visits]
+
+    @api('/visits/photo')
+    def visit_photo(self, body=None, id='', **kw):
+        _need_marketing()
+        v = request.env['otm.wm.visit'].browse(_int(id, 0)).exists()
+        if not v or not v.proof_photo:
+            raise MissingError(_("No photo."))
+        return {'data': v.proof_photo.decode() if isinstance(v.proof_photo, bytes) else v.proof_photo}
+
+    @api('/visits/save', methods=('POST',))
+    def visit_save(self, body=None, **kw):
+        _need_marketing()
+        Visit = request.env['otm.wm.visit']
+        college = request.env['otm.wm.college'].browse(_int(body.get('college_id'), 0)).exists()
+        if not college:
+            raise UserError(_("Please choose a college."))
+        person = str(body.get('person_met') or '').strip()
+        if not person:
+            raise UserError(_("Please enter the name of the person you met."))
+        vals = {'person_met': person[:120], 'designation': str(body.get('designation') or '').strip()[:120] or False,
+                'person_phone': str(body.get('person_phone') or '').strip()[:30] or False,
+                'notes': str(body.get('notes') or '').strip()[:2000] or False}
+        photo = _photo_from_body(body.get('photo'))
+        if photo:
+            vals['proof_photo'] = photo
+        try:
+            lat, lng = float(body.get('latitude') or 0), float(body.get('longitude') or 0)
+        except (TypeError, ValueError):
+            lat = lng = 0.0
+        if abs(lat) <= 90 and abs(lng) <= 180:
+            vals.update(latitude=lat, longitude=lng)
+        if body.get('id'):                  # editing a saved visit: managers only (ACL enforces it too)
+            _need_manager()
+            v = Visit.browse(_int(body['id'], 0)).exists()
+            if not v:
+                raise MissingError(_("Visit not found."))
+            v.write(vals)
+        else:
+            Visit.create(dict(vals, college_id=college.id))
+        return self._college_dict(college)
+
+    @api('/colleges/progress')
+    def college_progress(self, body=None, **kw):
+        _need_marketing()
+        College, Visit = request.env['otm.wm.college'], request.env['otm.wm.visit']
+        total = College.search_count([])
+        done = College.search_count([('visited', '=', True)])
+        by_d = {}
+        for g in College.read_group([], ['district'], ['district']):
+            by_d[g['district'] or '-'] = {'district': g['district'] or '-', 'total': g['district_count'], 'done': 0}
+        for g in College.read_group([('visited', '=', True)], ['district'], ['district']):
+            by_d.setdefault(g['district'] or '-', {'district': g['district'] or '-', 'total': 0, 'done': 0})['done'] = g['district_count']
+        people = {}
+        for v in Visit.search([]):
+            p = people.setdefault(v.user_id.id, {'name': v.user_id.name, 'visits': 0, 'colleges': set()})
+            p['visits'] += 1
+            p['colleges'].add(v.college_id.id)
+        recent = Visit.search([], limit=10)
+        return {'total': total, 'done': done, 'pending': total - done,
+                'districts': sorted(by_d.values(), key=lambda d: d['district']),
+                'people': sorted(({'name': p['name'], 'visits': p['visits'], 'colleges': len(p['colleges'])}
+                                  for p in people.values()), key=lambda p: -p['colleges']),
+                'recent': [{'college': v.college_id.name, 'district': v.district or '', 'by': v.user_id.name,
+                            'person': v.person_met, 'date': fields.Date.to_string(v.visit_date)} for v in recent]}
+
+    @api('/colleges/settings', methods=('GET', 'POST'))
+    def college_settings(self, body=None, **kw):
+        _need_marketing()
+        if request.httprequest.method == 'POST':
+            _need_manager()
+            mode = body.get('proof')
+            if mode not in ('none', 'photo', 'gps', 'both'):
+                raise UserError(_("Invalid proof mode."))
+            request.env['ir.config_parameter'].sudo().set_param('otm_winners_meet.visit_proof', mode)
+        return {'proof': request.env['otm.wm.college'].get_proof_mode()}

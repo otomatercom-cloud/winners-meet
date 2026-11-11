@@ -23,3 +23,7 @@ access_wm_staff_user,wm.staff user,model_otm_wm_staff,group_wm_user,1,0,0,0
 access_wm_staff_mgr,wm.staff manager,model_otm_wm_staff,group_wm_manager,1,1,1,1
 access_wm_contact_user,wm.contact user,model_otm_wm_contact,group_wm_user,1,0,0,0
 access_wm_contact_mgr,wm.contact manager,model_otm_wm_contact,group_wm_manager,1,1,1,1
+access_wm_college_mkt,wm.college marketing,model_otm_wm_college,group_wm_marketing,1,0,0,0
+access_wm_college_mgr,wm.college manager,model_otm_wm_college,group_wm_manager,1,1,1,1
+access_wm_visit_mkt,wm.visit marketing,model_otm_wm_visit,group_wm_marketing,1,0,1,0
+access_wm_visit_mgr,wm.visit manager,model_otm_wm_visit,group_wm_manager,1,1,1,1
