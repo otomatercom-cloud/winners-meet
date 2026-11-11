@@ -34,7 +34,7 @@ function Seg({ value, onChange, options }: { value: string; onChange: (v: string
   return (
     <div className="grid grid-cols-2 gap-2">
       {options.map(([v, l]) => (
-        <button type="button" key={v} onClick={() => onChange(v)} className={cx("h-10 rounded-lg border text-sm font-medium transition", value === v ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-600 hover:border-slate-400")}>{l}</button>
+        <button type="button" key={v} data-on={value === v ? "1" : undefined} onClick={() => onChange(v)} className={cx("h-10 rounded-lg border text-sm font-medium transition", value === v ? "border-brand-600 bg-brand-50 text-brand-700" : "border-slate-300 bg-white text-slate-600 hover:border-slate-400")}>{l}</button>
       ))}
     </div>
   );
@@ -92,7 +92,8 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
 
   if (loading) return <Spinner />;
   return (
-    <main className="mx-auto min-h-screen max-w-2xl px-4 py-8">
+    <div className="wm-reg">
+    <main className="relative z-10 mx-auto min-h-screen max-w-2xl px-4 py-8">
       <Link href={slug ? `/e/${slug}` : "/"} className="mb-5 inline-flex items-center gap-2 text-sm text-slate-500"><Trophy className="h-4 w-4" /> {ev?.name || "Winners Meet"}</Link>
       {!ev && data?.events?.length ? (
         <div className="space-y-3">
@@ -119,8 +120,9 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
           {done.token && <Link href={`/pass/${done.token}`}><Button size="lg" className="mt-5 w-full">View my entry pass</Button></Link>}
         </Card>
       ) : (
-        <Card className="p-5 sm:p-6">
-          <h1 className="text-xl font-semibold">{kind === "student" ? "Student" : "Teacher"} registration</h1>
+        <Card className="wm-card p-5 sm:p-7">
+          <div className="wm-eyebrow"><i />{ev.name}</div>
+          <h1 className="mt-2 text-2xl font-bold">{kind === "student" ? "Student" : "Teacher"} registration</h1>
           <p className="mb-4 mt-1 border-b border-slate-100 pb-4 text-sm text-slate-500">{ev.date}{ev.time ? ` · ${ev.time}` : ""}{ev.venue ? ` · ${ev.venue}` : ""}</p>
           <form onSubmit={submit} className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
             <Section>Your details</Section>
@@ -148,7 +150,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
             {on("email") && <Field label="Email"><input type="email" className={inputCls} value={f.email} onChange={(e) => set("email", e.target.value)} required={req("email")} autoComplete="email" /></Field>}
             {on("place") && <Field label="Place"><input className={inputCls} value={f.place} onChange={(e) => set("place", e.target.value)} required={req("place")} /></Field>}
             {on("instagram") && (
-              <Field label="Instagram ID" hint="So we can tag you in your event photos."><div className="flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500"><span className="pl-3 text-slate-400">@</span><input className="h-10 w-full rounded-lg bg-transparent px-2 text-sm outline-none" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/\s/g, ""))} required={req("instagram")} placeholder="your_instagram_id" autoCapitalize="none" autoCorrect="off" maxLength={60} /></div></Field>
+              <Field label="Instagram ID" hint="So we can tag you in your event photos."><div className="wm-ig flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500"><span className="pl-3 text-slate-400">@</span><input className="h-10 w-full rounded-lg bg-transparent px-2 text-sm outline-none" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/\s/g, ""))} required={req("instagram")} placeholder="your_instagram_id" autoCapitalize="none" autoCorrect="off" maxLength={60} /></div></Field>
             )}
 
             {(on("photo") || on("bio") || on("profile")) && <Section>{on("bio") || on("profile") ? "Photo & profile" : "Photo"}</Section>}
@@ -234,5 +236,6 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
         </Card>
       )}
     </main>
+    </div>
   );
 }

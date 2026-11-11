@@ -14,3 +14,37 @@ body { -webkit-tap-highlight-color: transparent; }
 input, select, textarea, button { font: inherit; }
 @keyframes pop { 0% { transform: scale(.92); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
 .pop { animation: pop .18s ease-out; }
+
+/* ---- Registration form theme: deep green card, glass inputs, yellow call-to-action ---- */
+.wm-reg { position: relative; overflow: hidden; background: linear-gradient(160deg, #f2f7f2 0%, #dfeadf 100%); }
+.wm-reg::before { content: ""; position: absolute; top: -90px; right: -70px; width: 240px; height: 240px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ffd84d, #ffbf00); opacity: .9; }
+.wm-card { background: linear-gradient(135deg, #2f6a34 0%, #17562b 42%, #0a3b1f 100%); color: #fff; border: 1px solid rgba(255,255,255,.12); border-radius: 1.5rem; box-shadow: 0 30px 60px -28px rgba(5,50,25,.65); }
+.wm-card h1 { color: #fff; letter-spacing: -.02em; }
+.wm-card h1 + p { color: rgba(255,255,255,.78); border-color: rgba(255,255,255,.14); }
+.wm-eyebrow { display: flex; align-items: center; gap: .5rem; font-size: .72rem; font-weight: 800; letter-spacing: .04em; color: #ffc400; }
+.wm-eyebrow i { width: .5rem; height: .5rem; border-radius: 50%; background: #ffc400; display: inline-block; }
+.wm-card h2 { color: #ffd84d; border-color: rgba(255,255,255,.16); }
+.wm-card label.block > span.mb-1 { color: #fff; font-size: .7rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.wm-card label.block > span.mt-1, .wm-card .text-slate-500, .wm-card .text-slate-400 { color: rgba(255,255,255,.68); }
+.wm-card .text-slate-700, .wm-card .text-slate-600 { color: #fff; }
+.wm-card .text-brand-600 { color: #ffd84d; }
+.wm-card input:not([type=file]), .wm-card select, .wm-card textarea, .wm-card .wm-ig { background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16); color: #fff; border-radius: .9rem; font-weight: 600; }
+.wm-card input:not([type=file]), .wm-card select { height: 2.9rem; }
+.wm-card input::placeholder, .wm-card textarea::placeholder { color: rgba(255,255,255,.72); font-weight: 500; }
+.wm-card input:focus, .wm-card select:focus, .wm-card textarea:focus, .wm-card .wm-ig:focus-within { border-color: #ffc400; box-shadow: 0 0 0 3px rgba(255,196,0,.22); outline: none; }
+.wm-card select option { color: #0a3b1f; background: #fff; }
+.wm-card .wm-ig { height: 2.9rem; }
+.wm-card .wm-ig input { background: transparent !important; border: 0 !important; box-shadow: none !important; height: 100%; }
+.wm-card .wm-ig span { color: rgba(255,255,255,.7); }
+.wm-card label.border-dashed { border-color: rgba(255,255,255,.38); background: rgba(255,255,255,.06); border-radius: .9rem; }
+.wm-card label.border-dashed:hover { border-color: #ffc400; }
+.wm-card .bg-slate-100 { background: rgba(255,255,255,.14); }
+.wm-card .bg-slate-200 { background: rgba(255,255,255,.22); }
+.wm-card .bg-slate-100.rounded-full { color: rgba(255,255,255,.85); }
+.wm-card button[type=button] { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.22); color: #fff; border-radius: .9rem; }
+.wm-card button[type=button]:hover { border-color: rgba(255,255,255,.5); }
+.wm-card button[type=button][data-on] { background: #ffc400; border-color: #ffc400; color: #0a3b1f; font-weight: 700; }
+.wm-card button:not([type=button]) { background: linear-gradient(135deg, #ffd43b, #ffc107); color: #10321a; font-weight: 700; border-radius: .9rem; box-shadow: 0 12px 28px -12px rgba(255,193,7,.75); }
+.wm-card button:not([type=button]):hover { filter: brightness(1.04); }
+.wm-card .bg-rose-50 { background: rgba(255,90,90,.16); }
+.wm-card .text-rose-700 { color: #ffd9d9; }
