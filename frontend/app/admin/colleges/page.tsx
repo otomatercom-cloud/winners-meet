@@ -46,6 +46,8 @@ export default function Colleges() {
 }
 
 function List() {
+  const { me } = useEvent();
+  const toast = useToast();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("pending");
   const [district, setDistrict] = useState("");
@@ -54,6 +56,14 @@ function List() {
   const { data, error, loading, reload } = useFetch<any>("/colleges", { q, status, district, mine: mine ? 1 : "", limit });
   const [rec, setRec] = useState<College | null>(null);
   const [hist, setHist] = useState<College | null>(null);
+  const [del, setDel] = useState<College | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
+  const doDelete = async () => {
+    if (!del) return;
+    setDelBusy(true);
+    try { await api("/colleges/delete", { body: { id: del.id } }); toast("College deleted"); setDel(null); reload(); } catch (e: any) { toast(e.message, "err"); }
+    setDelBusy(false);
+  };
   if (error && !data) return <ErrorBox message={error} onRetry={reload} />;
   const items: College[] = data?.items || [];
   return (
@@ -85,6 +95,7 @@ function List() {
               <div className="mt-2 flex gap-2">
                 <Button size="sm" onClick={() => setRec(c)}><CheckCircle2 className="h-4 w-4" /> {c.visited ? "Another visit" : "Record visit"}</Button>
                 {c.visited && <Button size="sm" variant="secondary" onClick={() => setHist(c)}>History</Button>}
+                {me?.manager && <Button size="sm" variant="danger" className="ml-auto" onClick={() => setDel(c)}>Delete</Button>}
               </div>
             </Card>
           ))}
@@ -92,6 +103,10 @@ function List() {
         </div>
       )}
       {rec && <VisitModal college={rec} proof={data?.proof || "none"} onClose={() => setRec(null)} onDone={() => { setRec(null); reload(); }} />}
+      <Modal open={!!del} onClose={() => setDel(null)} title="Delete college?">
+        <p className="text-sm text-slate-700"><b>{del?.name}</b>{del && del.visit_count > 0 ? ` and its ${del.visit_count} recorded visit(s) will be permanently deleted.` : " will be permanently deleted."}</p>
+        <div className="mt-4 flex gap-2"><Button variant="secondary" className="flex-1" onClick={() => setDel(null)}>Cancel</Button><Button variant="danger" className="flex-1" loading={delBusy} onClick={doDelete}>Delete</Button></div>
+      </Modal>
       {hist && <HistoryModal college={hist} onClose={() => setHist(null)} />}
     </div>
   );

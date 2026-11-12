@@ -625,3 +625,14 @@ class TestWinnersMeet(TransactionCase):
         res = College.import_rows([{'name': ' MES  College ', 'district': 'malappuram'},
                                    {'name': 'Govt College', 'district': 'palakkad'}, {'name': ''}])
         self.assertEqual(res, {'created': 1, 'skipped': 1})
+
+    def test_college_delete(self):
+        from odoo.exceptions import AccessError
+        u = self._mkt_user('mktdel')
+        col = self.env['otm.wm.college'].create({'name': 'Del College', 'district': 'X'})
+        self.env['otm.wm.visit'].create({'college_id': col.id, 'person_met': 'P'})
+        with self.assertRaises(AccessError):
+            col.with_user(u).unlink()
+        vid = col.visit_ids.id
+        col.unlink()
+        self.assertFalse(self.env['otm.wm.visit'].browse(vid).exists())

@@ -1202,6 +1202,17 @@ class WinnersMeetApi(http.Controller):
             c = College.create(vals)
         return self._college_dict(c)
 
+    @api('/colleges/delete', methods=('POST',))
+    def college_delete(self, body=None, **kw):
+        _need_manager()
+        ids = [i for i in (_int(x) for x in (body.get('ids') or [body.get('id')])) if i]
+        colleges = request.env['otm.wm.college'].browse(ids).exists()
+        if not colleges:
+            raise MissingError(_("College not found."))
+        n, v = len(colleges), sum(colleges.mapped('visit_count'))
+        colleges.unlink()           # visits of these colleges are removed with them (ondelete cascade)
+        return {'deleted': n, 'visits_removed': v}
+
     @api('/colleges/import', methods=('POST',))
     def college_import(self, body=None, **kw):
         _need_manager()
