@@ -93,6 +93,7 @@ class WmVisit(models.Model):
     proof_photo = fields.Image(max_width=1280, max_height=1280, attachment=True)
     latitude = fields.Float(digits=(10, 6))
     longitude = fields.Float(digits=(10, 6))
+    person_ids = fields.One2many('otm.wm.visit.person', 'visit_id', string="People met")
 
     @api.constrains('college_id', 'proof_photo', 'latitude', 'longitude')
     def _check_proof(self):
@@ -109,3 +110,15 @@ class WmVisit(models.Model):
             for vals in vals_list:
                 vals['user_id'] = self.env.uid      # a marketing manager can only log visits as themselves
         return super().create(vals_list)
+
+
+class WmVisitPerson(models.Model):
+    """Every person met during one college visit."""
+    _name = 'otm.wm.visit.person'
+    _description = 'Person met in a college visit'
+    _order = 'id'
+
+    visit_id = fields.Many2one('otm.wm.visit', required=True, ondelete='cascade', index=True)
+    name = fields.Char(required=True)
+    designation = fields.Char()
+    phone = fields.Char()

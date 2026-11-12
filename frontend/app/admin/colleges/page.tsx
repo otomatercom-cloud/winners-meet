@@ -1,12 +1,12 @@
 "use client";
 import { useRef, useState } from "react";
-import { Camera, CheckCircle2, Crosshair, MapPin, Phone, Search, Upload } from "lucide-react";
+import { Plus, Trash2, Camera, CheckCircle2, Crosshair, MapPin, Phone, Search, Upload } from "lucide-react";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, inputCls, cx, useToast } from "@/components/ui";
 import { useEvent } from "@/components/EventContext";
 import { api, useFetch } from "@/lib/api";
 
 type College = { id: number; name: string; district: string; type: string; phone: string; contact_person: string; visited: boolean; visit_count: number; last_visit: string; last_by: string; last_person: string };
-type Visit = { id: number; date: string; by: string; person: string; designation: string; phone: string; notes: string; has_photo: boolean; lat: number | null; lng: number | null };
+type Visit = { id: number; date: string; by: string; person: string; designation: string; phone: string; notes: string; people: { name: string; designation: string; phone: string }[]; has_photo: boolean; lat: number | null; lng: number | null };
 
 const shrink = (file: File, max = 1280): Promise<string> =>
   new Promise((res, rej) => {
@@ -114,7 +114,9 @@ function List() {
 
 function VisitModal({ college, proof, onClose, onDone }: { college: College; proof: string; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
-  const [f, setF] = useState({ person_met: "", designation: "", person_phone: "", notes: "" });
+  const [people, setPeople] = useState([{ name: "", designation: "", phone: "" }]);
+  const [notes, setNotes] = useState("");
+  const upd = (i: number, k: string, v: string) => setPeople(people.map((p, j) => (j === i ? { ...p, [k]: v } : p)));
   const [photo, setPhoto] = useState("");
   const [geo, setGeo] = useState<{ lat: number; lng: number } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -126,12 +128,12 @@ function VisitModal({ college, proof, onClose, onDone }: { college: College; pro
   };
   const submit = async () => {
     setErr("");
-    if (!f.person_met.trim()) return setErr("Enter the name of the person you met.");
+    if (!people.some((p) => p.name.trim())) return setErr("Enter the name of the person you met.");
     if (needPhoto && !photo) return setErr("Please add a proof photo.");
     if (needGps && !geo) return setErr("Please capture your location.");
     setBusy(true);
     try {
-      await api("/visits/save", { body: { college_id: college.id, ...f, photo, latitude: geo?.lat, longitude: geo?.lng } });
+      await api("/visits/save", { body: { college_id: college.id, people: people.filter((p) => p.name.trim()), notes, photo, latitude: geo?.lat, longitude: geo?.lng } });
       toast("Visit saved");
       onDone();
     } catch (e: any) { setErr(e.message); }
@@ -140,12 +142,20 @@ function VisitModal({ college, proof, onClose, onDone }: { college: College; pro
   return (
     <Modal open onClose={onClose} title={`Visit · ${college.name}`}>
       <div className="space-y-3">
-        <Field label="Person met *"><input className={inputCls} value={f.person_met} onChange={(e) => setF({ ...f, person_met: e.target.value })} /></Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Designation"><input className={inputCls} value={f.designation} onChange={(e) => setF({ ...f, designation: e.target.value })} placeholder="Principal, HOD…" /></Field>
-          <Field label="Their phone"><input className={inputCls} inputMode="tel" value={f.person_phone} onChange={(e) => setF({ ...f, person_phone: e.target.value })} /></Field>
+        <div className="space-y-3">
+          {people.map((p, i) => (
+            <div key={i} className="space-y-2 rounded-xl border border-slate-200 p-3">
+              <div className="flex items-center justify-between text-xs font-semibold uppercase text-slate-500">Person {i + 1}{i > 0 && <button type="button" onClick={() => setPeople(people.filter((_, j) => j !== i))} className="text-rose-600"><Trash2 className="h-4 w-4" /></button>}</div>
+              <input className={inputCls} placeholder={i === 0 ? "Name *" : "Name"} value={p.name} onChange={(e) => upd(i, "name", e.target.value)} />
+              <div className="grid grid-cols-2 gap-2">
+                <input className={inputCls} placeholder="Designation" value={p.designation} onChange={(e) => upd(i, "designation", e.target.value)} />
+                <input className={inputCls} placeholder="Phone" inputMode="tel" value={p.phone} onChange={(e) => upd(i, "phone", e.target.value)} />
+              </div>
+            </div>
+          ))}
+          <Button type="button" variant="secondary" size="sm" onClick={() => setPeople([...people, { name: "", designation: "", phone: "" }])}><Plus className="h-4 w-4" /> Add another person</Button>
         </div>
-        <Field label="Notes"><textarea className={cx(inputCls, "h-20 py-2")} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></Field>
+        <Field label="Notes"><textarea className={cx(inputCls, "h-20 py-2")} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
         {proof !== "none" && (
           <div className="space-y-2 rounded-xl bg-slate-50 p-3">
             <div className="text-xs font-semibold uppercase text-slate-500">Proof</div>
@@ -183,7 +193,7 @@ function HistoryModal({ college, onClose }: { college: College; onClose: () => v
           {data.map((v) => (
             <div key={v.id} className="rounded-lg border border-slate-200 p-3 text-sm">
               <div className="font-medium">{v.date} · {v.by}</div>
-              <div>Met {v.person}{v.designation ? `, ${v.designation}` : ""}{v.phone ? ` · ${v.phone}` : ""}</div>
+              {v.people.map((x, i) => <div key={i}>Met {x.name}{x.designation ? `, ${x.designation}` : ""}{x.phone && <> · <a className="text-brand-700" href={`tel:${x.phone}`}>{x.phone}</a></>}</div>)}
               {v.notes && <div className="mt-1 text-slate-600">{v.notes}</div>}
               <div className="mt-1 flex gap-3 text-xs">
                 {v.has_photo && <button className="text-brand-700 underline" onClick={() => show(v.id)}>View photo</button>}

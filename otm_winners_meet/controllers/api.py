@@ -1265,6 +1265,9 @@ class WinnersMeetApi(http.Controller):
         visits = request.env['otm.wm.visit'].search([('college_id', '=', _int(college_id, 0))], limit=50)
         return [{'id': v.id, 'date': fields.Date.to_string(v.visit_date), 'by': v.user_id.name,
                  'person': v.person_met, 'designation': v.designation or '', 'phone': v.person_phone or '',
+                 'people': [{'name': x.name, 'designation': x.designation or '', 'phone': x.phone or ''}
+                            for x in v.person_ids] or [{'name': v.person_met, 'designation': v.designation or '',
+                                                        'phone': v.person_phone or ''}],
                  'notes': v.notes or '', 'has_photo': bool(v.proof_photo),
                  'lat': v.latitude or None, 'lng': v.longitude or None} for v in visits]
 
@@ -1283,11 +1286,18 @@ class WinnersMeetApi(http.Controller):
         college = request.env['otm.wm.college'].browse(_int(body.get('college_id'), 0)).exists()
         if not college:
             raise UserError(_("Please choose a college."))
-        person = str(body.get('person_met') or '').strip()
-        if not person:
+        people = []
+        raw_people = body.get('people') or [{'name': body.get('person_met'), 'designation': body.get('designation'),
+                                            'phone': body.get('person_phone')}]
+        for x in raw_people[:15]:
+            nm = str((x or {}).get('name') or '').strip()
+            if nm:
+                people.append({'name': nm[:120], 'designation': str(x.get('designation') or '').strip()[:120] or False,
+                               'phone': str(x.get('phone') or '').strip()[:30] or False})
+        if not people:
             raise UserError(_("Please enter the name of the person you met."))
-        vals = {'person_met': person[:120], 'designation': str(body.get('designation') or '').strip()[:120] or False,
-                'person_phone': str(body.get('person_phone') or '').strip()[:30] or False,
+        first = people[0]
+        vals = {'person_met': first['name'], 'designation': first['designation'], 'person_phone': first['phone'],
                 'notes': str(body.get('notes') or '').strip()[:2000] or False}
         photo = _photo_from_body(body.get('photo'))
         if photo:
@@ -1303,9 +1313,9 @@ class WinnersMeetApi(http.Controller):
             v = Visit.browse(_int(body['id'], 0)).exists()
             if not v:
                 raise MissingError(_("Visit not found."))
-            v.write(vals)
+            v.write(dict(vals, person_ids=[(5, 0, 0)] + [(0, 0, x) for x in people]))
         else:
-            Visit.create(dict(vals, college_id=college.id))
+            Visit.create(dict(vals, college_id=college.id, person_ids=[(0, 0, x) for x in people]))
         return self._college_dict(college)
 
     @api('/colleges/progress')

@@ -636,3 +636,12 @@ class TestWinnersMeet(TransactionCase):
         vid = col.visit_ids.id
         col.unlink()
         self.assertFalse(self.env['otm.wm.visit'].browse(vid).exists())
+
+    def test_visit_multiple_people(self):
+        col = self.env['otm.wm.college'].create({'name': 'Multi College', 'district': 'Y'})
+        v = self.env['otm.wm.visit'].create({
+            'college_id': col.id, 'person_met': 'Principal A',
+            'person_ids': [(0, 0, {'name': 'Principal A', 'phone': '9400000001'}),
+                           (0, 0, {'name': 'HOD B', 'designation': 'HOD', 'phone': '9400000002'})]})
+        self.assertEqual(len(v.person_ids), 2)
+        self.assertEqual(col.last_person_met, 'Principal A')

@@ -27,3 +27,5 @@ access_wm_college_mkt,wm.college marketing,model_otm_wm_college,group_wm_marketi
 access_wm_college_mgr,wm.college manager,model_otm_wm_college,group_wm_manager,1,1,1,1
 access_wm_visit_mkt,wm.visit marketing,model_otm_wm_visit,group_wm_marketing,1,0,1,0
 access_wm_visit_mgr,wm.visit manager,model_otm_wm_visit,group_wm_manager,1,1,1,1
+access_wm_visit_person_mkt,wm.visit.person marketing,model_otm_wm_visit_person,group_wm_marketing,1,0,1,0
+access_wm_visit_person_mgr,wm.visit.person manager,model_otm_wm_visit_person,group_wm_manager,1,1,1,1
