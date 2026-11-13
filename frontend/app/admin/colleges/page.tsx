@@ -58,7 +58,7 @@ async function exportXlsx() {
   const seen = new Set<string>();
   const summary = rows.filter((r) => { const k = r.college + "|" + r.district; if (seen.has(k)) return false; seen.add(k); return true; }).map((r) => {
     const all = rows.filter((x) => x.college === r.college && x.district === r.district && x.date);
-    return { College: r.college, District: r.district, Type: r.type, Status: r.status, Visits: r.visits, "Last visit": all.length ? all[all.length - 1].date : "", "People met": all.flatMap((x) => x.people.map((p: any) => `${p.name}${p.phone ? " (" + p.phone + ")" : ""}`)).join(", ") };
+    return { College: r.college, District: r.district, Type: r.type, Status: r.status, Visits: r.visits, "Last visit": all.length ? all[all.length - 1].date : "", "People met": all.flatMap((x) => x.people.map((p: any) => `${p.name}${p.phone ? " (" + p.phone + ")" : ""}`)).join(", "), Notes: all.filter((x) => x.notes).map((x) => `${x.date}: ${x.notes}`).join("\n") };
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), "Colleges");
