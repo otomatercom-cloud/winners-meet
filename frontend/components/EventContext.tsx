@@ -3,7 +3,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { api } from "@/lib/api";
 import type { EventInfo } from "@/lib/types";
 
-type Me = { id: number; name: string; manager: boolean; staff: boolean; marketing: boolean };
+type Me = { id: number; name: string; manager: boolean; staff: boolean; marketing: boolean; viewer: boolean };
 type Ctx = { me: Me | null; events: EventInfo[]; event: EventInfo | null; eventId: number | null; setEventId: (id: number) => void; reloadEvents: () => Promise<void> };
 const C = createContext<Ctx>({ me: null, events: [], event: null, eventId: null, setEventId: () => {}, reloadEvents: async () => {} });
 export const useEvent = () => useContext(C);

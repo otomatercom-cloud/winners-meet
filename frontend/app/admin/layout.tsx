@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Armchair, Crown, FileSpreadsheet, LogOut, Menu, MessageCircle, ScanLine, School, Settings2, ShieldAlert, Users, X, CalendarDays, Trophy } from "lucide-react";
+import { BarChart3, Armchair, Crown, FileSpreadsheet, LogOut, Menu, MessageCircle, ScanLine, School, GraduationCap, Settings2, ShieldAlert, Users, X, CalendarDays, Trophy } from "lucide-react";
 import { EventProvider, useEvent } from "@/components/EventContext";
 import { Badge, cx } from "@/components/ui";
 import { useFetch } from "@/lib/api";
 
-const NAV: { href: string; label: string; icon: any; badge?: boolean; manager?: boolean; scope?: "wm" | "cc" }[] = [
+const NAV: { href: string; label: string; icon: any; badge?: boolean; manager?: boolean; scope?: "wm" | "cc" | "tv" }[] = [
   { href: "/admin", label: "Dashboard", icon: BarChart3 },
   { href: "/admin/checkin", label: "Check-in", icon: ScanLine },
   { href: "/admin/participants", label: "Participants", icon: Users },
@@ -20,6 +20,7 @@ const NAV: { href: string; label: string; icon: any; badge?: boolean; manager?: 
   { href: "/admin/setup", label: "Categories & seats", icon: Settings2, manager: true },
   { href: "/admin/event", label: "Event settings", icon: CalendarDays, manager: true },
   { href: "/admin/colleges", label: "College visits", icon: School, scope: "cc" },
+  { href: "/admin/teachers", label: "Teachers data", icon: GraduationCap, scope: "tv" },
 ];
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -29,8 +30,9 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { data: pend } = useFetch<any>(eventId ? "/participants" : null, { event_id: eventId, approval: "pending", limit: 1 }, 15000);
   if (!me) { if (typeof window !== "undefined") router.replace("/login"); return null; }
-  const items = NAV.filter((n) => (n.scope === "cc" ? me.marketing : me.staff) && (!n.manager || me.manager));
-  if (!me.staff && !path.startsWith("/admin/colleges")) { if (typeof window !== "undefined") router.replace("/admin/colleges"); return null; }
+  const items = NAV.filter((n) => (n.scope === "cc" ? me.marketing : n.scope === "tv" ? me.viewer || me.manager : me.staff) && (!n.manager || me.manager));
+  const home = me.staff ? "" : me.viewer && !me.marketing ? "/admin/teachers" : "/admin/colleges";
+  if (!me.staff && !path.startsWith(home)) { if (typeof window !== "undefined") router.replace(home); return null; }
   const logout = async () => { await fetch("/api/auth/logout", { method: "POST" }); router.replace("/login"); };
   const nav = (
     <nav className="flex flex-1 flex-col gap-0.5 overflow-auto p-3">
@@ -49,10 +51,10 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen lg:flex">
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200 bg-white lg:flex lg:sticky lg:top-0 lg:h-screen">
-        <div className="border-b border-slate-100 p-4"><div className="text-base font-bold">Winners Meet</div><div className="truncate text-xs text-slate-500">{event?.name || "No event"}</div></div>
+        <div className="border-b border-slate-100 p-4"><div className="text-base font-bold">Winners Meet</div><div className="truncate text-xs text-slate-500">{me.staff ? (event?.name || "No event") : ""}</div></div>
         {nav}
         <div className="border-t border-slate-100 p-3">
-          <div className="mb-2 truncate px-1 text-xs text-slate-500">{me.name} · {me.manager ? "Admin" : me.staff ? "Desk" : "Marketing"}</div>
+          <div className="mb-2 truncate px-1 text-xs text-slate-500">{me.name} · {me.manager ? "Admin" : me.staff ? "Desk" : me.viewer && !me.marketing ? "Viewer" : "Marketing"}</div>
           <button onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100"><LogOut className="h-4 w-4" /> Sign out</button>
         </div>
       </aside>
@@ -63,7 +65,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             {events.length === 0 && <option value="">No events yet</option>}
             {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>}
-          {!me.staff && <span className="text-sm font-semibold">College visits</span>}
+          {!me.staff && <span className="text-sm font-semibold">{home === "/admin/teachers" ? "Teachers data" : "College visits"}</span>}
           {me.staff && event && <Badge tone={event.state === "open" ? "green" : event.state === "draft" ? "amber" : "slate"}>{event.state}</Badge>}
         </header>
         <main className="mx-auto max-w-6xl p-4 sm:p-6">{children}</main>

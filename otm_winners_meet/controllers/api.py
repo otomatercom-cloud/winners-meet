@@ -83,6 +83,15 @@ def _is_staff():
     return bool(_is_manager() or request.env.user.has_group('otm_winners_meet.group_wm_user'))
 
 
+def _is_viewer():
+    return bool(_is_staff() or request.env.user.has_group('otm_winners_meet.group_wm_viewer'))
+
+
+def _need_viewer():
+    if not _is_viewer():
+        raise AccessError(_("Teachers data access only."))
+
+
 def _is_marketing():
     return bool(_is_manager() or request.env.user.has_group('otm_winners_meet.group_wm_marketing'))
 
@@ -405,7 +414,8 @@ class WinnersMeetApi(http.Controller):
     @api('/me')
     def me(self, body=None, **kw):
         u = request.env.user
-        return {'id': u.id, 'name': u.name, 'manager': _is_manager(), 'staff': _is_staff(), 'marketing': _is_marketing()}
+        return {'id': u.id, 'name': u.name, 'manager': _is_manager(), 'staff': _is_staff(), 'marketing': _is_marketing(),
+                'viewer': _is_viewer() and not _is_staff()}
 
     # ============================================================ events / config
     @api('/events')
@@ -1353,3 +1363,61 @@ class WinnersMeetApi(http.Controller):
                 raise UserError(_("Invalid proof mode."))
             request.env['ir.config_parameter'].sudo().set_param('otm_winners_meet.visit_proof', mode)
         return {'proof': request.env['otm.wm.college'].get_proof_mode()}
+
+
+    # ============================================================ teachers data (read-only viewer)
+    # The viewer group has NO model access; these endpoints read with sudo() and only ever return teachers.
+    def _teacher(self, pid):
+        p = request.env['otm.wm.participant'].sudo().browse(_int(pid, 0)).exists()
+        if not p or p.kind != 'teacher':
+            raise MissingError(_("Teacher not found."))
+        return p
+
+    @staticmethod
+    def _teacher_dict(p):
+        return {'id': p.id, 'name': p.name, 'phone': p.phone, 'institution': p.institution or '', 'place': p.place or '',
+                'email': p.email or '', 'category': p.category_id.full_name() if p.category_id else '',
+                'approval_state': p.approval_state, 'food_pref': p.food_pref or '', 'instagram': p.instagram or '',
+                'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
+                'contact': p.contact_id.name or '', 'bio': p.bio or '', 'has_photo': bool(p.photo),
+                'profile_name': (p.profile_filename or 'profile') if p.profile_file else ''}
+
+    @api('/teachers/events')
+    def teachers_events(self, body=None, **kw):
+        _need_viewer()
+        return [{'id': e.id, 'name': e.name} for e in request.env['otm.wm.event'].sudo().search([])]
+
+    @api('/teachers')
+    def teachers_list(self, body=None, event_id=None, q='', offset='0', limit='50', **kw):
+        _need_viewer()
+        ev = _event(event_id, env=request.env(su=True))
+        dom = [('event_id', '=', ev.id), ('kind', '=', 'teacher'), ('approval_state', '!=', 'rejected')]
+        q = (q or '').strip()
+        if q:
+            digits = ''.join(ch for ch in q if ch.isdigit())
+            if digits and len(digits) >= 3:
+                dom.append(('phone', 'like', digits))
+            else:
+                dom += ['|', '|', ('name', 'ilike', q), ('institution', 'ilike', q), ('place', 'ilike', q)]
+        P = request.env['otm.wm.participant'].sudo()
+        recs = P.search(dom, offset=max(_int(offset, 0), 0), limit=min(max(_int(limit, 50), 1), 200), order='name, id')
+        return {'total': P.search_count(dom), 'rows': [self._teacher_dict(p) for p in recs],
+                'with_photo': P.search_count(dom + [('photo', '!=', False)])}
+
+    @api('/teachers/<int:pid>/photo')
+    def teacher_photo(self, pid, body=None, **kw):
+        _need_viewer()
+        p = self._teacher(pid)
+        if not p.photo:
+            raise MissingError(_("No photo."))
+        return {'name': p.name, 'data': p.photo.decode() if isinstance(p.photo, bytes) else p.photo}
+
+    @api('/teachers/<int:pid>/profile')
+    def teacher_profile(self, pid, body=None, **kw):
+        _need_viewer()
+        p = self._teacher(pid)
+        if not p.profile_file:
+            raise MissingError(_("No profile uploaded."))
+        ext = (p.profile_filename or '').rsplit('.', 1)[-1].lower()
+        return {'name': p.profile_filename or 'profile.' + (ext or 'pdf'),
+                'mime': PROFILE_TYPES.get(ext, ('', 'application/octet-stream'))[1], 'data': p.profile_file.decode()}

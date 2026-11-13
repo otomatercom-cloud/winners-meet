@@ -645,3 +645,13 @@ class TestWinnersMeet(TransactionCase):
                            (0, 0, {'name': 'HOD B', 'designation': 'HOD', 'phone': '9400000002'})]})
         self.assertEqual(len(v.person_ids), 2)
         self.assertEqual(col.last_person_met, 'Principal A')
+
+    def test_teacher_viewer_group_is_read_only(self):
+        from odoo.exceptions import AccessError
+        u = self._mkt_user('tview', 'group_wm_viewer')
+        # the viewer group itself carries no direct model access
+        for model in ('otm.wm.participant', 'otm.wm.event', 'otm.wm.college'):
+            with self.assertRaises(AccessError):
+                self.env[model].with_user(u).search([])
+        self.assertFalse(u.has_group('otm_winners_meet.group_wm_user'))
+        self.assertFalse(u.has_group('otm_winners_meet.group_wm_manager'))
