@@ -58,7 +58,7 @@ async function exportXlsx() {
   const seen = new Set<string>();
   const summary = rows.filter((r) => { const k = r.college + "|" + r.district; if (seen.has(k)) return false; seen.add(k); return true; }).map((r) => {
     const all = rows.filter((x) => x.college === r.college && x.district === r.district && x.date);
-    return { College: r.college, District: r.district, Type: r.type, Status: r.status, Visits: r.visits, "Last visit": all.length ? all[all.length - 1].date : "", "People met": all.flatMap((x) => x.people.map((p: any) => `${p.name}${p.phone ? " (" + p.phone + ")" : ""}`)).join(", "), Notes: all.filter((x) => x.notes).map((x) => `${x.date}: ${x.notes}`).join("\n") };
+    return { College: r.college, District: r.district, Type: r.type, Status: r.status, Visits: r.visits, "Last visit": all.length ? all[all.length - 1].date : "", "Last visited by": all.length ? all[all.length - 1].by : "", "All visited by": Array.from(new Set(all.map((x) => x.by))).join(", "), "People met": all.flatMap((x) => x.people.map((p: any) => `${p.name}${p.phone ? " (" + p.phone + ")" : ""}`)).join(", "), Notes: all.filter((x) => x.notes).map((x) => `${x.date}: ${x.notes}`).join("\n") };
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), "Colleges");
@@ -220,7 +220,7 @@ function HistoryModal({ college, onClose }: { college: College; onClose: () => v
         <div className="space-y-3">
           {data.map((v) => (
             <div key={v.id} className="rounded-lg border border-slate-200 p-3 text-sm">
-              <div className="font-medium">{v.date} · {v.by}</div>
+              <div className="font-medium">{v.date} · Entered by {v.by}</div>
               {v.people.map((x, i) => <div key={i}>Met {x.name}{x.designation ? `, ${x.designation}` : ""}{x.phone && <> · <a className="text-brand-700" href={`tel:${x.phone}`}>{x.phone}</a></>}</div>)}
               {v.notes && <div className="mt-1 text-slate-600">{v.notes}</div>}
               <div className="mt-1 flex gap-3 text-xs">
