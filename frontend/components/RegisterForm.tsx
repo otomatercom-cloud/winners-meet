@@ -205,27 +205,27 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
             )}
             {on("accompany") && kind === "teacher" && (
               <>
-                <Field label="Coming with anyone?">
+                <Field label="Will anyone accompany you?">
                   <Seg value={f.accompany_type} onChange={(v) => setF((x) => ({ ...x, accompany_type: v, accompany_count: v === "none" ? "" : x.accompany_count }))} options={[["none", "No"], ["guest", "Yes"]]} />
                 </Field>
                 {f.accompany_type === "guest" && (
-                  <Field label="How many people?">
-                    <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required placeholder="1 - 10" />
+                  <Field label="Number of accompanying persons (excluding you)">
+                    <Seg value={f.accompany_count} onChange={(v) => set("accompany_count", v)} options={[["1", "1 person"], ["2", "2 persons"]]} />
                   </Field>
                 )}
               </>
             )}
             {on("accompany") && kind !== "teacher" && (
               <>
-                <Field label="Coming with">
+                <Field label="Accompanied by">
                   <select className={inputCls} value={f.accompany_type} onChange={(e) => setF((x) => ({ ...x, accompany_type: e.target.value, accompany_count: e.target.value === "none" ? "" : x.accompany_count }))}>
-                    <option value="none">None (coming alone)</option>
+                    <option value="none">Attending alone</option>
                     <option value="friend">Friend</option>
                     <option value="guardian">Guardian</option>
                   </select>
                 </Field>
                 {f.accompany_type !== "none" && (
-                  <Field label={`How many ${f.accompany_type === "friend" ? "friends" : "guardians"}?`}>
+                  <Field label={`Number of ${f.accompany_type === "friend" ? "friends" : "guardians"} (excluding you)`}>
                     <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required placeholder="1 - 10" />
                   </Field>
                 )}

@@ -366,8 +366,9 @@ class WinnersMeetApi(http.Controller):
             if acc not in (('none', 'guest') if kind == 'teacher' else ('none', 'friend', 'guardian')):
                 raise UserError(_("Invalid selection."))
             cnt = _int(body.get('accompany_count'), 0) if acc != 'none' else 0
-            if acc != 'none' and not (1 <= cnt <= 10):
-                raise UserError(_("Please enter how many people are coming with you (1 to 10)."))
+            if acc != 'none' and not (1 <= cnt <= (2 if kind == 'teacher' else 10)):
+                raise UserError(_("Please select the number of accompanying persons (%s).")
+                                % ('1 or 2' if kind == 'teacher' else '1 to 10'))
             extra.update(accompany_type=acc, accompany_count=cnt)
         existing = env['otm.wm.participant'].search([('event_id', '=', ev.id), ('phone', '=', phone)], limit=1)
         if existing:
