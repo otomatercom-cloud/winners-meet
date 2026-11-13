@@ -226,7 +226,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
                 </Field>
                 {f.accompany_type !== "none" && (
                   <Field label={`Number of ${f.accompany_type === "friend" ? "friends" : "guardians"} (excluding you)`}>
-                    <input className={inputCls} type="number" inputMode="numeric" min={1} max={10} value={f.accompany_count} onChange={(e) => set("accompany_count", e.target.value)} required placeholder="1 - 10" />
+                    <Seg value={f.accompany_count} onChange={(v) => set("accompany_count", v)} options={[["1", "1 person"], ["2", "2 persons"]]} />
                   </Field>
                 )}
               </>
