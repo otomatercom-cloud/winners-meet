@@ -1164,12 +1164,20 @@ class WinnersMeetApi(http.Controller):
     }
 
     @staticmethod
+    def _people(v):
+        if not v:
+            return []
+        return [{'name': x.name, 'designation': x.designation or '', 'phone': x.phone or ''} for x in v.person_ids] or \
+               [{'name': v.person_met, 'designation': v.designation or '', 'phone': v.person_phone or ''}]
+
+    @staticmethod
     def _college_dict(c):
         return {'id': c.id, 'name': c.name, 'district': c.district or '', 'type': c.college_type or '',
                 'address': c.address or '', 'phone': c.phone or '', 'email': c.email or '',
                 'contact_person': c.contact_person or '', 'visited': c.visited, 'visit_count': c.visit_count,
                 'last_visit': fields.Date.to_string(c.last_visit_date) if c.last_visit_date else '',
-                'last_by': c.last_user_id.name or '', 'last_person': c.last_person_met or ''}
+                'last_by': c.last_user_id.name or '', 'last_person': c.last_person_met or '',
+                'last_people': WinnersMeetApi._people(c.visit_ids.sorted(lambda v: (v.visit_date, v.id))[-1:])}
 
     @api('/colleges')
     def colleges(self, body=None, q='', status='', district='', mine='', limit='60', offset='0', **kw):
@@ -1328,6 +1336,22 @@ class WinnersMeetApi(http.Controller):
         else:
             Visit.create(dict(vals, college_id=college.id, person_ids=[(0, 0, x) for x in people]))
         return self._college_dict(college)
+
+    @api('/colleges/export')
+    def college_export(self, body=None, **kw):
+        _need_marketing()
+        colleges = request.env['otm.wm.college'].search([])
+        out = []
+        for c in colleges:
+            base = {'college': c.name, 'district': c.district or '', 'type': c.college_type or '',
+                    'college_phone': c.phone or '', 'email': c.email or '', 'status': 'Visited' if c.visited else 'Pending',
+                    'visits': c.visit_count}
+            if not c.visit_ids:
+                out.append(dict(base, date='', by='', people=[], notes='', lat=None, lng=None))
+            for v in c.visit_ids.sorted(lambda v: (v.visit_date, v.id)):
+                out.append(dict(base, date=fields.Date.to_string(v.visit_date), by=v.user_id.name, people=self._people(v),
+                                notes=v.notes or '', lat=v.latitude or None, lng=v.longitude or None))
+        return out
 
     @api('/colleges/progress')
     def college_progress(self, body=None, **kw):

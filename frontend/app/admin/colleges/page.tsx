@@ -1,11 +1,11 @@
 "use client";
 import { useRef, useState } from "react";
-import { Plus, Trash2, Camera, CheckCircle2, Crosshair, MapPin, Phone, Search, Upload } from "lucide-react";
+import { Download, Plus, Trash2, Camera, CheckCircle2, Crosshair, MapPin, Phone, Search, Upload } from "lucide-react";
 import { Badge, Button, Card, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, inputCls, cx, useToast } from "@/components/ui";
 import { useEvent } from "@/components/EventContext";
 import { api, useFetch } from "@/lib/api";
 
-type College = { id: number; name: string; district: string; type: string; phone: string; contact_person: string; visited: boolean; visit_count: number; last_visit: string; last_by: string; last_person: string };
+type College = { id: number; name: string; district: string; type: string; phone: string; contact_person: string; visited: boolean; visit_count: number; last_visit: string; last_by: string; last_person: string; last_people: { name: string; designation: string; phone: string }[] };
 type Visit = { id: number; date: string; by: string; person: string; designation: string; phone: string; notes: string; people: { name: string; designation: string; phone: string }[]; has_photo: boolean; lat: number | null; lng: number | null };
 
 const shrink = (file: File, max = 1280): Promise<string> =>
@@ -45,6 +45,27 @@ export default function Colleges() {
   );
 }
 
+async function exportXlsx() {
+  const XLSX = await import("xlsx");
+  const rows = await api<any[]>("/colleges/export");
+  const maxP = Math.max(1, ...rows.map((r) => r.people.length));
+  const visits = rows.map((r) => {
+    const o: Record<string, any> = { College: r.college, District: r.district, Type: r.type, "College phone": r.college_phone, Email: r.email, Status: r.status, "Visit date": r.date, "Visited by": r.by };
+    for (let i = 0; i < maxP; i++) { const p = r.people[i]; o[`Person ${i + 1} name`] = p?.name || ""; o[`Person ${i + 1} designation`] = p?.designation || ""; o[`Person ${i + 1} phone`] = p?.phone || ""; }
+    o.Notes = r.notes; o.Location = r.lat != null ? `https://maps.google.com/?q=${r.lat},${r.lng}` : "";
+    return o;
+  });
+  const seen = new Set<string>();
+  const summary = rows.filter((r) => { const k = r.college + "|" + r.district; if (seen.has(k)) return false; seen.add(k); return true; }).map((r) => {
+    const all = rows.filter((x) => x.college === r.college && x.district === r.district && x.date);
+    return { College: r.college, District: r.district, Type: r.type, Status: r.status, Visits: r.visits, "Last visit": all.length ? all[all.length - 1].date : "", "People met": all.flatMap((x) => x.people.map((p: any) => `${p.name}${p.phone ? " (" + p.phone + ")" : ""}`)).join(", ") };
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), "Colleges");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(visits), "Visits");
+  XLSX.writeFile(wb, `college-visits-${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
 function List() {
   const { me } = useEvent();
   const toast = useToast();
@@ -57,6 +78,7 @@ function List() {
   const [rec, setRec] = useState<College | null>(null);
   const [hist, setHist] = useState<College | null>(null);
   const [del, setDel] = useState<College | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [delBusy, setDelBusy] = useState(false);
   const doDelete = async () => {
     if (!del) return;
@@ -73,6 +95,7 @@ function List() {
         <Card className="p-3"><div className="text-xl font-bold text-emerald-600">{data?.done ?? "–"}</div><div className="text-xs text-slate-500">Connected</div></Card>
         <Card className="p-3"><div className="text-xl font-bold text-amber-600">{data ? data.all - data.done : "–"}</div><div className="text-xs text-slate-500">Pending</div></Card>
       </div>
+      <div className="flex justify-end"><Button size="sm" variant="secondary" loading={exporting} onClick={async () => { setExporting(true); try { await exportXlsx(); } catch (e: any) { toast(e.message, "err"); } setExporting(false); }}><Download className="h-4 w-4" /> Export Excel</Button></div>
       <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><input className={cx(inputCls, "pl-9")} placeholder="Search college, district or contact" value={q} onChange={(e) => { setQ(e.target.value); setLimit(40); }} /></div>
       <div className="flex flex-wrap gap-2">
         <select className={cx(inputCls, "w-auto")} value={status} onChange={(e) => setStatus(e.target.value)}><option value="pending">Pending</option><option value="done">Visited</option><option value="">All</option></select>
@@ -88,7 +111,12 @@ function List() {
                   <div className="font-semibold leading-snug">{c.name}</div>
                   <div className="text-xs text-slate-500">{[c.district, c.type].filter(Boolean).join(" · ")}</div>
                   {c.phone && <a href={`tel:${c.phone}`} className="mt-1 inline-flex items-center gap-1 text-xs text-brand-700"><Phone className="h-3 w-3" />{c.phone}{c.contact_person ? ` · ${c.contact_person}` : ""}</a>}
-                  {c.visited && <div className="mt-1 text-xs text-slate-600">Last: {c.last_visit} · {c.last_by} · met {c.last_person}</div>}
+                  {c.visited && (
+                    <div className="mt-1 text-xs text-slate-600">
+                      <div>Last visit: {c.last_visit} · {c.last_by}</div>
+                      {c.last_people.map((x, i) => <div key={i}>Met {x.name}{x.designation ? `, ${x.designation}` : ""}{x.phone && <> · <a href={`tel:${x.phone}`} className="text-brand-700">{x.phone}</a></>}</div>)}
+                    </div>
+                  )}
                 </div>
                 {c.visited ? <Badge tone="green">Visited{c.visit_count > 1 ? ` ×${c.visit_count}` : ""}</Badge> : <Badge tone="amber">Pending</Badge>}
               </div>
