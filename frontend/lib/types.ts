@@ -8,7 +8,7 @@ export type Participant = {
   id: number; name: string; phone: string; kind: "student" | "teacher"; place: string; institution: string;
   state: "registered" | "checked_in"; approval_state: "pending" | "approved" | "rejected";
   match_status: "na" | "matched" | "name_mismatch" | "category_mismatch" | "not_listed"; match_note: string;
-  category: Category | null; claimed_category: Category | null; seat: string; seat_row: number; seat_row_name: string; instagram: string; profile_name?: string; contact?: string; bio?: string; seat_id: number | false; reserved_seat: string; reserved_seat_id: number | false; has_preset: boolean; checkin_on: string;
+  category: Category | null; claimed_category: Category | null; seat: string; seat_row: number; seat_row_name: string; instagram: string; profile_name?: string; contact?: string; contact_id?: number | false; bio?: string; seat_id: number | false; reserved_seat: string; reserved_seat_id: number | false; has_preset: boolean; checkin_on: string;
   hat_state: "none" | "issued" | "returned" | "lost"; food_pref: "" | "veg" | "nonveg"; accompany_type: "none" | "friend" | "guardian" | "guest"; accompany_count: number; has_photo: boolean; trophy_state: "pending" | "given"; trophy_on: string; items: { item_id: number; name: string; state: "issued" | "returned" | "lost" }[]; photo?: string; wa_state: string; registered_via: string; create_date: string;
   email?: string; note?: string; token?: string; hat_issued_on?: string; hat_returned_on?: string; checkin_by?: string; approved_by?: string;
   expected?: { name: string; category: string } | null;

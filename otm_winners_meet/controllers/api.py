@@ -167,7 +167,7 @@ def _p(p, detail=False):
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
         'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'instagram': p.instagram or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
-        'has_photo': bool(p.photo), 'bio': p.bio or '', 'contact': p.contact_id.name or '', 'profile_name': p.profile_filename or '' if p.profile_file else '',
+        'has_photo': bool(p.photo), 'bio': p.bio or '', 'contact': p.contact_id.name or '', 'contact_id': p.contact_id.id or False, 'profile_name': p.profile_filename or '' if p.profile_file else '',
         'trophy_state': p.trophy_state, 'trophy_on': fields.Datetime.to_string(p.trophy_on) if p.trophy_on else '',
         'items': [{'item_id': l.item_id.id, 'name': l.item_id.name, 'state': l.state} for l in p.sudo().issue_ids],
         'create_date': fields.Datetime.to_string(p.create_date),
@@ -752,6 +752,68 @@ class WinnersMeetApi(http.Controller):
             'category_id': cat.id, 'claimed_category_id': cat.id, 'registered_via': via,
             'match_status': 'na'})
         p.action_approve()           # staff-created registrations are approved immediately
+        return _p(p, detail=True)
+
+    @api('/participants/<int:pid>/update', methods=('POST',))
+    def participant_update(self, pid, body=None, **kw):
+        _need_manager()
+        p = _participant(pid)
+        vals = {}
+        if 'name' in body:
+            name = ' '.join(str(body['name'] or '').split())
+            if len(name) < 2:
+                raise UserError(_("Please enter the name."))
+            vals['name'] = name[:120]
+        if 'phone' in body and str(body['phone'] or '').strip() != (p.phone or ''):
+            cc = request.env['otm.wm.message.log']._get_config()['country_code']
+            newp = normalize_phone(body['phone'], cc)
+            if not newp:
+                raise UserError(_("Please enter a valid phone number."))
+            if request.env['otm.wm.participant'].search_count(
+                    [('event_id', '=', p.event_id.id), ('phone', '=', newp), ('id', '!=', p.id)]):
+                raise UserError(_("This phone number is already registered."))
+            vals['phone'] = newp
+        for k in ('email', 'institution', 'place', 'instagram'):
+            if k in body:
+                vals[k] = (str(body[k] or '').strip()[:160] or False)
+        if 'instagram' in vals and vals['instagram']:
+            vals['instagram'] = vals['instagram'].lstrip('@')
+        if body.get('food_pref') in ('', 'veg', 'nonveg') and 'food_pref' in body:
+            vals['food_pref'] = body['food_pref'] or False
+        if 'bio' in body:
+            bio = str(body['bio'] or '').strip()
+            if len(bio) > 1500:
+                raise UserError(_("Short profile is too long (max 1500 characters)."))
+            vals['bio'] = bio or False
+        if 'accompany_type' in body:
+            acc = body['accompany_type']
+            allowed = ('none', 'guest') if p.kind == 'teacher' else ('none', 'friend', 'guardian')
+            if acc not in allowed:
+                raise UserError(_("Invalid companion type."))
+            cnt = 0 if acc == 'none' else _int(body.get('accompany_count'), 0)
+            if acc != 'none' and not (1 <= cnt <= 2):
+                raise UserError(_("Please select the number of accompanying persons (1 or 2)."))
+            vals.update(accompany_type=acc, accompany_count=cnt)
+        if 'contact_id' in body:
+            c = request.env['otm.wm.contact'].browse(_int(body['contact_id'], 0)).exists()
+            if c and c.event_id != p.event_id:
+                raise UserError(_("Invalid point of contact."))
+            vals['contact_id'] = c.id or False
+        if body.get('category_id') and _int(body['category_id'], 0) != p.category_id.id:
+            cat = request.env['otm.wm.category'].browse(_int(body['category_id'], 0)).exists()
+            if not cat or cat.event_id != p.event_id or cat.kind != p.kind:
+                raise UserError(_("Please select a category of the same type."))
+            vals.update(category_id=cat.id, claimed_category_id=cat.id)
+        if body.get('remove_photo'):
+            vals['photo'] = False
+        elif body.get('photo'):
+            vals['photo'] = _photo_from_body(body['photo'])
+        if body.get('remove_profile'):
+            vals.update(profile_file=False, profile_filename=False)
+        elif body.get('profile'):
+            data, fname = _profile_from_body(body['profile'])
+            vals.update(profile_file=data, profile_filename=fname)
+        p.write(vals)
         return _p(p, detail=True)
 
     @api('/participants/<int:pid>/approve', methods=('POST',))

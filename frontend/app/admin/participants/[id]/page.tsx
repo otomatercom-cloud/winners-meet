@@ -1,6 +1,7 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import EditParticipant from "@/components/EditParticipant";
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { useEvent } from "@/components/EventContext";
@@ -31,6 +32,7 @@ export default function Detail() {
     try { await api(`/participants/${id}/delete`, { method: "POST", body: {} }); router.replace("/admin/participants"); }
     catch (e: any) { alert(e.message); }
   };
+  const [editing, setEditing] = useState(false);
   const [sending, setSending] = useState(false);
   const resend = async (type: "confirm" | "seat") => {
     setSending(true);
@@ -43,7 +45,7 @@ export default function Detail() {
   return (
     <div className="mx-auto max-w-3xl">
       <Button variant="ghost" size="sm" className="mb-3" onClick={() => router.back()}><ArrowLeft className="h-4 w-4" /> Back</Button>
-      <PageHeader title="Participant" actions={me?.manager ? <Button variant="secondary" size="sm" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</Button> : undefined} />
+      <PageHeader title="Participant" actions={me?.manager ? <div className="flex gap-2"><Button variant="secondary" size="sm" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" /> Edit</Button><Button variant="secondary" size="sm" onClick={remove}><Trash2 className="h-4 w-4" /> Delete</Button></div> : undefined} />
       <div className="grid gap-5 md:grid-cols-5">
         <div className="md:col-span-3">{eventId && <ParticipantCard p={data} eventId={eventId} manager={!!me?.manager} onChange={setData as any} />}</div>
         <div className="space-y-4 md:col-span-2">
@@ -86,6 +88,7 @@ export default function Detail() {
           </Card>
         </div>
       </div>
+      {editing && eventId && <EditParticipant p={data} eventId={eventId} onClose={() => setEditing(false)} onSaved={(x) => { setData(x); reload(); }} />}
     </div>
   );
 }

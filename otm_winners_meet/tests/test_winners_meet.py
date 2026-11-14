@@ -655,3 +655,12 @@ class TestWinnersMeet(TransactionCase):
                 self.env[model].with_user(u).search([])
         self.assertFalse(u.has_group('otm_winners_meet.group_wm_user'))
         self.assertFalse(u.has_group('otm_winners_meet.group_wm_manager'))
+
+    def test_admin_can_edit_teacher(self):
+        ev = self.env['otm.wm.event'].search([], limit=1)
+        cat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'EditT', 'kind': 'teacher'})
+        t = self.env['otm.wm.participant'].with_context(wm_skip_eval=True).create(
+            {'event_id': ev.id, 'kind': 'teacher', 'name': 'Old Name', 'phone': '9447700001', 'category_id': cat.id})
+        t.write({'name': 'New Name', 'phone': '9447700002', 'bio': 'Hi', 'accompany_type': 'guest', 'accompany_count': 2})
+        self.assertEqual(t.name, 'New Name')
+        self.assertTrue(t.phone.endswith('9447700002'))
