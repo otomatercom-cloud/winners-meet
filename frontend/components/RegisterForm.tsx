@@ -191,9 +191,9 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
 
             {(on("contact") && (data?.contacts?.length ?? 0) > 0 || on("food_pref") || on("accompany")) && <Section>Event details</Section>}
             {on("contact") && (data?.contacts?.length ?? 0) > 0 && (
-              <Field label="Point of contact" hint="The Marketing Manager you are in touch with.">
+              <Field label="Point of contact">
                 <select className={inputCls} value={f.contact_id} onChange={(e) => set("contact_id", e.target.value)} required={req("contact")}>
-                  <option value="">Select Marketing Manager</option>
+                  <option value="">Select point of contact</option>
                   {data.contacts.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </Field>
