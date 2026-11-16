@@ -29,6 +29,9 @@ export default function Dashboard() {
   if (!d) return null;
   const s = d.students, t = d.teachers;
   const pending = s.pending + t.pending;
+  const tGuests = d.extras?.teacher_guests ?? 0, sGuests = d.extras?.guests ?? 0;
+  const total = s.registered + t.registered + tGuests + sGuests;
+  const teachersOnly = s.registered === 0 && (d.expected?.total ?? 0) === 0 && t.registered > 0;
   return (
     <div>
       <PageHeader title="Dashboard" subtitle={`${d.event.name} · ${d.event.date}${d.event.venue ? " · " + d.event.venue : ""} · live`} />
@@ -37,26 +40,46 @@ export default function Dashboard() {
           <AlertTriangle className="h-5 w-5" /> {pending} registration{pending > 1 ? "s" : ""} need your review (name or category not matching the winners list)
         </Link>
       )}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Students registered" value={s.registered} sub={`${s.approved} approved`} icon={Users} href="/admin/participants?kind=student" />
-        <Stat label="Students checked in" value={s.checked_in} sub={`${s.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />
-        <Stat label="Teachers registered" value={t.registered} sub={`${t.approved} approved`} icon={Users} href="/admin/participants?kind=teacher" />
-        <Stat label="Teachers checked in" value={t.checked_in} sub={`${t.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />
-      </div>
-      {d.extras && (
-        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Teachers · Veg" value={d.extras.veg} icon={Users} />
-          <Stat label="Teachers · Non-veg" value={d.extras.nonveg} icon={Users} />
-          <Stat label="Students' guests (friends / guardians)" value={d.extras.guests} icon={Users} />
-          <Stat label="Teachers' guests" value={d.extras.teacher_guests ?? 0} icon={Users} />
-        </div>
+      {teachersOnly ? (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Stat label="Teachers registered" value={t.registered} sub={`${t.approved} approved`} icon={Users} href="/admin/participants?kind=teacher" />
+            <Stat label="Teachers checked in" value={t.checked_in} sub={`${t.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />
+            <Stat label="Teachers' guests" value={tGuests} sub="accompanying persons" icon={Users} />
+            <Stat label="Total attendees (incl. guests)" value={total} sub={`${t.registered} teachers + ${tGuests} guests`} icon={Users} tone="green" />
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {d.extras && <Stat label="Teachers · Veg" value={d.extras.veg} sub="teachers only" icon={Users} />}
+            {d.extras && <Stat label="Teachers · Non-veg" value={d.extras.nonveg} sub="teachers only" icon={Users} />}
+            <Stat label="WhatsApp sent" value={d.whatsapp.sent} sub={`${d.whatsapp.queued} queued · ${d.whatsapp.failed} failed`} icon={MessageCircle} href="/admin/whatsapp" tone={d.whatsapp.failed ? "red" : "slate"} />
+            <Stat label="Needs review" value={pending} icon={AlertTriangle} tone={pending ? "red" : "slate"} href="/admin/review" />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Stat label="Students registered" value={s.registered} sub={`${s.approved} approved`} icon={Users} href="/admin/participants?kind=student" />
+            <Stat label="Students checked in" value={s.checked_in} sub={`${s.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />
+            <Stat label="Teachers registered" value={t.registered} sub={`${t.approved} approved`} icon={Users} href="/admin/participants?kind=teacher" />
+            <Stat label="Teachers checked in" value={t.checked_in} sub={`${t.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />
+          </div>
+          {d.extras && (
+            <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Stat label="Teachers · Veg" value={d.extras.veg} icon={Users} />
+              <Stat label="Teachers · Non-veg" value={d.extras.nonveg} icon={Users} />
+              <Stat label="Students' guests (friends / guardians)" value={d.extras.guests} icon={Users} />
+              <Stat label="Teachers' guests" value={tGuests} icon={Users} />
+            </div>
+          )}
+          <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Stat label="Total attendees (incl. guests)" value={total} sub={`${s.registered + t.registered} registered + ${sGuests + tGuests} guests`} icon={Users} tone="green" />
+            <Stat label="Kit pending return" value={d.hats.issued} sub={`${d.hats.returned} returned · ${d.hats.lost} lost`} icon={Crown} href="/admin/hats" />
+            <Stat label="Needs review" value={pending} icon={AlertTriangle} tone={pending ? "red" : "slate"} href="/admin/review" />
+            <Stat label="WhatsApp sent" value={d.whatsapp.sent} sub={`${d.whatsapp.queued} queued · ${d.whatsapp.failed} failed`} icon={MessageCircle} href="/admin/whatsapp" tone={d.whatsapp.failed ? "red" : "slate"} />
+            <Stat label="Winners list" value={`${d.expected.registered}/${d.expected.total}`} sub={`${d.expected.missing} not registered yet`} icon={Users} href="/admin/winners" />
+          </div>
+        </>
       )}
-      <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Kit pending return" value={d.hats.issued} sub={`${d.hats.returned} returned · ${d.hats.lost} lost`} icon={Crown} href="/admin/hats" />
-        <Stat label="Needs review" value={pending} icon={AlertTriangle} tone={pending ? "red" : "slate"} href="/admin/review" />
-        <Stat label="WhatsApp sent" value={d.whatsapp.sent} sub={`${d.whatsapp.queued} queued · ${d.whatsapp.failed} failed`} icon={MessageCircle} href="/admin/whatsapp" tone={d.whatsapp.failed ? "red" : "slate"} />
-        <Stat label="Winners list" value={`${d.expected.registered}/${d.expected.total}`} sub={`${d.expected.missing} not registered yet`} icon={Users} href="/admin/winners" />
-      </div>
       <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Card className="p-5">
           <h3 className="mb-4 font-semibold">By category</h3>
