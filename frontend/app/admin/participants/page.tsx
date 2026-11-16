@@ -29,6 +29,32 @@ function Inner() {
   const { data, error, loading, reload } = useFetch<{ total: number; rows: Participant[] }>(eventId ? "/participants" : null, params, 10000);
   const { data: cats } = useFetch<Category[]>(eventId ? "/categories" : null, { event_id: eventId });
 
+  const exportTeachers = async () => {
+    try {
+      let all: Participant[] = [];
+      for (let off = 0; ; off += 200) {
+        const r = await api<{ total: number; rows: Participant[] }>("/participants", { params: { event_id: eventId, kind: "teacher", offset: off, limit: 200 } });
+        all = all.concat(r.rows);
+        if (all.length >= r.total || r.rows.length === 0) break;
+      }
+      all.sort((a, b) => a.name.localeCompare(b.name));
+      const rows = all.map((p, i) => ({
+        "S.No": i + 1, Name: p.name, Phone: p.phone, Email: (p as any).email || "", College: p.institution, Place: p.place, Category: p.category?.name || "",
+        Approval: p.approval_state, "Point of contact": p.contact || "",
+        "Accompanying persons": p.accompany_count || 0, "Companion type": p.accompany_type === "none" ? "" : p.accompany_type,
+        Food: p.food_pref === "veg" ? "Veg" : p.food_pref === "nonveg" ? "Non-veg" : "", Instagram: p.instagram ? "@" + p.instagram : "",
+        "Short profile": p.bio || "", "Profile document": p.profile_name || "", Photo: p.has_photo ? "Yes" : "No",
+        "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, Trophy: p.trophy_state === "given" ? "Given" : "",
+        WhatsApp: p.wa_state, Registered: p.create_date,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [{ wch: 5 }, { wch: 26 }, { wch: 15 }, { wch: 24 }, { wch: 30 }, { wch: 16 }, { wch: 18 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Teachers");
+      XLSX.writeFile(wb, "winners-meet-teachers.xlsx");
+    } catch (e: any) { toast(e.message, "err"); }
+  };
+
   const exportXlsx = async () => {
     try {
       let all: Participant[] = [];
@@ -53,7 +79,7 @@ function Inner() {
   return (
     <div>
       <PageHeader title="Participants" subtitle={`${total} ${total === 1 ? "person" : "people"}`}
-        actions={<><Button variant="secondary" size="sm" onClick={exportXlsx}><Download className="h-4 w-4" /> Export</Button><Button size="sm" onClick={() => setWalk(true)}><UserPlus className="h-4 w-4" /> Add</Button></>} />
+        actions={<><Button variant="secondary" size="sm" onClick={exportTeachers}><Download className="h-4 w-4" /> All teachers (Excel)</Button><Button variant="secondary" size="sm" onClick={exportXlsx}><Download className="h-4 w-4" /> Export</Button><Button size="sm" onClick={() => setWalk(true)}><UserPlus className="h-4 w-4" /> Add</Button></>} />
       <Card className="mb-4 p-3">
         <div className="flex flex-wrap gap-2">
           <div className="relative min-w-[200px] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input className={inputCls + " pl-9"} placeholder="Search name, phone, seat…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
