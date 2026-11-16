@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Download, Search, UserPlus } from "lucide-react";
 import * as XLSX from "xlsx";
+import { Avatar, useThumbs } from "@/components/Avatar";
 import { useEvent } from "@/components/EventContext";
 import WalkIn from "@/components/WalkIn";
 import { api, useFetch } from "@/lib/api";
@@ -27,6 +28,7 @@ function Inner() {
   useEffect(() => { const t = setTimeout(() => { setQd(q); setPage(0); }, 300); return () => clearTimeout(t); }, [q]);
   const params = { event_id: eventId, kind, state, approval, category_id: category, q: qd, offset: page * PAGE, limit: PAGE };
   const { data, error, loading, reload } = useFetch<{ total: number; rows: Participant[] }>(eventId ? "/participants" : null, params, 10000);
+  const thumb = useThumbs("/participants/thumbs", (data?.rows || []).map((r) => r.id));
   const { data: cats } = useFetch<Category[]>(eventId ? "/categories" : null, { event_id: eventId });
 
   const exportTeachers = async () => {
@@ -97,7 +99,7 @@ function Inner() {
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((p) => (
                   <tr key={p.id} className={`hover:bg-slate-50 ${p.approval_state === "pending" ? "bg-rose-50/60" : ""}`}>
-                    <td className="px-4 py-2.5"><Link href={`/admin/participants/${p.id}`} className="font-medium text-slate-900 hover:text-brand-600">{p.name}</Link><div className="text-xs text-slate-500">{fmtPhone(p.phone)} · {p.kind}</div></td>
+                    <td className="px-4 py-2.5"><div className="flex items-center gap-3"><Avatar src={thumb(p.id)} name={p.name} /><div><Link href={`/admin/participants/${p.id}`} className="font-medium text-slate-900 hover:text-brand-600">{p.name}</Link><div className="text-xs text-slate-500">{fmtPhone(p.phone)} · {p.kind}</div></div></div></td>
                     <td className="px-4 py-2.5 text-slate-700">{p.institution || <span className="text-slate-400">—</span>}{p.place && <div className="text-xs text-slate-500">{p.place}</div>}</td>
                     <td className="px-4 py-2.5">{p.accompany_count > 0 ? <span className="font-semibold">{p.accompany_count}<span className="ml-1 text-xs font-normal text-slate-500">{COMP[p.accompany_type]}</span></span> : <span className="text-slate-400">—</span>}</td>
                     <td className="px-4 py-2.5">{p.category && <CategoryChip name={p.category.name} color={p.category.color} />}</td>
@@ -113,7 +115,7 @@ function Inner() {
           <div className="space-y-2 md:hidden">
             {data.rows.map((p) => (
               <Link key={p.id} href={`/admin/participants/${p.id}`} className={`block rounded-xl border p-3 shadow-sm ${p.approval_state === "pending" ? "border-rose-200 bg-rose-50" : "border-slate-200 bg-white"}`}>
-                <div className="flex items-center justify-between gap-2"><span className="font-medium">{p.name}</span>{p.seat ? <Badge tone="green">{p.seat}</Badge> : approvalBadge(p.approval_state)}</div>
+                <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 font-medium"><Avatar src={thumb(p.id)} name={p.name} size={32} />{p.name}</span>{p.seat ? <Badge tone="green">{p.seat}</Badge> : approvalBadge(p.approval_state)}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">{fmtPhone(p.phone)}{p.institution && <span>· {p.institution}</span>}{p.accompany_count > 0 && <Badge tone="blue">+{p.accompany_count} {COMP[p.accompany_type]}</Badge>}{p.category && <CategoryChip name={p.category.name} color={p.category.color} />}{hatBadge(p.hat_state)}</div>
               </Link>
             ))}

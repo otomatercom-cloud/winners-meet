@@ -1,3 +1,4 @@
+import base64
 import logging
 import secrets
 
@@ -65,6 +66,7 @@ class WmParticipant(models.Model):
     profile_file = fields.Binary(string="Short Profile (Word/PDF)", attachment=True, copy=False)
     profile_filename = fields.Char(string="Profile File Name", copy=False)
     photo = fields.Image(string="Photo", max_width=600, max_height=600, copy=False)
+    photo_thumb = fields.Binary(string="Photo thumbnail", compute='_compute_photo_thumb', store=True, attachment=False)
     food_pref = fields.Selection([('veg', 'Vegetarian'), ('nonveg', 'Non-Vegetarian')], string="Food Preference")
     accompany_type = fields.Selection(
         [('none', 'Alone'), ('friend', 'With Friend'), ('guardian', 'With Guardian'), ('guest', 'With Guests (teacher)')],
@@ -108,6 +110,16 @@ class WmParticipant(models.Model):
     _seat_uniq = models.Constraint('unique(seat_id)', 'This seat is already assigned to someone else.')
 
     # ------------------------------------------------------------ create / match
+    @api.depends('photo')
+    def _compute_photo_thumb(self):
+        from odoo.tools.image import image_process
+        for rec in self:
+            try:
+                rec.photo_thumb = base64.b64encode(image_process(
+                    base64.b64decode(rec.photo), size=(96, 96), crop='center', output_format='JPEG', quality=70)) if rec.photo else False
+            except Exception:  # noqa: BLE001 - a bad image must never block saving the participant
+                rec.photo_thumb = False
+
     @api.model_create_multi
     def create(self, vals_list):
         cc = self.env['otm.wm.message.log']._get_config()['country_code']

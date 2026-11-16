@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Download, Image as ImageIcon, Search } from "lucide-react";
 import { Badge, Button, Card, Empty, ErrorBox, Modal, PageHeader, Spinner, inputCls, cx } from "@/components/ui";
 import { api, useFetch } from "@/lib/api";
+import { Avatar, useThumbs } from "@/components/Avatar";
 
 type T = { id: number; name: string; phone: string; institution: string; place: string; email: string; category: string; approval_state: string; food_pref: string; instagram: string; accompany_type: string; accompany_count: number; contact: string; bio: string; has_photo: boolean; profile_name: string };
 const COMP: Record<string, string> = { friend: "friends", guardian: "parents", guest: "persons" };
@@ -16,6 +17,7 @@ export default function Teachers() {
   const [limit, setLimit] = useState(50);
   const event_id = eid || events?.[0]?.id;
   const { data, error, loading, reload } = useFetch<{ total: number; rows: T[]; with_photo: number }>(event_id ? "/teachers" : null, { event_id, q, limit });
+  const thumb = useThumbs("/teachers/thumbs", (data?.rows || []).map((r) => r.id));
   const [sel, setSel] = useState<T | null>(null);
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
@@ -57,7 +59,7 @@ export default function Teachers() {
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((t) => (
                   <tr key={t.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSel(t)}>
-                    <td className="px-4 py-2.5"><div className="font-medium">{t.name}</div><div className="text-xs text-slate-500">{t.phone}</div></td>
+                    <td className="px-4 py-2.5"><div className="flex items-center gap-3"><Avatar src={thumb(t.id)} name={t.name} size={44} /><div><div className="font-medium">{t.name}</div><div className="text-xs text-slate-500">{t.phone}</div></div></div></td>
                     <td className="px-4 py-2.5">{t.institution || "—"}{t.place && <div className="text-xs text-slate-500">{t.place}</div>}</td>
                     <td className="px-4 py-2.5">{t.category || "—"}</td>
                     <td className="px-4 py-2.5">{t.accompany_count > 0 ? `${t.accompany_count} ${COMP[t.accompany_type] || ""}` : "—"}</td>
@@ -71,8 +73,8 @@ export default function Teachers() {
           <div className="space-y-2 md:hidden">
             {data.rows.map((t) => (
               <div key={t.id} onClick={() => setSel(t)}><Card className="cursor-pointer p-3">
-                <div className="font-medium">{t.name}</div>
-                <div className="text-xs text-slate-500">{t.phone}{t.institution ? ` · ${t.institution}` : ""}</div>
+                <div className="flex items-center gap-3"><Avatar src={thumb(t.id)} name={t.name} size={44} /><div><div className="font-medium">{t.name}</div>
+                <div className="text-xs text-slate-500">{t.phone}{t.institution ? ` · ${t.institution}` : ""}</div></div></div>
                 {t.accompany_count > 0 && <Badge tone="blue">+{t.accompany_count} {COMP[t.accompany_type]}</Badge>}
               </Card></div>
             ))}

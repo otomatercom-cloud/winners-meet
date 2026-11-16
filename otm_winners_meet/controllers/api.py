@@ -721,6 +721,13 @@ class WinnersMeetApi(http.Controller):
                                 'approval_state desc, name' if approval == 'pending' else 'name, id'))
         return {'total': P_.search_count(domain), 'rows': [_p(p) for p in recs]}
 
+    @api('/participants/thumbs')
+    def participant_thumbs(self, body=None, ids='', **kw):
+        _need_staff()
+        want = [i for i in (_int(x, 0) for x in str(ids).split(',')[:100]) if i]
+        recs = request.env['otm.wm.participant'].search([('id', 'in', want), ('photo_thumb', '!=', False)])
+        return {str(r.id): (r.photo_thumb.decode() if isinstance(r.photo_thumb, bytes) else r.photo_thumb) for r in recs}
+
     @api('/participants/<int:pid>')
     def participant_detail(self, pid, body=None, **kw):
         _need_staff()
@@ -1489,6 +1496,14 @@ class WinnersMeetApi(http.Controller):
         recs = P.search(dom, offset=max(_int(offset, 0), 0), limit=min(max(_int(limit, 50), 1), 200), order='name, id')
         return {'total': P.search_count(dom), 'rows': [self._teacher_dict(p) for p in recs],
                 'with_photo': P.search_count(dom + [('photo', '!=', False)])}
+
+    @api('/teachers/thumbs')
+    def teachers_thumbs(self, body=None, ids='', **kw):
+        _need_viewer()
+        want = [i for i in (_int(x, 0) for x in str(ids).split(',')[:100]) if i]
+        recs = request.env['otm.wm.participant'].sudo().search(
+            [('id', 'in', want), ('kind', '=', 'teacher'), ('photo_thumb', '!=', False)])
+        return {str(r.id): (r.photo_thumb.decode() if isinstance(r.photo_thumb, bytes) else r.photo_thumb) for r in recs}
 
     @api('/teachers/<int:pid>/photo')
     def teacher_photo(self, pid, body=None, **kw):
