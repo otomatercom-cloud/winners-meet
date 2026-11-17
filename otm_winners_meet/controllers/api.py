@@ -150,7 +150,9 @@ def _event_dict(e):
             'wa_tpl_stage_done': e.wa_tpl_stage_done or '', 'wa_tpl_stage_late': e.wa_tpl_stage_late or '',
             'form_student': e.form_config('student'), 'form_teacher': e.form_config('teacher'),
             'wa_tpl_confirm_teacher': e.wa_tpl_confirm_teacher or '', 'wa_tpl_seat_teacher': e.wa_tpl_seat_teacher or '',
-            'wa_msg_confirm_teacher': e.wa_msg_confirm_teacher or '', 'wa_msg_seat_teacher': e.wa_msg_seat_teacher or ''}
+            'wa_msg_confirm_teacher': e.wa_msg_confirm_teacher or '', 'wa_msg_seat_teacher': e.wa_msg_seat_teacher or '',
+            'coupon_enabled': bool(e.coupon_enabled), 'wa_tpl_coupon': e.wa_tpl_coupon or '',
+            'wa_msg_coupon_student': e.wa_msg_coupon_student or '', 'wa_msg_coupon_teacher': e.wa_msg_coupon_teacher or ''}
 
 
 def _p(p, detail=False):
@@ -165,7 +167,7 @@ def _p(p, detail=False):
         'reserved_seat_id': p._preset_seat().id if _is_manager() else False,
         'has_preset': bool(p._preset_seat()),
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
-        'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
+        'coupon_code': p.coupon_code or '', 'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'instagram': p.instagram or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
         'has_photo': bool(p.photo), 'bio': p.bio or '', 'contact': p.contact_id.name or '', 'contact_id': p.contact_id.id or False, 'profile_name': p.profile_filename or '' if p.profile_file else '',
         'trophy_state': p.trophy_state, 'trophy_on': fields.Datetime.to_string(p.trophy_on) if p.trophy_on else '',
@@ -430,7 +432,8 @@ class WinnersMeetApi(http.Controller):
                    'teacher_needs_approval', 'frontend_url', 'frontend_url_teacher', 'wa_tpl_confirm', 'wa_tpl_seat',
                    'wa_msg_confirm', 'wa_msg_seat', 'wa_tpl_confirm_teacher', 'wa_tpl_seat_teacher',
                    'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param', 'slug',
-                   'wa_tpl_stage_done', 'wa_tpl_stage_late')
+                   'wa_tpl_stage_done', 'wa_tpl_stage_late',
+                   'coupon_enabled', 'wa_tpl_coupon', 'wa_msg_coupon_student', 'wa_msg_coupon_teacher')
         vals = {k: body[k] for k in allowed if k in body}
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):
@@ -911,11 +914,13 @@ class WinnersMeetApi(http.Controller):
     def participant_resend(self, pid, body=None, **kw):
         _need_staff()
         p = _participant(pid)
-        mtype = body.get('type') if body.get('type') in ('confirm', 'seat') else 'seat'
+        mtype = body.get('type') if body.get('type') in ('confirm', 'seat', 'coupon') else 'seat'
         if p.approval_state != 'approved':
             raise UserError(_("Not approved yet."))
         if mtype == 'seat' and not p.seat_id:
             raise UserError(_("No seat assigned yet."))
+        if mtype == 'coupon' and not p.coupon_code:
+            raise UserError(_("No coupon code yet. It is issued at check-in."))
         p._queue_message(mtype, force=True)
         return _p(p, detail=True)
 

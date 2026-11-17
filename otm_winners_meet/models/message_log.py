@@ -8,7 +8,7 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.modules import module
-from .event import DEFAULT_CONFIRM_MSG, DEFAULT_SEAT_MSG, DEFAULT_STAGE_DONE_MSG, DEFAULT_STAGE_LATE_MSG
+from .event import DEFAULT_CONFIRM_MSG, DEFAULT_COUPON_MSG_STUDENT, DEFAULT_COUPON_MSG_TEACHER, DEFAULT_SEAT_MSG, DEFAULT_STAGE_DONE_MSG, DEFAULT_STAGE_LATE_MSG
 
 _logger = logging.getLogger(__name__)
 PARAM = 'otm_winners_meet.'
@@ -28,7 +28,7 @@ class WmMessageLog(models.Model):
     event_id = fields.Many2one('otm.wm.event', required=True, ondelete='cascade', index=True)
     participant_id = fields.Many2one('otm.wm.participant', ondelete='cascade', index=True)
     staff_name = fields.Char()
-    message_type = fields.Selection([('confirm', 'Registration Confirmation'), ('seat', 'Seat Details'),
+    message_type = fields.Selection([('confirm', 'Registration Confirmation'), ('seat', 'Seat Details'), ('coupon', 'Coupon Code'),
                                      ('stage_done', 'Staff: Category Complete'), ('stage_late', 'Staff: Late Arrival')],
                                     required=True)
     number = fields.Char(string="WhatsApp Number")
@@ -116,13 +116,22 @@ class WmMessageLog(models.Model):
             hat = _("Enjoy the programme.")
         seat = participant.seat_id.display_label() if participant.seat_id else '-'
         values = {'name': participant.name, 'event': event.name, 'date': event.date_text(),
-                  'venue': event.venue or '-', 'link': link, 'seat': seat, 'hat': hat}
+                  'venue': event.venue or '-', 'link': link, 'seat': seat, 'hat': hat,
+                  'code': participant.coupon_code or ''}
         if mtype == 'confirm':
             params = [participant.name, event.name, event.date_text(), event.venue or '-', link]
             text = ((event.wa_msg_confirm_teacher if teacher else '') or event.wa_msg_confirm or '').strip() \
                 or DEFAULT_CONFIRM_MSG
             tpl = (event.wa_tpl_confirm_teacher if teacher else '') or event.wa_tpl_confirm
             key = 'confirm:%s' % participant.id
+        elif mtype == 'coupon':
+            if not participant.coupon_code:
+                return self.browse()
+            params = [participant.name, participant.coupon_code, event.name]
+            default = DEFAULT_COUPON_MSG_TEACHER if teacher else DEFAULT_COUPON_MSG_STUDENT
+            text = ((event.wa_msg_coupon_teacher if teacher else event.wa_msg_coupon_student) or '').strip() or default
+            tpl = event.wa_tpl_coupon
+            key = 'coupon:%s' % participant.id
         else:
             params = [participant.name, seat, event.name, link]
             if event.wa_seat_hat_param:

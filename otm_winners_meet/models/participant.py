@@ -57,6 +57,7 @@ class WmParticipant(models.Model):
     state = fields.Selection(
         [('registered', 'Registered'), ('checked_in', 'Checked In')],
         default='registered', required=True, index=True)
+    coupon_code = fields.Char(string="Coupon Code", copy=False, readonly=True, index=True)
     checkin_on = fields.Datetime()
     checkin_by = fields.Many2one('res.users', ondelete='set null')
 
@@ -105,6 +106,7 @@ class WmParticipant(models.Model):
     log_ids = fields.One2many('otm.wm.message.log', 'participant_id', string="WhatsApp Messages")
 
     _event_phone_uniq = models.Constraint('unique(event_id, phone)', 'This phone number is already registered.')
+    _coupon_uniq = models.Constraint('unique(coupon_code)', 'Coupon code must be unique.')
     _token_uniq = models.Constraint('unique(qr_token)', 'QR token must be unique.')
     _reserved_uniq = models.Constraint('unique(reserved_seat_id)', 'This seat is already reserved for another participant.')
     _seat_uniq = models.Constraint('unique(seat_id)', 'This seat is already assigned to someone else.')
@@ -349,8 +351,27 @@ class WmParticipant(models.Model):
         self.write(vals)
         self._issue_items()
         self._queue_message('seat')
+        if self._issue_coupon():
+            self._queue_message('coupon')
         self._stage_on_checkin()
         return {'already': False}
+
+    def _issue_coupon(self):
+        """Give a unique coupon code (once) when the event issues coupons. Returns the code or ''."""
+        self.ensure_one()
+        if self.is_demo or not self.event_id.coupon_enabled:
+            return ''
+        if self.coupon_code:
+            return self.coupon_code
+        prefix = 'WMT' if self.kind == 'teacher' else 'WMS'
+        alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'   # no 0/O/1/I
+        Part = self.sudo()
+        for _i in range(20):
+            code = '%s-%s' % (prefix, ''.join(secrets.choice(alphabet) for _j in range(6)))
+            if not Part.search_count([('coupon_code', '=', code)]):
+                self.sudo().write({'coupon_code': code})
+                return code
+        raise UserError(_("Could not create a coupon code. Please try again."))
 
     def _stage_on_checkin(self):
         """Arriving after the category's announcement: goes to the Missed list and the stage staff are told."""

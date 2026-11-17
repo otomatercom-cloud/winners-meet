@@ -24,6 +24,12 @@ DEFAULT_CONFIRM_MSG = (
     "Your entry pass: {link}")
 DEFAULT_SEAT_MSG = (
     "Hi {name}, welcome to {event}! Your seat: {seat}. {hat} Entry pass: {link}")
+DEFAULT_COUPON_MSG_STUDENT = (
+    "Hi {name}, thank you for joining {event}! Your admission coupon code: {code}. "
+    "Share it with your friends: they get 10% discount on fees when they join with this code.")
+DEFAULT_COUPON_MSG_TEACHER = (
+    "Hi {name}, thank you for joining {event}! Your admission coupon code: {code}. "
+    "The first 3 students who join with this code get 20% discount on fees, and 10% after that.")
 
 
 class WmEvent(models.Model):
@@ -59,6 +65,10 @@ class WmEvent(models.Model):
     wa_tpl_seat_teacher = fields.Char(string="Teacher Seat Template", help="Blank = use the student template.")
     wa_msg_confirm_teacher = fields.Text(string="Teacher Confirm Message", default=DEFAULT_CONFIRM_MSG)
     wa_msg_seat_teacher = fields.Text(string="Teacher Seat Message", default=DEFAULT_SEAT_MSG)
+    coupon_enabled = fields.Boolean(string="Issue Coupon Codes", help="On = every person gets a unique coupon code at check-in, sent on WhatsApp.")
+    wa_tpl_coupon = fields.Char(string="Coupon Template", help="Variables: 1 name, 2 code, 3 event.")
+    wa_msg_coupon_student = fields.Text(string="Student Coupon Message", default=DEFAULT_COUPON_MSG_STUDENT)
+    wa_msg_coupon_teacher = fields.Text(string="Teacher Coupon Message", default=DEFAULT_COUPON_MSG_TEACHER)
     wa_tpl_stage_done = fields.Char(string="Staff: Category Complete Template", help="Variables: 1 category, 2 collected, 3 missed, 4 event.")
     wa_tpl_stage_late = fields.Char(string="Staff: Late Arrival Template", help="Variables: 1 name, 2 category, 3 event.")
     staff_ids = fields.One2many('otm.wm.staff', 'event_id', string="Stage Staff WhatsApp")

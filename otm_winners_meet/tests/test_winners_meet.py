@@ -664,3 +664,28 @@ class TestWinnersMeet(TransactionCase):
         t.write({'name': 'New Name', 'phone': '9447700002', 'bio': 'Hi', 'accompany_type': 'guest', 'accompany_count': 2})
         self.assertEqual(t.name, 'New Name')
         self.assertTrue(t.phone.endswith('9447700002'))
+
+    def test_coupon_codes(self):
+        self.event.coupon_enabled = True
+        t = self._reg('Coupon Teacher', '9000000071', self.teacher, kind='teacher')
+        s = self._reg('Coupon Student', '9000000072', self.gold)
+        self.assertFalse(t.coupon_code)                      # issued at check-in, not at registration
+        t.action_check_in(); s.action_check_in()
+        self.assertRegex(t.coupon_code, r'^WMT-[A-Z2-9]{6}$')
+        self.assertRegex(s.coupon_code, r'^WMS-[A-Z2-9]{6}$')
+        self.assertNotEqual(t.coupon_code, s.coupon_code)
+        first = t.coupon_code
+        t.action_check_in()                                  # idempotent: same code, one message
+        self.assertEqual(t.coupon_code, first)
+        msgs = t.log_ids.filtered(lambda l: l.message_type == 'coupon')
+        self.assertEqual(len(msgs), 1)
+        self.assertIn(first, msgs.message)
+        self.assertIn('20%', msgs.message)                   # teacher wording
+        self.assertIn('10%', s.log_ids.filtered(lambda l: l.message_type == 'coupon').message)
+        self.assertEqual(msgs.template_params, '["Coupon Teacher", "%s", "Winners Meet 2026"]' % first)
+
+    def test_coupon_off_by_default(self):
+        p = self._reg('No Coupon', '9000000073', self.gold)
+        p.action_check_in()
+        self.assertFalse(p.coupon_code)
+        self.assertFalse(p.log_ids.filtered(lambda l: l.message_type == 'coupon'))

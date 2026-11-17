@@ -6,7 +6,7 @@ import { api, useFetch } from "@/lib/api";
 import { Button, Card, Empty, Field, PageHeader, Toggle, inputCls, useToast } from "@/components/ui";
 import type { EventInfo } from "@/lib/types";
 
-const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", frontend_url_teacher: "", wa_seat_hat_param: false, form_student: { place: "optional", institution: "off", email: "off", photo: "off", food_pref: "off", accompany: "optional", instagram: "required" }, form_teacher: { place: "off", institution: "optional", email: "off", photo: "required", food_pref: "required", accompany: "off", instagram: "off" }, wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "", wa_tpl_confirm_teacher: "", wa_tpl_seat_teacher: "", wa_msg_confirm_teacher: "", wa_msg_seat_teacher: "" };
+const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", frontend_url_teacher: "", wa_seat_hat_param: false, form_student: { place: "optional", institution: "off", email: "off", photo: "off", food_pref: "off", accompany: "optional", instagram: "required" }, form_teacher: { place: "off", institution: "optional", email: "off", photo: "required", food_pref: "required", accompany: "off", instagram: "off" }, wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "", wa_tpl_confirm_teacher: "", wa_tpl_seat_teacher: "", wa_msg_confirm_teacher: "", wa_msg_seat_teacher: "", coupon_enabled: false, wa_tpl_coupon: "", wa_msg_coupon_student: "", wa_msg_coupon_teacher: "" };
 
 export default function EventSettings() {
   const { event, me, reloadEvents, setEventId } = useEvent();
@@ -81,6 +81,13 @@ export default function EventSettings() {
         </div>
         <Field label="Confirmation text (used when no template)" hint="{name} {event} {date} {venue} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_confirm_teacher} onChange={(e) => set("wa_msg_confirm_teacher", e.target.value)} /></Field>
         <Field label="Seat text (used when no template)" hint="{name} {event} {seat} {hat} {link}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_seat_teacher} onChange={(e) => set("wa_msg_seat_teacher", e.target.value)} /></Field>
+      </Card>
+      <Card className="mb-5 space-y-4 p-5">
+        <h3 className="font-semibold">Coupon codes</h3>
+        <Toggle label="Give every teacher and student a unique coupon code at check-in, sent on WhatsApp" checked={!!f.coupon_enabled} onChange={(v) => set("coupon_enabled", v)} />
+        <Field label="Coupon template name" hint="Params: 1 name, 2 code, 3 event. Blank = plain text"><input className={inputCls} value={f.wa_tpl_coupon || ""} onChange={(e) => set("wa_tpl_coupon", e.target.value)} /></Field>
+        <Field label="Student coupon text (used when no template)" hint="{name} {event} {code}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_coupon_student || ""} onChange={(e) => set("wa_msg_coupon_student", e.target.value)} /></Field>
+        <Field label="Teacher coupon text (used when no template)" hint="{name} {event} {code}"><textarea className={inputCls + " h-20 py-2"} value={f.wa_msg_coupon_teacher || ""} onChange={(e) => set("wa_msg_coupon_teacher", e.target.value)} /></Field>
       </Card>
       <Card className="mb-5 space-y-4 p-5">
         <h3 className="font-semibold">WhatsApp - Stage staff</h3>

@@ -34,7 +34,7 @@ export default function Detail() {
   };
   const [editing, setEditing] = useState(false);
   const [sending, setSending] = useState(false);
-  const resend = async (type: "confirm" | "seat") => {
+  const resend = async (type: "confirm" | "seat" | "coupon") => {
     setSending(true);
     try { setData(await api<Participant>(`/participants/${id}/resend`, { method: "POST", body: { type } })); reload(); alert("WhatsApp queued. It is sent within a minute; refresh to see the result."); }
     catch (e: any) { alert(e.message); }
@@ -68,12 +68,14 @@ export default function Detail() {
             </dl>
           </Card>
           <Card className="p-4 text-sm">
+            {data.coupon_code && <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-amber-900">Coupon code: <b className="font-mono tracking-wide">{data.coupon_code}</b></div>}
             <div className="mb-2 font-semibold">WhatsApp</div>
             <div className="mb-2 flex flex-wrap gap-1.5">
               {data.approval_state === "approved" && (
                 <>
                   <Button size="sm" variant="secondary" loading={sending} onClick={() => resend("confirm")}>Resend confirmation</Button>
                   {data.seat && <Button size="sm" variant="secondary" loading={sending} onClick={() => resend("seat")}>Resend seat</Button>}
+                  {data.coupon_code && <Button size="sm" variant="secondary" loading={sending} onClick={() => resend("coupon")}>Resend coupon</Button>}
                 </>
               )}
             </div>

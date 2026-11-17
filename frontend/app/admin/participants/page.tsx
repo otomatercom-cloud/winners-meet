@@ -47,7 +47,7 @@ function Inner() {
         Food: p.food_pref === "veg" ? "Veg" : p.food_pref === "nonveg" ? "Non-veg" : "", Instagram: p.instagram ? "@" + p.instagram : "",
         "Short profile": p.bio || "", "Profile document": p.profile_name || "", Photo: p.has_photo ? "Yes" : "No",
         "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, Trophy: p.trophy_state === "given" ? "Given" : "",
-        WhatsApp: p.wa_state, Registered: p.create_date,
+        "Coupon code": p.coupon_code || "", WhatsApp: p.wa_state, Registered: p.create_date,
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       ws["!cols"] = [{ wch: 5 }, { wch: 26 }, { wch: 15 }, { wch: 24 }, { wch: 30 }, { wch: 16 }, { wch: 18 }];
@@ -67,7 +67,7 @@ function Inner() {
       }
       const rows = all.map((p) => ({
         Name: p.name, Phone: p.phone, Type: p.kind, Category: p.category?.name || "", Place: p.place, Institution: p.institution,
-        Approval: p.approval_state, "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, "Point of contact": p.contact, "Short profile": p.bio, Instagram: p.instagram ? "@" + p.instagram : "", Food: p.food_pref, "Coming with": p.accompany_type === "none" ? "" : p.accompany_type, "Guests": p.accompany_count || "", WhatsApp: p.wa_state,
+        Approval: p.approval_state, "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, "Point of contact": p.contact, "Short profile": p.bio, Instagram: p.instagram ? "@" + p.instagram : "", Food: p.food_pref, "Coming with": p.accompany_type === "none" ? "" : p.accompany_type, "Guests": p.accompany_count || "", "Coupon code": p.coupon_code || "", WhatsApp: p.wa_state,
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
