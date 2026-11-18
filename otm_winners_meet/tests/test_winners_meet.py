@@ -689,3 +689,17 @@ class TestWinnersMeet(TransactionCase):
         p.action_check_in()
         self.assertFalse(p.coupon_code)
         self.assertFalse(p.log_ids.filtered(lambda l: l.message_type == 'coupon'))
+
+    def test_trophy_sticker_and_profile_marks(self):
+        from odoo.exceptions import AccessError
+        ev = self.env['otm.wm.event'].search([], limit=1)
+        cat = self.env['otm.wm.category'].create({'event_id': ev.id, 'name': 'MarkT', 'kind': 'teacher'})
+        t = self.env['otm.wm.participant'].with_context(wm_skip_eval=True).create(
+            {'event_id': ev.id, 'kind': 'teacher', 'name': 'Mark T', 'phone': '9447700011', 'category_id': cat.id})
+        self.assertEqual((t.trophy_done, t.profile_done), (False, False))
+        t.write({'trophy_done': True})
+        self.assertEqual((t.trophy_done, t.profile_done), (True, False))
+        self.assertFalse(t.copy({'phone': '9447700012'}).trophy_done)
+        u = self._mkt_user('tview2', 'group_wm_viewer')       # the viewer has no direct write, only the API's sudo tick
+        with self.assertRaises(AccessError):
+            t.with_user(u).write({'profile_done': True})

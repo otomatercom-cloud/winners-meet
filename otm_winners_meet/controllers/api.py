@@ -167,7 +167,7 @@ def _p(p, detail=False):
         'reserved_seat_id': p._preset_seat().id if _is_manager() else False,
         'has_preset': bool(p._preset_seat()),
         'checkin_on': fields.Datetime.to_string(p.checkin_on) if p.checkin_on else '',
-        'coupon_code': p.coupon_code or '', 'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
+        'coupon_code': p.coupon_code or '', 'trophy_done': bool(p.trophy_done), 'profile_done': bool(p.profile_done), 'hat_state': p.hat_state, 'wa_state': p.wa_state, 'registered_via': p.registered_via,
         'food_pref': p.food_pref or '', 'instagram': p.instagram or '', 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
         'has_photo': bool(p.photo), 'bio': p.bio or '', 'contact': p.contact_id.name or '', 'contact_id': p.contact_id.id or False, 'profile_name': p.profile_filename or '' if p.profile_file else '',
         'trophy_state': p.trophy_state, 'trophy_on': fields.Datetime.to_string(p.trophy_on) if p.trophy_on else '',
@@ -1481,7 +1481,27 @@ class WinnersMeetApi(http.Controller):
                 'approval_state': p.approval_state, 'food_pref': p.food_pref or '', 'instagram': p.instagram or '',
                 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
                 'contact': p.contact_id.name or '', 'bio': p.bio or '', 'has_photo': bool(p.photo),
-                'profile_name': (p.profile_filename or 'profile') if p.profile_file else ''}
+                'profile_name': (p.profile_filename or 'profile') if p.profile_file else '',
+                'trophy_done': bool(p.trophy_done), 'profile_done': bool(p.profile_done)}
+
+    @staticmethod
+    def _apply_mark(p, body):
+        field = {'trophy': 'trophy_done', 'profile': 'profile_done'}.get((body or {}).get('field'))
+        if not field:
+            raise UserError(_("Unknown mark."))
+        p.write({field: bool((body or {}).get('value'))})
+        return {'trophy_done': bool(p.trophy_done), 'profile_done': bool(p.profile_done)}
+
+    @api('/teachers/<int:pid>/mark', methods=('POST',))
+    def teacher_mark(self, pid, body=None, **kw):
+        # The viewer group may only tick these two boxes, nothing else.
+        _need_viewer()
+        return self._apply_mark(self._teacher(pid), body)
+
+    @api('/participants/<int:pid>/mark', methods=('POST',))
+    def participant_mark(self, pid, body=None, **kw):
+        _need_staff()
+        return self._apply_mark(_participant(pid), body)
 
     @api('/teachers/events')
     def teachers_events(self, body=None, **kw):
@@ -1489,7 +1509,7 @@ class WinnersMeetApi(http.Controller):
         return [{'id': e.id, 'name': e.name} for e in request.env['otm.wm.event'].sudo().search([])]
 
     @api('/teachers')
-    def teachers_list(self, body=None, event_id=None, q='', offset='0', limit='50', **kw):
+    def teachers_list(self, body=None, event_id=None, q='', flag='', offset='0', limit='50', **kw):
         _need_viewer()
         ev = _event(event_id, env=request.env(su=True))
         dom = [('event_id', '=', ev.id), ('kind', '=', 'teacher'), ('approval_state', '!=', 'rejected')]
@@ -1501,9 +1521,16 @@ class WinnersMeetApi(http.Controller):
             else:
                 dom += ['|', '|', ('name', 'ilike', q), ('institution', 'ilike', q), ('place', 'ilike', q)]
         P = request.env['otm.wm.participant'].sudo()
+        base = list(dom)
+        if flag == 'trophy_pending':
+            dom.append(('trophy_done', '=', False))
+        elif flag == 'profile_pending':
+            dom.append(('profile_done', '=', False))
         recs = P.search(dom, offset=max(_int(offset, 0), 0), limit=min(max(_int(limit, 50), 1), 200), order='name, id')
         return {'total': P.search_count(dom), 'rows': [self._teacher_dict(p) for p in recs],
-                'with_photo': P.search_count(dom + [('photo', '!=', False)])}
+                'with_photo': P.search_count(dom + [('photo', '!=', False)]),
+                'trophy_done_count': P.search_count(base + [('trophy_done', '=', True)]),
+                'profile_done_count': P.search_count(base + [('profile_done', '=', True)]), 'all_count': P.search_count(base)}
 
     @api('/teachers/thumbs')
     def teachers_thumbs(self, body=None, ids='', **kw):

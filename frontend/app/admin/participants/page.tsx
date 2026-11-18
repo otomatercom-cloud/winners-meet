@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Download, Search, UserPlus } from "lucide-react";
 import * as XLSX from "xlsx";
+import { MarkTick } from "@/components/MarkTick";
 import { Avatar, useThumbs } from "@/components/Avatar";
 import { useEvent } from "@/components/EventContext";
 import WalkIn from "@/components/WalkIn";
@@ -47,7 +48,7 @@ function Inner() {
         Food: p.food_pref === "veg" ? "Veg" : p.food_pref === "nonveg" ? "Non-veg" : "", Instagram: p.instagram ? "@" + p.instagram : "",
         "Short profile": p.bio || "", "Profile document": p.profile_name || "", Photo: p.has_photo ? "Yes" : "No",
         "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, Trophy: p.trophy_state === "given" ? "Given" : "",
-        "Coupon code": p.coupon_code || "", WhatsApp: p.wa_state, Registered: p.create_date,
+        "Coupon code": p.coupon_code || "", "Trophy sticker done": p.trophy_done ? "Yes" : "No", "Profile done": p.profile_done ? "Yes" : "No", WhatsApp: p.wa_state, Registered: p.create_date,
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       ws["!cols"] = [{ wch: 5 }, { wch: 26 }, { wch: 15 }, { wch: 24 }, { wch: 30 }, { wch: 16 }, { wch: 18 }];
@@ -67,7 +68,7 @@ function Inner() {
       }
       const rows = all.map((p) => ({
         Name: p.name, Phone: p.phone, Type: p.kind, Category: p.category?.name || "", Place: p.place, Institution: p.institution,
-        Approval: p.approval_state, "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, "Point of contact": p.contact, "Short profile": p.bio, Instagram: p.instagram ? "@" + p.instagram : "", Food: p.food_pref, "Coming with": p.accompany_type === "none" ? "" : p.accompany_type, "Guests": p.accompany_count || "", "Coupon code": p.coupon_code || "", WhatsApp: p.wa_state,
+        Approval: p.approval_state, "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat, Hat: p.hat_state, "Point of contact": p.contact, "Short profile": p.bio, Instagram: p.instagram ? "@" + p.instagram : "", Food: p.food_pref, "Coming with": p.accompany_type === "none" ? "" : p.accompany_type, "Guests": p.accompany_count || "", "Coupon code": p.coupon_code || "", "Trophy sticker done": p.trophy_done ? "Yes" : "No", "Profile done": p.profile_done ? "Yes" : "No", WhatsApp: p.wa_state,
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
@@ -95,7 +96,7 @@ function Inner() {
         <>
           <Card className="hidden overflow-hidden md:block">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">Seat</th><th className="px-4 py-2.5">Hat</th><th className="px-4 py-2.5">WhatsApp</th></tr></thead>
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">Seat</th><th className="px-4 py-2.5">Hat</th><th className="px-4 py-2.5">WhatsApp</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((p) => (
                   <tr key={p.id} className={`hover:bg-slate-50 ${p.approval_state === "pending" ? "bg-rose-50/60" : ""}`}>
@@ -107,6 +108,8 @@ function Inner() {
                     <td className="px-4 py-2.5 font-semibold">{p.seat || <span className="font-normal text-slate-400">—</span>}</td>
                     <td className="px-4 py-2.5">{hatBadge(p.hat_state)}</td>
                     <td className="px-4 py-2.5">{waBadge(p.wa_state)}</td>
+                    <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}><div className="flex justify-center"><MarkTick base="/participants" id={p.id} field="trophy" value={p.trophy_done} label="Trophy sticker completed" /></div></td>
+                    <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}><div className="flex justify-center"><MarkTick base="/participants" id={p.id} field="profile" value={p.profile_done} label="Profile completed" /></div></td>
                   </tr>
                 ))}
               </tbody>

@@ -4,8 +4,9 @@ import { Download, Image as ImageIcon, Search } from "lucide-react";
 import { Badge, Button, Card, Empty, ErrorBox, Modal, PageHeader, Spinner, inputCls, cx } from "@/components/ui";
 import { api, useFetch } from "@/lib/api";
 import { Avatar, useThumbs } from "@/components/Avatar";
+import { MarkTick } from "@/components/MarkTick";
 
-type T = { id: number; name: string; phone: string; institution: string; place: string; email: string; category: string; approval_state: string; food_pref: string; instagram: string; accompany_type: string; accompany_count: number; contact: string; bio: string; has_photo: boolean; profile_name: string };
+type T = { id: number; name: string; phone: string; institution: string; place: string; email: string; category: string; approval_state: string; food_pref: string; instagram: string; accompany_type: string; accompany_count: number; contact: string; bio: string; has_photo: boolean; profile_name: string; trophy_done: boolean; profile_done: boolean };
 const COMP: Record<string, string> = { friend: "friends", guardian: "parents", guest: "persons" };
 const save = (href: string, name: string) => { const a = document.createElement("a"); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
 const safe = (s: string) => s.replace(/[^\w.\- ]+/g, "").trim().replace(/\s+/g, "_") || "teacher";
@@ -14,9 +15,10 @@ export default function Teachers() {
   const { data: events } = useFetch<{ id: number; name: string }[]>("/teachers/events");
   const [eid, setEid] = useState("");
   const [q, setQ] = useState("");
+  const [flag, setFlag] = useState("");
   const [limit, setLimit] = useState(50);
   const event_id = eid || events?.[0]?.id;
-  const { data, error, loading, reload } = useFetch<{ total: number; rows: T[]; with_photo: number }>(event_id ? "/teachers" : null, { event_id, q, limit });
+  const { data, error, loading, reload } = useFetch<{ total: number; rows: T[]; with_photo: number; trophy_done_count: number; profile_done_count: number; all_count: number }>(event_id ? "/teachers" : null, { event_id, q, flag, limit });
   const thumb = useThumbs("/teachers/thumbs", (data?.rows || []).map((r) => r.id));
   const [sel, setSel] = useState<T | null>(null);
   const [busy, setBusy] = useState("");
@@ -48,14 +50,17 @@ export default function Teachers() {
       <Card className="mb-3 flex flex-wrap gap-2 p-3">
         {events && events.length > 1 && <select className={cx(inputCls, "w-auto")} value={event_id || ""} onChange={(e) => setEid(e.target.value)}>{events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select>}
         <div className="relative min-w-[200px] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input className={cx(inputCls, "pl-9")} placeholder="Search name, phone, college, place…" value={q} onChange={(e) => { setQ(e.target.value); setLimit(50); }} /></div>
+        <select className={cx(inputCls, "w-auto")} value={flag} onChange={(e) => { setFlag(e.target.value); setLimit(50); }}>
+          <option value="">All teachers</option><option value="trophy_pending">Trophy sticker pending</option><option value="profile_pending">Profile pending</option>
+        </select>
       </Card>
       {msg && <p className="mb-2 text-sm text-slate-600">{msg}</p>}
       {error && !data ? <ErrorBox message={error} onRetry={reload} /> : !data ? <Spinner /> : data.rows.length === 0 ? <Empty>No teachers found.</Empty> : (
         <>
-          <p className="mb-2 text-sm text-slate-500">{data.total} teachers · {data.with_photo} with photo</p>
+          <p className="mb-2 text-sm text-slate-500">{data.total} teachers · {data.with_photo} with photo · Trophy sticker {data.trophy_done_count}/{data.all_count} · Profile {data.profile_done_count}/{data.all_count}</p>
           <Card className="hidden overflow-hidden md:block">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Point of contact</th><th className="px-4 py-2.5">Photo</th></tr></thead>
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Point of contact</th><th className="px-4 py-2.5">Photo</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((t) => (
                   <tr key={t.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSel(t)}>
@@ -65,6 +70,8 @@ export default function Teachers() {
                     <td className="px-4 py-2.5">{t.accompany_count > 0 ? `${t.accompany_count} ${COMP[t.accompany_type] || ""}` : "—"}</td>
                     <td className="px-4 py-2.5">{t.contact || "—"}</td>
                     <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>{t.has_photo ? <Button size="sm" variant="secondary" loading={busy === "p" + t.id} onClick={() => one(t)}><Download className="h-4 w-4" /></Button> : <span className="text-slate-400">—</span>}</td>
+                    <td className="px-4 py-2.5"><div className="flex justify-center"><MarkTick base="/teachers" id={t.id} field="trophy" value={t.trophy_done} label="Trophy sticker completed" onChange={() => reload()} /></div></td>
+                    <td className="px-4 py-2.5"><div className="flex justify-center"><MarkTick base="/teachers" id={t.id} field="profile" value={t.profile_done} label="Profile completed" onChange={() => reload()} /></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -76,6 +83,10 @@ export default function Teachers() {
                 <div className="flex items-center gap-3"><Avatar src={thumb(t.id)} name={t.name} size={44} /><div><div className="font-medium">{t.name}</div>
                 <div className="text-xs text-slate-500">{t.phone}{t.institution ? ` · ${t.institution}` : ""}</div></div></div>
                 {t.accompany_count > 0 && <Badge tone="blue">+{t.accompany_count} {COMP[t.accompany_type]}</Badge>}
+                <div className="mt-2 flex gap-5 text-xs text-slate-600" onClick={(e) => e.stopPropagation()}>
+                  <label className="flex items-center gap-2"><MarkTick base="/teachers" id={t.id} field="trophy" value={t.trophy_done} label="Trophy sticker completed" onChange={() => reload()} />Trophy sticker</label>
+                  <label className="flex items-center gap-2"><MarkTick base="/teachers" id={t.id} field="profile" value={t.profile_done} label="Profile completed" onChange={() => reload()} />Profile</label>
+                </div>
               </Card></div>
             ))}
           </div>

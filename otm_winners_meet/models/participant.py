@@ -57,6 +57,8 @@ class WmParticipant(models.Model):
     state = fields.Selection(
         [('registered', 'Registered'), ('checked_in', 'Checked In')],
         default='registered', required=True, index=True)
+    trophy_done = fields.Boolean(string="Trophy Sticker Completed", copy=False)
+    profile_done = fields.Boolean(string="Profile Completed", copy=False)
     coupon_code = fields.Char(string="Coupon Code", copy=False, readonly=True, index=True)
     checkin_on = fields.Datetime()
     checkin_by = fields.Many2one('res.users', ondelete='set null')
