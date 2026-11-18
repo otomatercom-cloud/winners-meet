@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_coupon_config_form" model="ir.ui.view">
+        <field name="name">otm.coupon.config.form</field>
+        <field name="model">otm.coupon.config</field>
+        <field name="arch" type="xml">
+            <form string="Coupon Settings">
+                <sheet>
+                    <group string="Teacher coupon">
+                        <field name="teacher_slots"/>
+                        <field name="teacher_pct"/>
+                        <field name="teacher_after_pct"/>
+                    </group>
+                    <group string="Student coupon">
+                        <field name="student_pct"/>
+                    </group>
+                    <group string="Calculation">
+                        <field name="base"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_coupon_config" model="ir.actions.server">
+        <field name="name">Coupon Settings</field>
+        <field name="model_id" ref="model_otm_coupon_config"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_open()</field>
+    </record>
+</odoo>

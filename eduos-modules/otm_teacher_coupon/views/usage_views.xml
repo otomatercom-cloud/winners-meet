@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_coupon_usage_list" model="ir.ui.view">
+        <field name="name">otm.coupon.usage.list</field>
+        <field name="model">otm.coupon.usage</field>
+        <field name="arch" type="xml">
+            <list string="Coupon Uses" decoration-warning="state == 'pending'" decoration-success="state == 'approved'"
+                  decoration-muted="state in ('rejected', 'revoked')">
+                <field name="create_date" string="Entered On"/>
+                <field name="coupon_code"/>
+                <field name="owner_name"/>
+                <field name="owner_kind" widget="badge"/>
+                <field name="student_id"/>
+                <field name="enrollment_id" optional="hide"/>
+                <field name="requested_by" string="Entered By"/>
+                <field name="state" widget="badge"/>
+                <field name="slot_no" optional="show"/>
+                <field name="discount_pct" optional="show"/>
+                <field name="base_amount" optional="hide"/>
+                <field name="discount_amount" sum="Total"/>
+                <field name="approved_by" optional="show"/>
+                <field name="source" optional="hide"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_coupon_usage_form" model="ir.ui.view">
+        <field name="name">otm.coupon.usage.form</field>
+        <field name="model">otm.coupon.usage</field>
+        <field name="arch" type="xml">
+            <form string="Coupon Use" create="0">
+                <header>
+                    <button name="action_approve" type="object" string="Approve" class="btn-primary"
+                            invisible="state != 'pending'" groups="otm_teacher_coupon.group_coupon_approver"/>
+                    <button name="action_reject_wizard" type="object" string="Reject"
+                            invisible="state != 'pending'" groups="otm_teacher_coupon.group_coupon_approver"/>
+                    <button name="action_revoke" type="object" string="Revoke Discount"
+                            invisible="state != 'approved'" groups="otm_teacher_coupon.group_coupon_approver"
+                            confirm="Take the discount back and free this coupon slot?"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,approved"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Coupon">
+                            <field name="coupon_code" readonly="1"/>
+                            <field name="owner_name"/>
+                            <field name="owner_phone"/>
+                            <field name="owner_kind"/>
+                        </group>
+                        <group string="Admission">
+                            <field name="student_id" readonly="1"/>
+                            <field name="enrollment_id" readonly="1"/>
+                            <field name="requested_by"/>
+                            <field name="source"/>
+                        </group>
+                    </group>
+                    <group string="Approval">
+                        <group>
+                            <field name="approved_by"/>
+                            <field name="approved_on"/>
+                            <field name="reject_reason" invisible="state != 'rejected'"/>
+                        </group>
+                        <group>
+                            <field name="slot_no"/>
+                            <field name="discount_pct"/>
+                            <field name="base_amount"/>
+                            <field name="discount_amount"/>
+                        </group>
+                    </group>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+    <record id="view_coupon_usage_search" model="ir.ui.view">
+        <field name="name">otm.coupon.usage.search</field>
+        <field name="model">otm.coupon.usage</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="coupon_code"/>
+                <field name="owner_name"/>
+                <field name="student_id"/>
+                <filter name="f_pending" string="Pending Approval" domain="[('state', '=', 'pending')]"/>
+                <filter name="f_approved" string="Approved" domain="[('state', '=', 'approved')]"/>
+                <filter name="f_rejected" string="Rejected / Revoked" domain="[('state', 'in', ('rejected', 'revoked'))]"/>
+                <separator/>
+                <filter name="f_teacher" string="Teacher coupons" domain="[('owner_kind', '=', 'teacher')]"/>
+                <filter name="f_student" string="Student coupons" domain="[('owner_kind', '=', 'student')]"/>
+                <group>
+                    <filter name="g_owner" string="Coupon Owner" context="{'group_by': 'owner_name'}"/>
+                    <filter name="g_state" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="g_officer" string="Entered By" context="{'group_by': 'requested_by'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_coupon_usage" model="ir.actions.act_window">
+        <field name="name">Coupon Uses</field>
+        <field name="res_model">otm.coupon.usage</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <record id="action_coupon_approval" model="ir.actions.act_window">
+        <field name="name">Approval Queue</field>
+        <field name="res_model">otm.coupon.usage</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('state', '=', 'pending')]</field>
+    </record>
+    <record id="view_coupon_reject_wizard" model="ir.ui.view">
+        <field name="name">otm.coupon.reject.wizard.form</field>
+        <field name="model">otm.coupon.reject.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reject Coupon">
+                <group><field name="usage_id" invisible="1"/><field name="reason"/></group>
+                <footer>
+                    <button name="action_reject" type="object" string="Reject" class="btn-primary"/>
+                    <button special="cancel" string="Cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

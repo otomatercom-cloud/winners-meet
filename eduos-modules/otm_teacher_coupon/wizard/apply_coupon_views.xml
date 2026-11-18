@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_coupon_apply_wizard" model="ir.ui.view">
+        <field name="name">otm.coupon.apply.wizard.form</field>
+        <field name="model">otm.coupon.apply.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Apply Coupon">
+                <group>
+                    <field name="enrollment_id"/>
+                    <field name="coupon_code" placeholder="WMT-XXXXXX / WMS-XXXXXX"/>
+                </group>
+                <p class="text-muted">The discount is applied only after a Coupon Approver approves it.</p>
+                <footer>
+                    <button name="action_apply" type="object" string="Submit for Approval" class="btn-primary"/>
+                    <button special="cancel" string="Cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

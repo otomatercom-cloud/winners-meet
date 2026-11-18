@@ -175,6 +175,9 @@ def _p(p, detail=False):
         'create_date': fields.Datetime.to_string(p.create_date),
     }
     if detail:
+        if p.coupon_code and 'coupon_approved' in p._fields:     # filled when otm_teacher_coupon is installed
+            d['coupon_stats'] = {'approved': p.coupon_approved, 'pending': p.coupon_pending,
+                                 'slots_left': p.coupon_slots_left, 'discount': p.coupon_discount_total}
         d.update({
             'email': p.email or '', 'note': p.note or '', 'token': p.qr_token,
             'photo': ('data:image/jpeg;base64,' + p.photo.decode()) if p.photo else '',

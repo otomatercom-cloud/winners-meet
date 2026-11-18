@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_usage_user,coupon usage user,model_otm_coupon_usage,base.group_user,1,0,1,0
+access_usage_approver,coupon usage approver,model_otm_coupon_usage,group_coupon_approver,1,1,1,1
+access_config_user,coupon config user,model_otm_coupon_config,base.group_user,1,0,0,0
+access_config_approver,coupon config approver,model_otm_coupon_config,group_coupon_approver,1,1,0,0
+access_wm_participant_approver,coupon approver reads participants,otm_winners_meet.model_otm_wm_participant,group_coupon_approver,1,0,0,0
+access_reject_wizard,coupon reject wizard,model_otm_coupon_reject_wizard,group_coupon_approver,1,1,1,1
+access_apply_wizard,coupon apply wizard,model_otm_coupon_apply_wizard,base.group_user,1,1,1,1

@@ -1,0 +1,22 @@
+{
+    'name': 'Otomater Teacher & Student Coupons',
+    'version': '19.0.1.0.0',
+    'summary': 'Apply Winners Meet coupon codes at admission, with Coupon Approver verification',
+    'category': 'Education',
+    'author': 'Otomater',
+    'website': 'https://otomater.com',
+    'license': 'OPL-1',
+    'depends': ['otm_winners_meet', 'student_details_19', 'custom_leads_19', 'quick_pay', 'mail'],
+    'data': [
+        'security/groups.xml',
+        'security/ir.model.access.csv',
+        'views/config_views.xml',
+        'views/usage_views.xml',
+        'views/participant_views.xml',
+        'views/integration_views.xml',
+        'views/menus.xml',
+        'wizard/apply_coupon_views.xml',
+    ],
+    'installable': True,
+    'application': False,
+}

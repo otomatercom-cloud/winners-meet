@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_enrollment_form_coupon" model="ir.ui.view">
+        <field name="name">student.enrollment.form.coupon</field>
+        <field name="model">student.enrollment</field>
+        <field name="inherit_id" ref="student_details_19.view_student_enrollment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header/field[@name='status']" position="before">
+                <button name="action_apply_coupon" type="object" string="🎟 Apply Coupon" class="btn-secondary"
+                        invisible="coupon_state != 'none'"/>
+            </xpath>
+            <xpath expr="//field[@name='next_due_date']" position="after">
+                <field name="coupon_state" widget="badge" decoration-warning="coupon_state == 'pending'"
+                       decoration-success="coupon_state == 'approved'"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_quick_pay_form_coupon" model="ir.ui.view">
+        <field name="name">quick.pay.form.coupon</field>
+        <field name="model">quick.pay</field>
+        <field name="inherit_id" ref="quick_pay.view_quick_pay_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='existing_student_id']" position="after">
+                <group string="Coupon">
+                    <field name="coupon_code" readonly="state != 'submitted'"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_lead_admission_wizard_coupon" model="ir.ui.view">
+        <field name="name">lead.admission.wizard.form.coupon</field>
+        <field name="model">lead.admission.wizard</field>
+        <field name="inherit_id" ref="custom_leads_19.view_lead_admission_wizard_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[field[@name='fee_structure_id']]" position="after">
+                <group string="Coupon (optional)" invisible="not batch_required or not fee_structure_id">
+                    <field name="coupon_code" placeholder="WMT-XXXXXX / WMS-XXXXXX"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>
