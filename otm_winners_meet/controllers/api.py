@@ -250,6 +250,15 @@ def _profile_from_body(raw, required=False):
     return base64.b64encode(data).decode(), name
 
 
+_MARK_FLAGS = {'trophy_done': ('trophy_done', True), 'trophy_pending': ('trophy_done', False),
+               'profile_done': ('profile_done', True), 'profile_pending': ('profile_done', False)}
+
+
+def _mark_domain(flag):
+    f = _MARK_FLAGS.get(flag)
+    return [(f[0], '=', f[1])] if f else []
+
+
 def _participant(pid):
     p = request.env['otm.wm.participant'].browse(_int(pid, 0)).exists()
     if not p:
@@ -692,10 +701,10 @@ class WinnersMeetApi(http.Controller):
     # ============================================================ participants
     @api('/participants')
     def participants(self, body=None, event_id=None, kind=None, q=None, state=None, approval=None,
-                     category_id=None, hat=None, wa=None, trophy=None, order=None, offset=0, limit=50, **kw):
+                     category_id=None, hat=None, wa=None, trophy=None, order=None, offset=0, limit=50, flag='', **kw):
         _need_staff()
         ev = _event(event_id)
-        domain = [('event_id', '=', ev.id)]
+        domain = [('event_id', '=', ev.id)] + _mark_domain(flag)
         if kind in ('student', 'teacher'):
             domain.append(('kind', '=', kind))
         if state in ('registered', 'checked_in'):
@@ -1522,10 +1531,7 @@ class WinnersMeetApi(http.Controller):
                 dom += ['|', '|', ('name', 'ilike', q), ('institution', 'ilike', q), ('place', 'ilike', q)]
         P = request.env['otm.wm.participant'].sudo()
         base = list(dom)
-        if flag == 'trophy_pending':
-            dom.append(('trophy_done', '=', False))
-        elif flag == 'profile_pending':
-            dom.append(('profile_done', '=', False))
+        dom += _mark_domain(flag)
         recs = P.search(dom, offset=max(_int(offset, 0), 0), limit=min(max(_int(limit, 50), 1), 200), order='name, id')
         return {'total': P.search_count(dom), 'rows': [self._teacher_dict(p) for p in recs],
                 'with_photo': P.search_count(dom + [('photo', '!=', False)]),

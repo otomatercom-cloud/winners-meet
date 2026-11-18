@@ -21,13 +21,14 @@ function Inner() {
   const [kind, setKind] = useState(sp.get("kind") || "");
   const [state, setState] = useState("");
   const [approval, setApproval] = useState("");
+  const [flag, setFlag] = useState("");
   const [category, setCategory] = useState("");
   const [q, setQ] = useState("");
   const [qd, setQd] = useState("");
   const [page, setPage] = useState(0);
   const [walk, setWalk] = useState(false);
   useEffect(() => { const t = setTimeout(() => { setQd(q); setPage(0); }, 300); return () => clearTimeout(t); }, [q]);
-  const params = { event_id: eventId, kind, state, approval, category_id: category, q: qd, offset: page * PAGE, limit: PAGE };
+  const params = { event_id: eventId, kind, state, approval, category_id: category, flag, q: qd, offset: page * PAGE, limit: PAGE };
   const { data, error, loading, reload } = useFetch<{ total: number; rows: Participant[] }>(eventId ? "/participants" : null, params, 10000);
   const thumb = useThumbs("/participants/thumbs", (data?.rows || []).map((r) => r.id));
   const { data: cats } = useFetch<Category[]>(eventId ? "/categories" : null, { event_id: eventId });
@@ -90,6 +91,7 @@ function Inner() {
           <select className={sel} value={category} onChange={(e) => { setCategory(e.target.value); setPage(0); }}><option value="">All categories</option>{(cats || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           <select className={sel} value={state} onChange={(e) => { setState(e.target.value); setPage(0); }}><option value="">All arrival</option><option value="checked_in">Checked in</option><option value="registered">Not arrived</option></select>
           <select className={sel} value={approval} onChange={(e) => { setApproval(e.target.value); setPage(0); }}><option value="">All approval</option><option value="approved">Approved</option><option value="pending">Needs review</option><option value="rejected">Rejected</option></select>
+          <select className={sel} value={flag} onChange={(e) => { setFlag(e.target.value); setPage(0); }}><option value="">All ticks</option><option value="trophy_done">Trophy sticker done ✓</option><option value="trophy_pending">Trophy sticker pending</option><option value="profile_done">Profile done ✓</option><option value="profile_pending">Profile pending</option></select>
         </div>
       </Card>
       {loading && !data ? <Spinner /> : error && !data ? <ErrorBox message={error} onRetry={reload} /> : !data?.rows.length ? <Empty>No participants found.</Empty> : (

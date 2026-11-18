@@ -51,7 +51,7 @@ export default function Teachers() {
         {events && events.length > 1 && <select className={cx(inputCls, "w-auto")} value={event_id || ""} onChange={(e) => setEid(e.target.value)}>{events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select>}
         <div className="relative min-w-[200px] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input className={cx(inputCls, "pl-9")} placeholder="Search name, phone, college, place…" value={q} onChange={(e) => { setQ(e.target.value); setLimit(50); }} /></div>
         <select className={cx(inputCls, "w-auto")} value={flag} onChange={(e) => { setFlag(e.target.value); setLimit(50); }}>
-          <option value="">All teachers</option><option value="trophy_pending">Trophy sticker pending</option><option value="profile_pending">Profile pending</option>
+          <option value="">All teachers</option><option value="trophy_done">Trophy sticker done ✓</option><option value="trophy_pending">Trophy sticker pending</option><option value="profile_done">Profile done ✓</option><option value="profile_pending">Profile pending</option>
         </select>
       </Card>
       {msg && <p className="mb-2 text-sm text-slate-600">{msg}</p>}

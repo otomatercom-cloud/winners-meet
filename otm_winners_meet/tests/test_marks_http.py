@@ -48,3 +48,16 @@ class TestMarksHttp(HttpCase):
         self.assertEqual(code, 403)
         code, r = self._post('mk_mkt', '/participants/%d/mark' % self.student.id, {'field': 'trophy', 'value': True})
         self.assertEqual(code, 403)
+
+    def test_filters_done_and_pending(self):
+        self.teacher.write({'trophy_done': True})
+        ev = self.teacher.event_id
+        def ids(who, path, flag):
+            self.authenticate(who, who + '-pw-1')
+            r = self.url_open('/api/wm%s?event_id=%d&flag=%s&limit=200' % (path, ev.id, flag)).json()
+            return {x['id'] for x in r['data']['rows']}
+        for who, path in (('mk_viewer', '/teachers'), ('mk_staff', '/participants')):
+            self.assertIn(self.teacher.id, ids(who, path, 'trophy_done'))
+            self.assertNotIn(self.teacher.id, ids(who, path, 'trophy_pending'))
+            self.assertIn(self.teacher.id, ids(who, path, 'profile_pending'))
+            self.assertNotIn(self.teacher.id, ids(who, path, 'profile_done'))
