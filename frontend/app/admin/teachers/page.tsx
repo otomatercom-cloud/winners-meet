@@ -58,9 +58,9 @@ export default function Teachers() {
       {error && !data ? <ErrorBox message={error} onRetry={reload} /> : !data ? <Spinner /> : data.rows.length === 0 ? <Empty>No teachers found.</Empty> : (
         <>
           <p className="mb-2 text-sm text-slate-500">{data.total} teachers · {data.with_photo} with photo · Trophy sticker {data.trophy_done_count}/{data.all_count} · Profile {data.profile_done_count}/{data.all_count}</p>
-          <Card className="hidden overflow-hidden md:block">
+          <Card className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Point of contact</th><th className="px-4 py-2.5">Coupon code</th><th className="px-4 py-2.5">Photo</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th></tr></thead>
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th><th className="px-4 py-2.5">Point of contact</th><th className="px-4 py-2.5">Coupon code</th><th className="px-4 py-2.5">Photo</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((t) => (
                   <tr key={t.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSel(t)}>
@@ -68,11 +68,11 @@ export default function Teachers() {
                     <td className="px-4 py-2.5">{t.institution || "—"}{t.place && <div className="text-xs text-slate-500">{t.place}</div>}</td>
                     <td className="px-4 py-2.5">{t.category || "—"}</td>
                     <td className="px-4 py-2.5">{t.accompany_count > 0 ? `${t.accompany_count} ${COMP[t.accompany_type] || ""}` : "—"}</td>
+                    <td className="px-4 py-2.5"><div className="flex justify-center"><MarkTick base="/teachers" id={t.id} field="trophy" value={t.trophy_done} label="Trophy sticker completed" onChange={() => reload()} /></div></td>
+                    <td className="px-4 py-2.5"><div className="flex justify-center"><MarkTick base="/teachers" id={t.id} field="profile" value={t.profile_done} label="Profile completed" onChange={() => reload()} /></div></td>
                     <td className="px-4 py-2.5">{t.contact || "—"}</td>
                     <td className="px-4 py-2.5 font-mono text-xs tracking-wide">{t.coupon_code || <span className="text-slate-400">—</span>}</td>
                     <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>{t.has_photo ? <Button size="sm" variant="secondary" loading={busy === "p" + t.id} onClick={() => one(t)}><Download className="h-4 w-4" /></Button> : <span className="text-slate-400">—</span>}</td>
-                    <td className="px-4 py-2.5"><div className="flex justify-center"><MarkTick base="/teachers" id={t.id} field="trophy" value={t.trophy_done} label="Trophy sticker completed" onChange={() => reload()} /></div></td>
-                    <td className="px-4 py-2.5"><div className="flex justify-center"><MarkTick base="/teachers" id={t.id} field="profile" value={t.profile_done} label="Profile completed" onChange={() => reload()} /></div></td>
                   </tr>
                 ))}
               </tbody>
