@@ -67,6 +67,7 @@ class WmEvent(models.Model):
     wa_msg_seat_teacher = fields.Text(string="Teacher Seat Message", default=DEFAULT_SEAT_MSG)
     coupon_enabled = fields.Boolean(string="Issue Coupon Codes", help="On = every person gets a unique coupon code at check-in, sent on WhatsApp.")
     wa_tpl_coupon = fields.Char(string="Coupon Template", help="Variables: 1 name, 2 code, 3 event.")
+    wa_tpl_coupon_teacher = fields.Char(string="Teacher Coupon Template", help="Blank = use the student coupon template.")
     wa_msg_coupon_student = fields.Text(string="Student Coupon Message", default=DEFAULT_COUPON_MSG_STUDENT)
     wa_msg_coupon_teacher = fields.Text(string="Teacher Coupon Message", default=DEFAULT_COUPON_MSG_TEACHER)
     wa_tpl_stage_done = fields.Char(string="Staff: Category Complete Template", help="Variables: 1 category, 2 collected, 3 missed, 4 event.")

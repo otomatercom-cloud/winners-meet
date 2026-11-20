@@ -130,7 +130,7 @@ class WmMessageLog(models.Model):
             params = [participant.name, participant.coupon_code, event.name]
             default = DEFAULT_COUPON_MSG_TEACHER if teacher else DEFAULT_COUPON_MSG_STUDENT
             text = ((event.wa_msg_coupon_teacher if teacher else event.wa_msg_coupon_student) or '').strip() or default
-            tpl = event.wa_tpl_coupon
+            tpl = (event.wa_tpl_coupon_teacher if teacher else '') or event.wa_tpl_coupon
             key = 'coupon:%s' % participant.id
         else:
             params = [participant.name, seat, event.name, link]

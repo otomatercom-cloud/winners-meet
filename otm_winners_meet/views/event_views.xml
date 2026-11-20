@@ -98,6 +98,7 @@
                                 <field name="wa_msg_seat_teacher"/>
                                 <field name="coupon_enabled"/>
                                 <field name="wa_tpl_coupon"/>
+                                <field name="wa_tpl_coupon_teacher"/>
                                 <field name="wa_msg_coupon_student"/>
                                 <field name="wa_msg_coupon_teacher"/>
                                 <field name="wa_tpl_stage_done"/>

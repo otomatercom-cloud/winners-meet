@@ -151,7 +151,7 @@ def _event_dict(e):
             'form_student': e.form_config('student'), 'form_teacher': e.form_config('teacher'),
             'wa_tpl_confirm_teacher': e.wa_tpl_confirm_teacher or '', 'wa_tpl_seat_teacher': e.wa_tpl_seat_teacher or '',
             'wa_msg_confirm_teacher': e.wa_msg_confirm_teacher or '', 'wa_msg_seat_teacher': e.wa_msg_seat_teacher or '',
-            'coupon_enabled': bool(e.coupon_enabled), 'wa_tpl_coupon': e.wa_tpl_coupon or '',
+            'coupon_enabled': bool(e.coupon_enabled), 'wa_tpl_coupon': e.wa_tpl_coupon or '', 'wa_tpl_coupon_teacher': e.wa_tpl_coupon_teacher or '',
             'wa_msg_coupon_student': e.wa_msg_coupon_student or '', 'wa_msg_coupon_teacher': e.wa_msg_coupon_teacher or ''}
 
 
@@ -445,7 +445,7 @@ class WinnersMeetApi(http.Controller):
                    'wa_msg_confirm', 'wa_msg_seat', 'wa_tpl_confirm_teacher', 'wa_tpl_seat_teacher',
                    'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param', 'slug',
                    'wa_tpl_stage_done', 'wa_tpl_stage_late',
-                   'coupon_enabled', 'wa_tpl_coupon', 'wa_msg_coupon_student', 'wa_msg_coupon_teacher')
+                   'coupon_enabled', 'wa_tpl_coupon', 'wa_tpl_coupon_teacher', 'wa_msg_coupon_student', 'wa_msg_coupon_teacher')
         vals = {k: body[k] for k in allowed if k in body}
         for key in ('form_student', 'form_teacher'):
             if isinstance(body.get(key), dict):

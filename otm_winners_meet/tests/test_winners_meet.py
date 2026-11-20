@@ -701,6 +701,18 @@ class TestWinnersMeet(TransactionCase):
         with self.assertRaises(UserError):
             t.action_generate_coupon()
 
+    def test_coupon_template_per_kind(self):
+        self.event.write({'coupon_enabled': True, 'wa_tpl_coupon': 'wm_coupon_student'})
+        t = self._reg('Tpl Teacher', '9000000077', self.teacher, kind='teacher')
+        s = self._reg('Tpl Student', '9000000078', self.gold)
+        t.action_generate_coupon(); t.action_check_in(); s.action_check_in()
+        tpl = lambda p: p.log_ids.filtered(lambda l: l.message_type == 'coupon').template_name
+        self.assertEqual((tpl(t), tpl(s)), ('wm_coupon_student', 'wm_coupon_student'))   # blank teacher = student's
+        t2 = self._reg('Tpl Teacher2', '9000000079', self.teacher, kind='teacher')
+        self.event.wa_tpl_coupon_teacher = 'wm_coupon_teacher'
+        t2.action_generate_coupon(); t2.action_check_in()
+        self.assertEqual(tpl(t2), 'wm_coupon_teacher')
+
     def test_coupon_off_by_default(self):
         p = self._reg('No Coupon', '9000000073', self.gold)
         p.action_check_in()
