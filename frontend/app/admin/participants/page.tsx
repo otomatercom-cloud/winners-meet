@@ -59,6 +59,38 @@ function Inner() {
     } catch (e: any) { toast(e.message, "err"); }
   };
 
+  const genAllCoupons = async () => {
+    if (!confirm("Create coupon codes for every teacher who has none yet? Existing codes will not change.")) return;
+    try {
+      const r = await api<{ created: number; teachers: number; sent_now: number }>("/coupons/generate-teachers", { method: "POST", body: { event_id: eventId } });
+      toast(r.created ? `${r.created} coupon codes created (${r.teachers} teachers in total)${r.sent_now ? `, WhatsApp queued for ${r.sent_now} who already arrived` : ""}` : "All teachers already have a coupon code", "ok");
+      reload();
+    } catch (e: any) { toast(e.message, "err"); }
+  };
+
+  const exportCoupons = async () => {
+    try {
+      let all: Participant[] = [];
+      for (let off = 0; ; off += 200) {
+        const r = await api<{ total: number; rows: Participant[] }>("/participants", { params: { event_id: eventId, kind: "teacher", offset: off, limit: 200 } });
+        all = all.concat(r.rows);
+        if (all.length >= r.total || r.rows.length === 0) break;
+      }
+      const withCode = all.filter((p) => p.coupon_code).sort((a, b) => a.name.localeCompare(b.name));
+      if (!withCode.length) { toast("No coupon codes yet. Create them first.", "err"); return; }
+      const rows = withCode.map((p, i) => ({
+        "S.No": i + 1, "Coupon code": p.coupon_code, Name: p.name, Phone: p.phone, College: p.institution, Place: p.place, Category: p.category?.name || "",
+        "Point of contact": p.contact || "", "Checked in": p.state === "checked_in" ? "Yes" : "No", Seat: p.seat,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [{ wch: 5 }, { wch: 14 }, { wch: 28 }, { wch: 15 }, { wch: 34 }, { wch: 16 }, { wch: 18 }, { wch: 20 }, { wch: 10 }, { wch: 8 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Coupon codes");
+      XLSX.writeFile(wb, "winners-meet-teacher-coupons.xlsx");
+      if (withCode.length < all.length) toast(`${all.length - withCode.length} teachers have no code yet and are not in the file`, "err");
+    } catch (e: any) { toast(e.message, "err"); }
+  };
+
   const exportXlsx = async () => {
     try {
       let all: Participant[] = [];
@@ -83,7 +115,7 @@ function Inner() {
   return (
     <div>
       <PageHeader title="Participants" subtitle={`${total} ${total === 1 ? "person" : "people"}`}
-        actions={<><Button variant="secondary" size="sm" onClick={exportTeachers}><Download className="h-4 w-4" /> All teachers (Excel)</Button><Button variant="secondary" size="sm" onClick={exportXlsx}><Download className="h-4 w-4" /> Export</Button><Button size="sm" onClick={() => setWalk(true)}><UserPlus className="h-4 w-4" /> Add</Button></>} />
+        actions={<><Button variant="secondary" size="sm" onClick={genAllCoupons}>Create all teacher coupons</Button><Button variant="secondary" size="sm" onClick={exportCoupons}><Download className="h-4 w-4" /> Coupon codes (Excel)</Button><Button variant="secondary" size="sm" onClick={exportTeachers}><Download className="h-4 w-4" /> All teachers (Excel)</Button><Button variant="secondary" size="sm" onClick={exportXlsx}><Download className="h-4 w-4" /> Export</Button><Button size="sm" onClick={() => setWalk(true)}><UserPlus className="h-4 w-4" /> Add</Button></>} />
       <Card className="mb-4 p-3">
         <div className="flex flex-wrap gap-2">
           <div className="relative min-w-[200px] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input className={inputCls + " pl-9"} placeholder="Search name, phone, seat…" value={q} onChange={(e) => setQ(e.target.value)} /></div>

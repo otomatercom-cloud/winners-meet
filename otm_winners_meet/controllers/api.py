@@ -1508,6 +1508,21 @@ class WinnersMeetApi(http.Controller):
         _need_viewer()
         return self._apply_mark(self._teacher(pid), body)
 
+    @api('/coupons/generate-teachers', methods=('POST',))
+    def coupons_generate_teachers(self, body=None, **kw):
+        """Give every teacher who has no code yet one. Codes already given never change."""
+        _need_manager()
+        ev = _event((body or {}).get('event_id'))
+        if not ev.coupon_enabled:
+            raise UserError(_("Coupon codes are switched off. Turn them on in Event settings first."))
+        P = request.env['otm.wm.participant']
+        teachers = P.search([('event_id', '=', ev.id), ('kind', '=', 'teacher'), ('is_demo', '=', False),
+                             ('approval_state', '!=', 'rejected')])
+        todo = teachers.filtered(lambda t: not t.coupon_code)
+        for t in todo:
+            t.action_generate_coupon()           # people already checked in get the WhatsApp straight away
+        return {'created': len(todo), 'teachers': len(teachers), 'sent_now': len(todo.filtered(lambda t: t.state == 'checked_in'))}
+
     @api('/participants/<int:pid>/coupon', methods=('POST',))
     def participant_coupon(self, pid, body=None, **kw):
         _need_staff()

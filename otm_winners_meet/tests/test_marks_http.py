@@ -71,3 +71,26 @@ class TestMarksHttp(HttpCase):
         self.assertEqual(again['data']['coupon_code'], r['data']['coupon_code'])
         self.assertEqual(self._post('mk_viewer', '/participants/%d/coupon' % self.teacher.id, {})[0], 403)
         self.assertEqual(self._post('mk_mkt', '/participants/%d/coupon' % self.teacher.id, {})[0], 403)
+
+    def test_generate_for_all_teachers(self):
+        ev = self.teacher.event_id
+        ev.coupon_enabled = True
+        t2 = self.teacher.copy({'phone': '9447700031', 'name': 'HT2'})
+        t2.write({'approval_state': 'rejected'})
+        self.student.write({'coupon_code': False})
+        code, r = self._post('mk_staff', '/coupons/generate-teachers', {'event_id': ev.id})
+        self.assertEqual(code, 403)                              # manager only
+        mgr = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'mk_mgr', 'login': 'mk_mgr', 'password': 'mk_mgr-pw-1',
+            'group_ids': [(6, 0, [self.env.ref('otm_winners_meet.group_wm_manager').id])]})
+        code, r = self._post('mk_mgr', '/coupons/generate-teachers', {'event_id': ev.id})
+        self.assertEqual((r['ok'], r['data']['created']), (True, 1))
+        self.teacher.invalidate_recordset(); t2.invalidate_recordset(); self.student.invalidate_recordset()
+        self.assertTrue(self.teacher.coupon_code.startswith('WMT-'))
+        self.assertFalse(t2.coupon_code)                         # rejected: skipped
+        self.assertFalse(self.student.coupon_code)               # students are not touched
+        first = self.teacher.coupon_code
+        r = self._post('mk_mgr', '/coupons/generate-teachers', {'event_id': ev.id})[1]
+        self.assertEqual(r['data']['created'], 0)
+        self.teacher.invalidate_recordset()
+        self.assertEqual(self.teacher.coupon_code, first)
