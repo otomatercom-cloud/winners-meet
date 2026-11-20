@@ -45,6 +45,8 @@ class CouponUsage(models.Model):
         part = self.env['otm.wm.participant'].sudo().search([('coupon_code', '=', code)], limit=1)
         if not part:
             raise UserError(_("Invalid coupon code '%s'.", code))
+        if part.approval_state == 'rejected':
+            raise UserError(_("Coupon code '%s' is not valid.", code))
         student = enrollment.student_id
         if _digits10(student.phone) and _digits10(student.phone) == _digits10(part.phone):
             raise UserError(_("A coupon cannot be used by its own owner."))

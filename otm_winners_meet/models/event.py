@@ -143,6 +143,10 @@ class WmEvent(models.Model):
         res = super().write(vals)
         if 'slug' in vals:
             self.ensure_slug()
+        if vals.get('coupon_enabled'):          # switching coupons on gives every teacher registered so far a code now
+            self.env['otm.wm.participant'].sudo().search(
+                [('event_id', 'in', self.ids), ('kind', '=', 'teacher'), ('is_demo', '=', False),
+                 ('coupon_code', '=', False)])._issue_teacher_coupons()
         return res
 
 

@@ -98,13 +98,14 @@ function Inner() {
         <>
           <Card className="hidden overflow-hidden md:block">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">Seat</th><th className="px-4 py-2.5">Hat</th><th className="px-4 py-2.5">WhatsApp</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th></tr></thead>
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Coupon code</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">Seat</th><th className="px-4 py-2.5">Hat</th><th className="px-4 py-2.5">WhatsApp</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((p) => (
                   <tr key={p.id} className={`hover:bg-slate-50 ${p.approval_state === "pending" ? "bg-rose-50/60" : ""}`}>
                     <td className="px-4 py-2.5"><div className="flex items-center gap-3"><Avatar src={thumb(p.id)} name={p.name} /><div><Link href={`/admin/participants/${p.id}`} className="font-medium text-slate-900 hover:text-brand-600">{p.name}</Link><div className="text-xs text-slate-500">{fmtPhone(p.phone)} · {p.kind}</div></div></div></td>
                     <td className="px-4 py-2.5 text-slate-700">{p.institution || <span className="text-slate-400">—</span>}{p.place && <div className="text-xs text-slate-500">{p.place}</div>}</td>
                     <td className="px-4 py-2.5">{p.accompany_count > 0 ? <span className="font-semibold">{p.accompany_count}<span className="ml-1 text-xs font-normal text-slate-500">{COMP[p.accompany_type]}</span></span> : <span className="text-slate-400">—</span>}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs tracking-wide">{p.coupon_code || <span className="text-slate-400">—</span>}</td>
                     <td className="px-4 py-2.5">{p.category && <CategoryChip name={p.category.name} color={p.category.color} />}</td>
                     <td className="px-4 py-2.5"><div className="flex gap-1.5">{approvalBadge(p.approval_state)}{p.state === "checked_in" && <Badge tone="blue">Arrived</Badge>}</div></td>
                     <td className="px-4 py-2.5 font-semibold">{p.seat || <span className="font-normal text-slate-400">—</span>}</td>

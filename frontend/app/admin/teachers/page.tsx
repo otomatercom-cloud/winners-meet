@@ -6,7 +6,7 @@ import { api, useFetch } from "@/lib/api";
 import { Avatar, useThumbs } from "@/components/Avatar";
 import { MarkTick } from "@/components/MarkTick";
 
-type T = { id: number; name: string; phone: string; institution: string; place: string; email: string; category: string; approval_state: string; food_pref: string; instagram: string; accompany_type: string; accompany_count: number; contact: string; bio: string; has_photo: boolean; profile_name: string; trophy_done: boolean; profile_done: boolean };
+type T = { id: number; name: string; phone: string; institution: string; place: string; email: string; category: string; approval_state: string; food_pref: string; instagram: string; accompany_type: string; accompany_count: number; contact: string; bio: string; has_photo: boolean; profile_name: string; trophy_done: boolean; profile_done: boolean; coupon_code: string };
 const COMP: Record<string, string> = { friend: "friends", guardian: "parents", guest: "persons" };
 const save = (href: string, name: string) => { const a = document.createElement("a"); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
 const safe = (s: string) => s.replace(/[^\w.\- ]+/g, "").trim().replace(/\s+/g, "_") || "teacher";
@@ -60,7 +60,7 @@ export default function Teachers() {
           <p className="mb-2 text-sm text-slate-500">{data.total} teachers · {data.with_photo} with photo · Trophy sticker {data.trophy_done_count}/{data.all_count} · Profile {data.profile_done_count}/{data.all_count}</p>
           <Card className="hidden overflow-hidden md:block">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Point of contact</th><th className="px-4 py-2.5">Photo</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th></tr></thead>
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Point of contact</th><th className="px-4 py-2.5">Coupon code</th><th className="px-4 py-2.5">Photo</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((t) => (
                   <tr key={t.id} className="cursor-pointer hover:bg-slate-50" onClick={() => setSel(t)}>
@@ -69,6 +69,7 @@ export default function Teachers() {
                     <td className="px-4 py-2.5">{t.category || "—"}</td>
                     <td className="px-4 py-2.5">{t.accompany_count > 0 ? `${t.accompany_count} ${COMP[t.accompany_type] || ""}` : "—"}</td>
                     <td className="px-4 py-2.5">{t.contact || "—"}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs tracking-wide">{t.coupon_code || <span className="text-slate-400">—</span>}</td>
                     <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>{t.has_photo ? <Button size="sm" variant="secondary" loading={busy === "p" + t.id} onClick={() => one(t)}><Download className="h-4 w-4" /></Button> : <span className="text-slate-400">—</span>}</td>
                     <td className="px-4 py-2.5"><div className="flex justify-center"><MarkTick base="/teachers" id={t.id} field="trophy" value={t.trophy_done} label="Trophy sticker completed" onChange={() => reload()} /></div></td>
                     <td className="px-4 py-2.5"><div className="flex justify-center"><MarkTick base="/teachers" id={t.id} field="profile" value={t.profile_done} label="Profile completed" onChange={() => reload()} /></div></td>
@@ -81,7 +82,7 @@ export default function Teachers() {
             {data.rows.map((t) => (
               <div key={t.id} onClick={() => setSel(t)}><Card className="cursor-pointer p-3">
                 <div className="flex items-center gap-3"><Avatar src={thumb(t.id)} name={t.name} size={44} /><div><div className="font-medium">{t.name}</div>
-                <div className="text-xs text-slate-500">{t.phone}{t.institution ? ` · ${t.institution}` : ""}</div></div></div>
+                <div className="text-xs text-slate-500">{t.phone}{t.institution ? ` · ${t.institution}` : ""}</div>{t.coupon_code && <div className="font-mono text-xs text-amber-700">{t.coupon_code}</div>}</div></div>
                 {t.accompany_count > 0 && <Badge tone="blue">+{t.accompany_count} {COMP[t.accompany_type]}</Badge>}
                 <div className="mt-2 flex gap-5 text-xs text-slate-600" onClick={(e) => e.stopPropagation()}>
                   <label className="flex items-center gap-2"><MarkTick base="/teachers" id={t.id} field="trophy" value={t.trophy_done} label="Trophy sticker completed" onChange={() => reload()} />Trophy sticker</label>
@@ -103,7 +104,7 @@ function Detail({ t, busy, onPhoto, onDoc, onClose }: { t: T; busy: string; onPh
   return (
     <Modal open onClose={onClose} title={t.name}>
       <dl>
-        {row("Phone", t.phone)}{row("Email", t.email)}{row("College", t.institution)}{row("Place", t.place)}{row("Category", t.category)}
+        {row("Coupon code", t.coupon_code)}{row("Phone", t.phone)}{row("Email", t.email)}{row("College", t.institution)}{row("Place", t.place)}{row("Category", t.category)}
         {row("Food", t.food_pref === "veg" ? "Veg" : t.food_pref === "nonveg" ? "Non-veg" : "")}
         {row("Accompanying persons", t.accompany_count > 0 ? String(t.accompany_count) : "")}{row("Point of contact", t.contact)}{row("Instagram", t.instagram ? "@" + t.instagram : "")}
       </dl>

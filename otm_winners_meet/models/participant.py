@@ -137,6 +137,7 @@ class WmParticipant(models.Model):
         recs = super().create(vals_list)
         if not self.env.context.get('wm_skip_eval'):
             recs._evaluate_approval()
+        recs._issue_teacher_coupons()            # teachers see their code from registration, before they attend
         return recs
 
     def write(self, vals):
@@ -357,6 +358,10 @@ class WmParticipant(models.Model):
             self._queue_message('coupon')
         self._stage_on_checkin()
         return {'already': False}
+
+    def _issue_teacher_coupons(self):
+        for rec in self.filtered(lambda r: r.kind == 'teacher' and not r.coupon_code):
+            rec._issue_coupon()
 
     def _issue_coupon(self):
         """Give a unique coupon code (once) when the event issues coupons. Returns the code or ''."""

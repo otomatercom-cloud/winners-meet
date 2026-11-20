@@ -1491,7 +1491,8 @@ class WinnersMeetApi(http.Controller):
                 'accompany_type': p.accompany_type, 'accompany_count': p.accompany_count,
                 'contact': p.contact_id.name or '', 'bio': p.bio or '', 'has_photo': bool(p.photo),
                 'profile_name': (p.profile_filename or 'profile') if p.profile_file else '',
-                'trophy_done': bool(p.trophy_done), 'profile_done': bool(p.profile_done)}
+                'trophy_done': bool(p.trophy_done), 'profile_done': bool(p.profile_done),
+                'coupon_code': p.coupon_code or ''}
 
     @staticmethod
     def _apply_mark(p, body):
