@@ -137,7 +137,6 @@ class WmParticipant(models.Model):
         recs = super().create(vals_list)
         if not self.env.context.get('wm_skip_eval'):
             recs._evaluate_approval()
-        recs._issue_teacher_coupons()            # teachers see their code from registration, before they attend
         return recs
 
     def write(self, vals):
@@ -354,14 +353,24 @@ class WmParticipant(models.Model):
         self.write(vals)
         self._issue_items()
         self._queue_message('seat')
-        if self._issue_coupon():
+        # Students get a code automatically; a teacher's code is made by an admin (Generate button) and only sent here.
+        code = self.coupon_code if self.kind == 'teacher' else self._issue_coupon()
+        if code:
             self._queue_message('coupon')
         self._stage_on_checkin()
         return {'already': False}
 
-    def _issue_teacher_coupons(self):
-        for rec in self.filtered(lambda r: r.kind == 'teacher' and not r.coupon_code):
-            rec._issue_coupon()
+    def action_generate_coupon(self):
+        """Admin button on the profile. Makes the code once; if the person is already here, the WhatsApp goes now."""
+        self.ensure_one()
+        if not self.event_id.coupon_enabled:
+            raise UserError(_("Coupon codes are switched off. Turn them on in Event settings first."))
+        if self.is_demo:
+            raise UserError(_("Demo participants do not get coupon codes."))
+        code = self._issue_coupon()
+        if self.state == 'checked_in':
+            self._queue_message('coupon')
+        return code
 
     def _issue_coupon(self):
         """Give a unique coupon code (once) when the event issues coupons. Returns the code or ''."""

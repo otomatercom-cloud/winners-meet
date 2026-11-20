@@ -1508,6 +1508,12 @@ class WinnersMeetApi(http.Controller):
         _need_viewer()
         return self._apply_mark(self._teacher(pid), body)
 
+    @api('/participants/<int:pid>/coupon', methods=('POST',))
+    def participant_coupon(self, pid, body=None, **kw):
+        _need_staff()
+        p = _participant(pid)
+        return {'coupon_code': p.action_generate_coupon(), 'wa_sent_now': p.state == 'checked_in'}
+
     @api('/participants/<int:pid>/mark', methods=('POST',))
     def participant_mark(self, pid, body=None, **kw):
         _need_staff()

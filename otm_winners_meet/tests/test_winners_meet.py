@@ -669,30 +669,37 @@ class TestWinnersMeet(TransactionCase):
         self.event.coupon_enabled = True
         t = self._reg('Coupon Teacher', '9000000071', self.teacher, kind='teacher')
         s = self._reg('Coupon Student', '9000000072', self.gold)
-        self.assertRegex(t.coupon_code, r'^WMT-[A-Z2-9]{6}$')    # teachers see the code from registration
-        self.assertFalse(t.log_ids.filtered(lambda l: l.message_type == 'coupon'))   # WhatsApp still waits for check-in
-        self.assertFalse(s.coupon_code)                      # students get theirs at check-in
+        self.assertFalse(t.coupon_code)                      # a teacher's code is made by the admin button
+        code = t.action_generate_coupon()
+        self.assertRegex(code, r'^WMT-[A-Z2-9]{6}$')
+        self.assertEqual(t.action_generate_coupon(), code)   # pressing again never changes it
+        self.assertFalse(t.log_ids.filtered(lambda l: l.message_type == 'coupon'))   # WhatsApp waits for check-in
+        self.assertFalse(s.coupon_code)
         t.action_check_in(); s.action_check_in()
-        self.assertRegex(s.coupon_code, r'^WMS-[A-Z2-9]{6}$')
+        self.assertEqual(t.coupon_code, code)
+        self.assertRegex(s.coupon_code, r'^WMS-[A-Z2-9]{6}$')   # students still get theirs at check-in
         self.assertNotEqual(t.coupon_code, s.coupon_code)
-        first = t.coupon_code
-        t.action_check_in()                                  # idempotent: same code, one message
-        self.assertEqual(t.coupon_code, first)
+        t.action_check_in()                                  # idempotent: one message
         msgs = t.log_ids.filtered(lambda l: l.message_type == 'coupon')
         self.assertEqual(len(msgs), 1)
-        self.assertIn(first, msgs.message)
+        self.assertIn(code, msgs.message)
         self.assertIn('20%', msgs.message)                   # teacher wording
         self.assertIn('10%', s.log_ids.filtered(lambda l: l.message_type == 'coupon').message)
-        self.assertEqual(msgs.template_params, '["Coupon Teacher", "%s", "Winners Meet 2026"]' % first)
+        self.assertEqual(msgs.template_params, '["Coupon Teacher", "%s", "Winners Meet 2026"]' % code)
 
-    def test_teacher_codes_backfill_when_switched_on(self):
-        t = self._reg('Early Teacher', '9000000074', self.teacher, kind='teacher')
-        self.assertFalse(t.coupon_code)                      # coupons off at registration time
+    def test_teacher_without_generated_code_gets_no_coupon_message(self):
         self.event.coupon_enabled = True
-        self.assertRegex(t.coupon_code, r'^WMT-[A-Z2-9]{6}$')   # turning on fills every teacher so far
-        code = t.coupon_code
-        self.event.write({'coupon_enabled': True})
-        self.assertEqual(t.coupon_code, code)                # never changes once given
+        t = self._reg('Plain Teacher', '9000000075', self.teacher, kind='teacher')
+        t.action_check_in()
+        self.assertFalse(t.coupon_code)
+        self.assertFalse(t.log_ids.filtered(lambda l: l.message_type == 'coupon'))
+        t.action_generate_coupon()                           # generated after arrival: sent straight away
+        self.assertEqual(len(t.log_ids.filtered(lambda l: l.message_type == 'coupon')), 1)
+
+    def test_generate_needs_coupons_switched_on(self):
+        t = self._reg('Off Teacher', '9000000076', self.teacher, kind='teacher')
+        with self.assertRaises(UserError):
+            t.action_generate_coupon()
 
     def test_coupon_off_by_default(self):
         p = self._reg('No Coupon', '9000000073', self.gold)

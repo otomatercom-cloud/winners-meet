@@ -61,3 +61,13 @@ class TestMarksHttp(HttpCase):
             self.assertNotIn(self.teacher.id, ids(who, path, 'trophy_pending'))
             self.assertIn(self.teacher.id, ids(who, path, 'profile_pending'))
             self.assertNotIn(self.teacher.id, ids(who, path, 'profile_done'))
+
+    def test_generate_coupon_endpoint(self):
+        self.teacher.event_id.coupon_enabled = True
+        code, r = self._post('mk_staff', '/participants/%d/coupon' % self.teacher.id, {})
+        self.assertTrue(r['ok'] and r['data']['coupon_code'].startswith('WMT-'))
+        self.assertFalse(r['data']['wa_sent_now'])
+        again = self._post('mk_staff', '/participants/%d/coupon' % self.teacher.id, {})[1]
+        self.assertEqual(again['data']['coupon_code'], r['data']['coupon_code'])
+        self.assertEqual(self._post('mk_viewer', '/participants/%d/coupon' % self.teacher.id, {})[0], 403)
+        self.assertEqual(self._post('mk_mkt', '/participants/%d/coupon' % self.teacher.id, {})[0], 403)

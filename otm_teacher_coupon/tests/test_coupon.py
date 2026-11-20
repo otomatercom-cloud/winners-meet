@@ -16,6 +16,7 @@ class TestCoupon(TransactionCase):
         P = env['otm.wm.participant']
         cls.teacher = P.create({'event_id': cls.event.id, 'kind': 'teacher', 'name': 'Teacher A', 'phone': '9000011111', 'claimed_category_id': cat_t.id})
         cls.winner = P.create({'event_id': cls.event.id, 'kind': 'student', 'name': 'Winner S', 'phone': '9000022222', 'claimed_category_id': cat_s.id})
+        cls.teacher.action_generate_coupon()                 # teacher code comes from the admin button
         cls.teacher.action_check_in()
         cls.winner.action_check_in()
         cls.batch = env['student.batch'].create({'name': 'CB'})

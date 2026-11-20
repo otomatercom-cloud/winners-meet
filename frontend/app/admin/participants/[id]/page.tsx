@@ -40,6 +40,12 @@ export default function Detail() {
     catch (e: any) { alert(e.message); }
     setSending(false);
   };
+  const genCoupon = async () => {
+    setSending(true);
+    try { const r = await api<{ coupon_code: string; wa_sent_now: boolean }>(`/participants/${id}/coupon`, { method: "POST", body: {} }); reload(); alert(r.wa_sent_now ? `Coupon ${r.coupon_code} created. WhatsApp queued.` : `Coupon ${r.coupon_code} created. It is sent on WhatsApp when they check in.`); }
+    catch (e: any) { alert(e.message); }
+    setSending(false);
+  };
   if (loading && !data) return <Spinner />;
   if (error || !data) return <ErrorBox message={error || "Not found"} onRetry={reload} />;
   return (
@@ -68,6 +74,7 @@ export default function Detail() {
             </dl>
           </Card>
           <Card className="p-4 text-sm">
+            {!data.coupon_code && <div className="mb-3"><Button size="sm" variant="secondary" loading={sending} onClick={genCoupon}>Generate coupon code</Button><div className="mt-1 text-xs text-slate-500">Sent on WhatsApp when they check in.</div></div>}
             {data.coupon_code && <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-amber-900">Coupon code: <b className="font-mono tracking-wide">{data.coupon_code}</b>{data.coupon_stats && <div className="mt-1 text-xs">Used by {data.coupon_stats.approved} {data.coupon_stats.approved === 1 ? "student" : "students"}{data.coupon_stats.pending ? ` (${data.coupon_stats.pending} waiting approval)` : ""}{data.kind === "teacher" ? ` · ${data.coupon_stats.slots_left} higher-discount left` : ""} · Discount given ₹{data.coupon_stats.discount.toLocaleString("en-IN")}</div>}</div>}
             <div className="mb-2 font-semibold">WhatsApp</div>
             <div className="mb-2 flex flex-wrap gap-1.5">
