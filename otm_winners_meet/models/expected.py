@@ -1,6 +1,7 @@
 from odoo import _, api, fields, models
 from odoo.exceptions import ValidationError
-from .utils import normalize_phone
+from .participant import NAME_MATCH_THRESHOLD
+from .utils import name_score, normalize_phone
 
 
 class WmExpected(models.Model):
@@ -54,12 +55,39 @@ class WmExpected(models.Model):
     def create(self, vals_list):
         for vals in vals_list:
             vals['phone'] = self._norm(vals.get('phone')) if (vals.get('phone') or '').strip() else False
-        return super().create(vals_list)
+        recs = super().create(vals_list)
+        recs._link_registered()
+        return recs
 
     def write(self, vals):
         if 'phone' in vals:
             vals['phone'] = self._norm(vals['phone']) if (vals['phone'] or '').strip() else False
-        return super().write(vals)
+        res = super().write(vals)
+        if {'phone', 'name', 'category_id'} & set(vals):
+            self._link_registered()
+        return res
+
+    def _link_registered(self):
+        """A list uploaded AFTER people registered: tie each entry to the already registered person (same phone, or
+        same name when the entry has no phone) so the uploaded seat is theirs at check-in. Only when the category
+        agrees, and the approval decision is never touched."""
+        P = self.env['otm.wm.participant'].sudo()
+        for e in self.sudo():
+            if not e.category_id or P.search_count([('expected_id', '=', e.id)]):
+                continue
+            base = [('event_id', '=', e.event_id.id), ('expected_id', '=', False)]
+            if e.phone:
+                cands = P.search(base + [('phone', '=', e.phone)], limit=1)
+            else:
+                cands = P.search(base + [('kind', '=', e.category_id.kind)]).filtered(
+                    lambda p: name_score(p.name, e.name) >= NAME_MATCH_THRESHOLD)
+                cands = cands.sorted(lambda p: -name_score(p.name, e.name))[:1]
+            for p in cands:
+                if (p.category_id or p.claimed_category_id) != e.category_id:
+                    continue
+                p.write({'expected_id': e.id})
+                if not e.phone:
+                    e.write({'phone': p.phone})         # remember the number once matched by name
 
     @api.model
     def _norm(self, raw):

@@ -171,6 +171,36 @@ class TestWinnersMeet(TransactionCase):
         self.assertEqual(a.seat_id.label, 'G3')
         self.assertTrue(a.log_ids.filtered(lambda l: l.message_type == 'seat'))
 
+    def test_seat_uploaded_after_registration_maps_to_participant(self):
+        a = self._reg('Anu K', '9876500101', self.gold)            # registered first, no winners list yet
+        b = self._reg('Ben Joseph', '9876500102', self.gold)
+        c = self._reg('Cara M', '9876500103', self.gold)
+        self.assertFalse(a.expected_id)
+        Exp = self.env['otm.wm.expected']
+        seat = lambda n: self.sblock.seat_ids.filtered(lambda s: s.number == n)
+        Exp.create({'event_id': self.event.id, 'name': 'Anu Krishnan', 'phone': '9876500101',
+                    'category_id': self.gold.id, 'reserved_seat_id': seat(3).id})     # upload with phone
+        Exp.create({'event_id': self.event.id, 'name': 'Ben Joseph', 'category_id': self.gold.id,
+                    'reserved_seat_id': seat(2).id})                                   # upload without phone: matched by name
+        Exp.create({'event_id': self.event.id, 'name': 'Cara M', 'phone': '9876500103',
+                    'category_id': self.silver.id})                                    # other category: must not be linked
+        self.assertEqual(a._preset_seat().label, 'G3')
+        self.assertEqual(b._preset_seat().label, 'G2')
+        self.assertEqual(b.expected_id.phone, '919876500102')       # number remembered once matched by name
+        self.assertFalse(c.expected_id)
+        a.action_check_in(); b.action_check_in()
+        self.assertEqual((a.seat_id.label, b.seat_id.label), ('G3', 'G2'))
+        self.assertEqual(c.action_check_in()['already'], False)    # still gets an ordinary auto seat
+        self.assertEqual(c.seat_id.label, 'G1')
+
+    def test_changing_uploaded_seat_updates_registered_participant(self):
+        a = self._reg('Dev K', '9876500111', self.gold)
+        e = self.env['otm.wm.expected'].create({'event_id': self.event.id, 'name': 'Dev K', 'phone': '9876500111',
+                                                'category_id': self.gold.id})
+        self.assertEqual(a.expected_id, e)
+        e.reserved_seat_id = self.sblock.seat_ids.filtered(lambda s: s.number == 2)    # second upload adds the seat
+        self.assertEqual(a._preset_seat().label, 'G2')
+
     def test_participant_reserved_seat_override(self):
         p = self._reg('Chitra T', '9000000077', self.teacher, kind='teacher')
         p.reserved_seat_id = self.tblock.seat_ids.filtered(lambda s: s.number == 2)
