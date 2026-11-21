@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Armchair, Crown, FileSpreadsheet, LogOut, Menu, MessageCircle, ScanLine, School, GraduationCap, Settings2, ShieldAlert, Users, X, CalendarDays, Trophy } from "lucide-react";
+import { BarChart3, Armchair, Crown, FileSpreadsheet, LogOut, Menu, MessageCircle, ScanLine, School, GraduationCap, Settings2, ShieldAlert, Users, X, CalendarDays, Trophy, ListChecks } from "lucide-react";
 import { EventProvider, useEvent } from "@/components/EventContext";
 import { Badge, cx } from "@/components/ui";
 import { useFetch } from "@/lib/api";
@@ -14,6 +14,7 @@ const NAV: { href: string; label: string; icon: any; badge?: boolean; manager?: 
   { href: "/admin/review", label: "Review queue", icon: ShieldAlert, badge: true, manager: true },
   { href: "/admin/seats", label: "Seat map", icon: Armchair },
   { href: "/admin/stage", label: "Stage", icon: Trophy },
+  { href: "/admin/checklist", label: "Event checklist", icon: ListChecks },
   { href: "/admin/hats", label: "Kit & returns", icon: Crown },
   { href: "/admin/winners", label: "Winners list", icon: FileSpreadsheet, manager: true },
   { href: "/admin/whatsapp", label: "WhatsApp log", icon: MessageCircle },

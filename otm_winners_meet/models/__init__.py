@@ -11,3 +11,4 @@ from . import participant
 from . import message_log
 from . import res_config_settings
 from . import college
+from . import checklist

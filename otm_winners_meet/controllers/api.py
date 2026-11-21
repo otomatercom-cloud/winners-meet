@@ -424,6 +424,117 @@ class WinnersMeetApi(http.Controller):
                       'venue': ev.venue or ''},
         }
 
+    # ============================================================ checklist (what to take to the event)
+    @staticmethod
+    def _ck_item(i):
+        return {'id': i.id, 'name': i.name, 'qty': i.qty or '', 'section': i.section or '', 'sequence': i.sequence,
+                'done': bool(i.done), 'done_by': i.done_by.name if i.done_by else '',
+                'done_on': fields.Datetime.to_string(i.done_on) if i.done_on else ''}
+
+    @staticmethod
+    def _ck_progress(items):
+        n = len(items)
+        d = len(items.filtered('done'))
+        return {'total': n, 'done': d, 'percent': round(100.0 * d / n) if n else 0}
+
+    @api('/checklist')
+    def checklist(self, body=None, event_id=None, **kw):
+        _need_staff()
+        ev = _event(event_id).ensure_checklist_token()
+        items = ev.checklist_ids
+        return {'items': [self._ck_item(i) for i in items], 'progress': self._ck_progress(items),
+                'token': ev.checklist_token, 'public': bool(ev.checklist_public), 'event': ev.name}
+
+    @api('/checklist/<int:iid>/tick', methods=('POST',))
+    def checklist_tick(self, iid, body=None, **kw):
+        _need_staff()
+        item = request.env['otm.wm.checklist.item'].browse(iid).exists()
+        if not item:
+            raise MissingError(_("Item not found."))
+        item.set_done(bool((body or {}).get('done')))
+        return self._ck_item(item)
+
+    @api('/checklist/save', methods=('POST',))
+    def checklist_save(self, body=None, **kw):
+        _need_manager()
+        name = str(body.get('name') or '').strip()
+        if not name:
+            raise UserError(_("Item name is required."))
+        vals = {'name': name[:200], 'qty': str(body.get('qty') or '').strip()[:100],
+                'section': str(body.get('section') or '').strip()[:100]}
+        Item = request.env['otm.wm.checklist.item']
+        iid = _int(body.get('id'))
+        if iid:
+            item = Item.browse(iid).exists()
+            if not item:
+                raise MissingError(_("Item not found."))
+            item.write(vals)
+        else:
+            ev = _event(body.get('event_id'))
+            last = Item.search([('event_id', '=', ev.id)], order='sequence desc', limit=1)
+            item = Item.create(dict(vals, event_id=ev.id, sequence=(last.sequence + 10) if last else 10))
+        return self._ck_item(item)
+
+    @api('/checklist/bulk', methods=('POST',))
+    def checklist_bulk(self, body=None, **kw):
+        """One item per line. 'Item - qty' splits the quantity; a line starting with '#' sets the section."""
+        _need_manager()
+        ev = _event(body.get('event_id'))
+        Item = request.env['otm.wm.checklist.item']
+        last = Item.search([('event_id', '=', ev.id)], order='sequence desc', limit=1)
+        seq = last.sequence if last else 0
+        section, vals = '', []
+        for line in str(body.get('text') or '').splitlines()[:500]:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith('#'):
+                section = line.lstrip('#').strip()[:100]
+                continue
+            name, _sep, qty = line.partition(' - ')
+            seq += 10
+            vals.append({'event_id': ev.id, 'name': name.strip()[:200], 'qty': qty.strip()[:100],
+                         'section': section, 'sequence': seq})
+        if vals:
+            Item.create(vals)
+        return {'created': len(vals)}
+
+    @api('/checklist/delete', methods=('POST',))
+    def checklist_delete(self, body=None, **kw):
+        _need_manager()
+        request.env['otm.wm.checklist.item'].browse(_int(body.get('id'), 0)).exists().unlink()
+        return {}
+
+    @api('/checklist/reset', methods=('POST',))
+    def checklist_reset(self, body=None, **kw):
+        """Untick everything (for the next event)."""
+        _need_manager()
+        ev = _event(body.get('event_id'))
+        ev.checklist_ids.set_done(False)
+        return {}
+
+    @api('/checklist/link', methods=('POST',))
+    def checklist_link(self, body=None, **kw):
+        _need_manager()
+        ev = _event(body.get('event_id')).ensure_checklist_token()
+        if 'public' in body:
+            ev.checklist_public = bool(body.get('public'))
+        if body.get('regenerate'):
+            ev.regenerate_checklist_token()
+        return {'token': ev.checklist_token, 'public': bool(ev.checklist_public)}
+
+    @api('/public/checklist/<string:token>', auth='public')
+    def public_checklist(self, token, body=None, **kw):
+        """Read-only view for everyone with the link. Never writes; nothing but the list is exposed."""
+        ev = request.env['otm.wm.event'].sudo().search([('checklist_token', '=', token)], limit=1) if token else None
+        if not ev or not ev.checklist_public:
+            raise MissingError(_("This checklist link is not valid."))
+        items = ev.checklist_ids
+        return {'event': {'name': ev.name, 'date': fields.Date.to_string(ev.date), 'venue': ev.venue or ''},
+                'items': [{'id': i.id, 'name': i.name, 'qty': i.qty or '', 'section': i.section or '', 'done': bool(i.done)}
+                          for i in items],
+                'progress': self._ck_progress(items)}
+
     # ============================================================ STAFF: session
     @api('/me')
     def me(self, body=None, **kw):
