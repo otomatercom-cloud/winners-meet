@@ -967,7 +967,7 @@ class WinnersMeetApi(http.Controller):
     def participant_checkin(self, pid, body=None, **kw):
         _need_staff()
         p = _participant(pid)
-        res = p.action_check_in(seat_id=_int(body.get('seat_id')), override=_is_manager())
+        res = p.action_check_in(seat_id=_int(body.get('seat_id')), override=_is_staff())
         out = _p(p, detail=True)
         out['already'] = res['already']
         return out
@@ -979,7 +979,7 @@ class WinnersMeetApi(http.Controller):
         sid = _int(body.get('seat_id'))
         if not sid:
             raise UserError(_("Select a seat."))
-        p.action_change_seat(sid, override=_is_manager())
+        p.action_change_seat(sid, override=_is_staff())
         return _p(p, detail=True)
 
     @api('/participants/<int:pid>/undo-checkin', methods=('POST',))
