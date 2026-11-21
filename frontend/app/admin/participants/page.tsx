@@ -8,6 +8,7 @@ import { MarkTick } from "@/components/MarkTick";
 import { Avatar, useThumbs } from "@/components/Avatar";
 import { useEvent } from "@/components/EventContext";
 import WalkIn from "@/components/WalkIn";
+import SeatSet from "@/components/SeatSet";
 import { api, useFetch } from "@/lib/api";
 import { Badge, Button, Card, CategoryChip, Empty, ErrorBox, PageHeader, Spinner, approvalBadge, fmtPhone, hatBadge, inputCls, useToast, waBadge } from "@/components/ui";
 import type { Category, Participant } from "@/lib/types";
@@ -15,7 +16,7 @@ import type { Category, Participant } from "@/lib/types";
 const PAGE = 50;
 
 function Inner() {
-  const { eventId } = useEvent();
+  const { eventId, me } = useEvent();
   const sp = useSearchParams();
   const toast = useToast();
   const [kind, setKind] = useState(sp.get("kind") || "");
@@ -142,7 +143,7 @@ function Inner() {
                     <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}><div className="flex justify-center"><MarkTick base="/participants" id={p.id} field="profile" value={p.profile_done} label="Profile completed" /></div></td>
                     <td className="px-4 py-2.5">{p.category && <CategoryChip name={p.category.name} color={p.category.color} />}</td>
                     <td className="px-4 py-2.5"><div className="flex gap-1.5">{approvalBadge(p.approval_state)}{p.state === "checked_in" && <Badge tone="blue">Arrived</Badge>}</div></td>
-                    <td className="px-4 py-2.5 font-semibold">{p.seat || <span className="font-normal text-slate-400">—</span>}</td>
+                    <td className="px-4 py-2.5"><SeatSet p={p} eventId={eventId!} manager={!!me?.manager} onDone={reload} /></td>
                     <td className="px-4 py-2.5">{hatBadge(p.hat_state)}</td>
                     <td className="px-4 py-2.5">{waBadge(p.wa_state)}</td>
                   </tr>
