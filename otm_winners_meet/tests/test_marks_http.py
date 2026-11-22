@@ -94,3 +94,15 @@ class TestMarksHttp(HttpCase):
         self.assertEqual(r['data']['created'], 0)
         self.teacher.invalidate_recordset()
         self.assertEqual(self.teacher.coupon_code, first)
+
+    def test_sort_columns(self):
+        self.authenticate('mk_staff', 'mk_staff-pw-1')
+        ev = self.teacher.event_id
+        for col in ('name', 'college', 'companions', 'coupon', 'trophy', 'profile', 'category', 'status', 'seat', 'hat', 'whatsapp'):
+            for d in ('asc', 'desc'):
+                r = self.url_open('/api/wm/participants?event_id=%d&sort=%s&dir=%s' % (ev.id, col, d)).json()
+                self.assertTrue(r['ok'], (col, d, r))
+        r = self.url_open('/api/wm/participants?event_id=%d&sort=name&dir=desc' % ev.id).json()
+        self.assertEqual([x['name'] for x in r['data']['rows']], ['HT', 'HS'])
+        r = self.url_open('/api/wm/participants?event_id=%d&sort=evil;drop&dir=desc' % ev.id).json()
+        self.assertTrue(r['ok'])                                 # unknown column falls back to default order

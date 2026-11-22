@@ -27,9 +27,17 @@ function Inner() {
   const [q, setQ] = useState("");
   const [qd, setQd] = useState("");
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState("");
+  const [dir, setDir] = useState<"asc" | "desc">("asc");
+  const sortBy = (k: string) => { if (sort === k) { if (dir === "asc") setDir("desc"); else { setSort(""); setDir("asc"); } } else { setSort(k); setDir("asc"); } setPage(0); };
+  const Th = ({ k, children, center }: { k: string; children: React.ReactNode; center?: boolean }) => (
+    <th className={`px-4 py-2.5 ${center ? "text-center" : ""}`} aria-sort={sort === k ? (dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button type="button" onClick={() => sortBy(k)} className={`inline-flex items-center gap-1 whitespace-nowrap uppercase hover:text-slate-800 ${sort === k ? "text-brand-700" : ""}`}>{children}<span className="text-[10px]">{sort === k ? (dir === "asc" ? "▲" : "▼") : "↕"}</span></button>
+    </th>
+  );
   const [walk, setWalk] = useState(false);
   useEffect(() => { const t = setTimeout(() => { setQd(q); setPage(0); }, 300); return () => clearTimeout(t); }, [q]);
-  const params = { event_id: eventId, kind, state, approval, category_id: category, flag, q: qd, offset: page * PAGE, limit: PAGE };
+  const params = { event_id: eventId, kind, state, approval, category_id: category, flag, q: qd, sort, dir, offset: page * PAGE, limit: PAGE };
   const { data, error, loading, reload } = useFetch<{ total: number; rows: Participant[] }>(eventId ? "/participants" : null, params, 10000);
   const thumb = useThumbs("/participants/thumbs", (data?.rows || []).map((r) => r.id));
   const { data: cats } = useFetch<Category[]>(eventId ? "/categories" : null, { event_id: eventId });
@@ -131,7 +139,7 @@ function Inner() {
         <>
           <Card className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><th className="whitespace-nowrap px-4 py-2.5">Name</th><th className="px-4 py-2.5">College</th><th className="px-4 py-2.5">Companions</th><th className="px-4 py-2.5">Coupon code</th><th className="px-4 py-2.5 text-center">Trophy sticker</th><th className="px-4 py-2.5 text-center">Profile</th><th className="px-4 py-2.5">Category</th><th className="px-4 py-2.5">Status</th><th className="px-4 py-2.5">Seat</th><th className="px-4 py-2.5">Hat</th><th className="px-4 py-2.5">WhatsApp</th></tr></thead>
+              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500"><tr><Th k="name">Name</Th><Th k="college">College</Th><Th k="companions">Companions</Th><Th k="coupon">Coupon code</Th><Th k="trophy" center>Trophy sticker</Th><Th k="profile" center>Profile</Th><Th k="category">Category</Th><Th k="status">Status</Th><Th k="seat">Seat</Th><Th k="hat">Hat</Th><Th k="whatsapp">WhatsApp</Th></tr></thead>
               <tbody className="divide-y divide-slate-100">
                 {data.rows.map((p) => (
                   <tr key={p.id} className={`hover:bg-slate-50 ${p.approval_state === "pending" ? "bg-rose-50/60" : ""}`}>

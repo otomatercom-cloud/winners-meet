@@ -812,7 +812,7 @@ class WinnersMeetApi(http.Controller):
     # ============================================================ participants
     @api('/participants')
     def participants(self, body=None, event_id=None, kind=None, q=None, state=None, approval=None,
-                     category_id=None, hat=None, wa=None, trophy=None, order=None, offset=0, limit=50, flag='', **kw):
+                     category_id=None, hat=None, wa=None, trophy=None, order=None, offset=0, limit=50, flag='', sort='', dir='asc', **kw):
         _need_staff()
         ev = _event(event_id)
         domain = [('event_id', '=', ev.id)] + _mark_domain(flag)
@@ -842,9 +842,16 @@ class WinnersMeetApi(http.Controller):
                 domain += ['|', ('name', 'ilike', q), ('seat_label', 'ilike', q)]
         P_ = request.env['otm.wm.participant']
         limit = min(max(_int(limit, 50), 1), 200)
-        recs = P_.search(domain, offset=max(_int(offset, 0), 0), limit=limit,
-                         order=('category_id, seat_id, name' if order == 'stage' else
-                                'approval_state desc, name' if approval == 'pending' else 'name, id'))
+        sort_cols = {'name': 'name', 'college': 'institution', 'companions': 'accompany_count', 'coupon': 'coupon_code',
+                     'trophy': 'trophy_done', 'profile': 'profile_done', 'category': 'category_id', 'status': 'approval_state',
+                     'seat': 'seat_id', 'hat': 'hat_state', 'whatsapp': 'wa_state'}
+        direction = 'desc' if dir == 'desc' else 'asc'
+        if sort in sort_cols:
+            order_by = '%s %s nulls last, name, id' % (sort_cols[sort], direction)
+        else:
+            order_by = ('category_id, seat_id, name' if order == 'stage' else
+                        'approval_state desc, name' if approval == 'pending' else 'name, id')
+        recs = P_.search(domain, offset=max(_int(offset, 0), 0), limit=limit, order=order_by)
         return {'total': P_.search_count(domain), 'rows': [_p(p) for p in recs]}
 
     @api('/participants/thumbs')
