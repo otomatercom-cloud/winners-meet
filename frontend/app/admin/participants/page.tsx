@@ -16,7 +16,8 @@ import type { Category, Participant } from "@/lib/types";
 const PAGE = 50;
 
 function Inner() {
-  const { eventId, me } = useEvent();
+  const { eventId, me, event } = useEvent();
+  const studentsOn = event?.students_enabled !== false;
   const sp = useSearchParams();
   const toast = useToast();
   const [kind, setKind] = useState(sp.get("kind") || "");
@@ -128,7 +129,7 @@ function Inner() {
       <Card className="mb-4 p-3">
         <div className="flex flex-wrap gap-2">
           <div className="relative min-w-[200px] flex-1"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" /><input className={inputCls + " pl-9"} placeholder="Search name, phone, seat…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
-          <select className={sel} value={kind} onChange={(e) => { setKind(e.target.value); setPage(0); }}><option value="">Students + teachers</option><option value="student">Students</option><option value="teacher">Teachers</option></select>
+          {studentsOn && <select className={sel} value={kind} onChange={(e) => { setKind(e.target.value); setPage(0); }}><option value="">Students + teachers</option><option value="student">Students</option><option value="teacher">Teachers</option></select>}
           <select className={sel} value={category} onChange={(e) => { setCategory(e.target.value); setPage(0); }}><option value="">All categories</option>{(cats || []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           <select className={sel} value={state} onChange={(e) => { setState(e.target.value); setPage(0); }}><option value="">All arrival</option><option value="checked_in">Checked in</option><option value="registered">Not arrived</option></select>
           <select className={sel} value={approval} onChange={(e) => { setApproval(e.target.value); setPage(0); }}><option value="">All approval</option><option value="approved">Approved</option><option value="pending">Needs review</option><option value="rejected">Rejected</option></select>

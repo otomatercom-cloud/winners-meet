@@ -144,7 +144,7 @@ def _event_dict(e):
     return {'slug': e.slug or '', 'id': e.id, 'name': e.name, 'date': fields.Date.to_string(e.date), 'time': e.time_text or '',
             'venue': e.venue or '', 'state': e.state, 'reg_student_open': e.reg_student_open,
             'reg_teacher_open': e.reg_teacher_open, 'teacher_needs_approval': e.teacher_needs_approval,
-            'reg_pass_enabled': bool(e.reg_pass_enabled), 'reg_success_text': e.reg_success_text or '',
+            'students_enabled': bool(e.students_enabled), 'reg_pass_enabled': bool(e.reg_pass_enabled), 'reg_success_text': e.reg_success_text or '',
             'frontend_url': e.frontend_url or '', 'frontend_url_teacher': e.frontend_url_teacher or '',
             'wa_tpl_confirm': e.wa_tpl_confirm or '', 'wa_tpl_seat': e.wa_tpl_seat or '',
             'wa_msg_confirm': e.wa_msg_confirm or '', 'wa_msg_seat': e.wa_msg_seat or '',
@@ -301,7 +301,7 @@ class WinnersMeetApi(http.Controller):
         return {
             'event': {'id': ev.id, 'slug': ev.slug, 'name': ev.name, 'date': fields.Date.to_string(ev.date),
                       'time': ev.time_text or '', 'venue': ev.venue or '',
-                      'reg_student_open': ev.reg_student_open, 'reg_teacher_open': ev.reg_teacher_open,
+                      'reg_student_open': bool(ev.reg_student_open and ev.students_enabled), 'students_enabled': bool(ev.students_enabled), 'reg_teacher_open': ev.reg_teacher_open,
                       'logo': ev.logo_data_uri(), 'form_text': ev.form_texts(),
                       'reg_pass_enabled': bool(ev.reg_pass_enabled)},
             'student_categories': [{'id': c.id, 'name': c.name, 'course_id': c.course_id.id or False, 'color': c.color}
@@ -324,7 +324,7 @@ class WinnersMeetApi(http.Controller):
         kind = body.get('kind')
         if kind not in ('student', 'teacher'):
             raise UserError(_("Invalid registration type."))
-        if (kind == 'student' and not ev.reg_student_open) or (kind == 'teacher' and not ev.reg_teacher_open):
+        if (kind == 'student' and not (ev.reg_student_open and ev.students_enabled)) or (kind == 'teacher' and not ev.reg_teacher_open):
             raise UserError(_("Registration is closed."))
         name = ' '.join((body.get('name') or '').split())
         if not (2 <= len(name) <= 100):
@@ -583,7 +583,7 @@ class WinnersMeetApi(http.Controller):
     def event_save(self, body=None, **kw):
         _need_manager()
         allowed = ('name', 'time_text', 'venue', 'state', 'reg_student_open', 'reg_teacher_open',
-                   'teacher_needs_approval', 'reg_pass_enabled', 'reg_success_text', 'frontend_url', 'frontend_url_teacher', 'wa_tpl_confirm', 'wa_tpl_seat',
+                   'teacher_needs_approval', 'students_enabled', 'reg_pass_enabled', 'reg_success_text', 'frontend_url', 'frontend_url_teacher', 'wa_tpl_confirm', 'wa_tpl_seat',
                    'wa_msg_confirm', 'wa_msg_seat', 'wa_tpl_confirm_teacher', 'wa_tpl_seat_teacher',
                    'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param', 'slug',
                    'wa_tpl_stage_done', 'wa_tpl_stage_late',
@@ -854,6 +854,8 @@ class WinnersMeetApi(http.Controller):
         _need_staff()
         ev = _event(event_id)
         domain = [('event_id', '=', ev.id)] + _mark_domain(flag)
+        if not ev.students_enabled:
+            kind = 'teacher'
         if kind in ('student', 'teacher'):
             domain.append(('kind', '=', kind))
         if state in ('registered', 'checked_in'):

@@ -111,3 +111,20 @@ class TestChecklistHttp(HttpCase):
         code, r = self._call(None, '/public/register', {'event_id': self.ev.id, 'kind': 'teacher', 'name': 'Teach Two', 'phone': '9447712346'})
         self.assertTrue(r['data']['token'])
         self.assertEqual(r['data']['message'], 'Welcome aboard')
+
+    def test_students_off(self):
+        env = self.env
+        env['otm.wm.participant'].create({'event_id': self.ev.id, 'kind': 'student', 'name': 'Stu', 'phone': '9447700001'})
+        env['otm.wm.participant'].create({'event_id': self.ev.id, 'kind': 'teacher', 'name': 'Tea', 'phone': '9447700002'})
+        code, r = self._call('ck_staff', '/participants?event_id=%d' % self.ev.id)
+        self.assertEqual(r['data']['total'], 2)
+        self.ev.write({'students_enabled': False, 'slug': 'tea-only'})
+        code, r = self._call('ck_staff', '/participants?event_id=%d' % self.ev.id)
+        self.assertEqual([x['name'] for x in r['data']['rows']], ['Tea'])
+        code, r = self._call('ck_staff', '/participants?event_id=%d&kind=student' % self.ev.id)
+        self.assertEqual(r['data']['total'], 1)
+        self.assertEqual(r['data']['rows'][0]['name'], 'Tea')        # student filter ignored
+        code, r = self._call(None, '/public/event?slug=tea-only')
+        self.assertFalse(r['data']['event']['reg_student_open'])
+        code, r = self._call(None, '/public/register', {'event_id': self.ev.id, 'kind': 'student', 'name': 'New Stu', 'phone': '9447700003'})
+        self.assertFalse(r['ok'])

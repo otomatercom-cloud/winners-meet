@@ -21,7 +21,7 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
 }
 
 export default function Dashboard() {
-  const { eventId, me } = useEvent();
+  const { eventId, me, event } = useEvent();
   const { data: d, error, loading, reload } = useFetch<any>(eventId ? "/dashboard" : null, { event_id: eventId }, 5000);
   if (!eventId) return <Empty>No event yet. {me?.manager ? <Link href="/admin/event" className="text-brand-600 underline">Create the event</Link> : "Ask an admin to create one."}</Empty>;
   if (loading && !d) return <Spinner />;
@@ -31,7 +31,7 @@ export default function Dashboard() {
   const pending = s.pending + t.pending;
   const tGuests = d.extras?.teacher_guests ?? 0, sGuests = d.extras?.guests ?? 0;
   const total = s.registered + t.registered + tGuests + sGuests;
-  const teachersOnly = s.registered === 0 && (d.expected?.total ?? 0) === 0 && t.registered > 0;
+  const teachersOnly = event?.students_enabled === false || s.registered === 0 && (d.expected?.total ?? 0) === 0 && t.registered > 0;
   return (
     <div>
       <PageHeader title="Dashboard" subtitle={`${d.event.name} · ${d.event.date}${d.event.venue ? " · " + d.event.venue : ""} · live`} />

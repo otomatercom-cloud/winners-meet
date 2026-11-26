@@ -7,7 +7,8 @@ import { Badge, Button, Card, CategoryChip, Empty, ErrorBox, Field, Modal, PageH
 import type { Block, Category, Course, KitItem } from "@/lib/types";
 
 export default function Setup() {
-  const { eventId, me } = useEvent();
+  const { eventId, me, event } = useEvent();
+  const studentsOn = event?.students_enabled !== false;
   const toast = useToast();
   const cats = useFetch<Category[]>(eventId ? "/categories" : null, { event_id: eventId });
   const courses = useFetch<Course[]>(eventId ? "/courses" : null, { event_id: eventId });
@@ -37,7 +38,7 @@ export default function Setup() {
     if (!confirm("Delete this course?")) return;
     try { await api("/courses/delete", { method: "POST", body: { id } }); courses.reload(); } catch (e: any) { toast(e.message, "err"); }
   };
-  const newCat = { name: "", course_id: "", kind: "student", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_from: 0, seat_to: 0, sequence: 10, seat_mode: "auto", self_select: true };
+  const newCat = { name: "", course_id: "", kind: studentsOn ? "student" : "teacher", color: "#4f46e5", item_ids: [], seat_block_id: "", seat_from: 0, seat_to: 0, sequence: 10, seat_mode: "auto", self_select: true };
   const newBlk = { name: "", prefix: "S", start_no: 1, end_no: 100, row_size: 0, row_layout: "", row_names: "", sequence: 10 };
   return (
     <div className="space-y-8">
@@ -55,7 +56,7 @@ export default function Setup() {
           </div>
         )}
       </section>
-      <section>
+      {studentsOn && <section>
         <PageHeader title="Courses" subtitle="Students pick a course first, then a winner subcategory of that course."
           actions={<Button size="sm" onClick={() => setCrs({ name: "", code: "", sequence: 10 })}><Plus className="h-4 w-4" /> Course</Button>} />
         {!courses.data?.length ? <Empty>No courses yet. Add CPA USA, ACCA… (optional)</Empty> : (
@@ -68,13 +69,13 @@ export default function Setup() {
             ))}
           </div>
         )}
-      </section>
+      </section>}
       <section>
         <PageHeader title="Winner categories" subtitle="Each subcategory (under a course) decides the seat block, which kit items are given, and how the seat is assigned at check-in."
           actions={<Button size="sm" onClick={() => setCat(newCat)}><Plus className="h-4 w-4" /> Category</Button>} />
         {!cats.data?.length ? <Empty>No categories yet. Add Gold, Silver, Teacher…</Empty> : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {cats.data.map((c) => (
+            {cats.data.filter((c) => studentsOn || c.kind !== "student").map((c) => (
               <Card key={c.id} className="p-4">
                 <div className="flex items-start justify-between"><CategoryChip name={c.name} color={c.color} /><div className="flex gap-1"><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setCat({ ...c, name: c.sub, course_id: c.course_id || "", seat_block_id: c.seat_block_id || "", seat_from: c.seat_from || 0, seat_to: c.seat_to || 0, sequence: c.sequence ?? 10 })}><Pencil className="h-4 w-4" /></button></div></div>
                 <div className="mt-3 flex flex-wrap gap-1.5"><Badge tone="violet">{c.kind}</Badge>{c.items?.map((i) => <Badge key={i.id} tone="amber">{i.name}</Badge>)}<Badge tone="blue">{c.seat_block || "no block"}</Badge><Badge>{c.seat_mode === "auto" ? "auto seat" : "manual seat"}</Badge>{!c.self_select && <Badge>admin only</Badge>}</div>

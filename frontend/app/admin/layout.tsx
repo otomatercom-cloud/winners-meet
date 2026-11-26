@@ -31,7 +31,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { data: pend } = useFetch<any>(eventId ? "/participants" : null, { event_id: eventId, approval: "pending", limit: 1 }, 15000);
   if (!me) { if (typeof window !== "undefined") router.replace("/login"); return null; }
-  const items = NAV.filter((n) => (n.scope === "cc" ? me.marketing : n.scope === "tv" ? me.viewer || me.manager : me.staff) && (!n.manager || me.manager));
+  const items = NAV.filter((n) => (n.scope === "cc" ? me.marketing : n.scope === "tv" ? me.viewer || me.manager : me.staff) && (!n.manager || me.manager) && !(n.href === "/admin/winners" && event?.students_enabled === false));
   const home = me.staff ? "" : me.viewer && !me.marketing ? "/admin/teachers" : "/admin/colleges";
   if (!me.staff && !path.startsWith(home)) { if (typeof window !== "undefined") router.replace(home); return null; }
   const logout = async () => { await fetch("/api/auth/logout", { method: "POST" }); router.replace("/login"); };
