@@ -144,6 +144,7 @@ def _event_dict(e):
     return {'slug': e.slug or '', 'id': e.id, 'name': e.name, 'date': fields.Date.to_string(e.date), 'time': e.time_text or '',
             'venue': e.venue or '', 'state': e.state, 'reg_student_open': e.reg_student_open,
             'reg_teacher_open': e.reg_teacher_open, 'teacher_needs_approval': e.teacher_needs_approval,
+            'reg_pass_enabled': bool(e.reg_pass_enabled), 'reg_success_text': e.reg_success_text or '',
             'frontend_url': e.frontend_url or '', 'frontend_url_teacher': e.frontend_url_teacher or '',
             'wa_tpl_confirm': e.wa_tpl_confirm or '', 'wa_tpl_seat': e.wa_tpl_seat or '',
             'wa_msg_confirm': e.wa_msg_confirm or '', 'wa_msg_seat': e.wa_msg_seat or '',
@@ -301,7 +302,8 @@ class WinnersMeetApi(http.Controller):
             'event': {'id': ev.id, 'slug': ev.slug, 'name': ev.name, 'date': fields.Date.to_string(ev.date),
                       'time': ev.time_text or '', 'venue': ev.venue or '',
                       'reg_student_open': ev.reg_student_open, 'reg_teacher_open': ev.reg_teacher_open,
-                      'logo': ev.logo_data_uri(), 'form_text': ev.form_texts()},
+                      'logo': ev.logo_data_uri(), 'form_text': ev.form_texts(),
+                      'reg_pass_enabled': bool(ev.reg_pass_enabled)},
             'student_categories': [{'id': c.id, 'name': c.name, 'course_id': c.course_id.id or False, 'color': c.color}
                                  for c in cats if c.kind == 'student'],
             'form': {'student': ev.form_config('student'), 'teacher': ev.form_config('teacher')},
@@ -399,14 +401,19 @@ class WinnersMeetApi(http.Controller):
         existing = env['otm.wm.participant'].search([('event_id', '=', ev.id), ('phone', '=', phone)], limit=1)
         if existing:
             return {'registered': True, 'already': True, 'approval_state': existing.approval_state,
-                    'token': existing.qr_token if existing.approval_state == 'approved' else False,
-                    'message': _("This number is already registered. Your entry pass was sent on WhatsApp.")}
+                    'token': existing.qr_token if existing.approval_state == 'approved' and ev.reg_pass_enabled else False,
+                    'message': (_("This number is already registered. Your entry pass was sent on WhatsApp.")
+                                if ev.reg_pass_enabled else _("This number is already registered."))}
         p = env['otm.wm.participant'].create({
             'event_id': ev.id, 'kind': kind, 'name': name, 'phone': phone,
             'claimed_category_id': cat.id,
             'category_id': cat.id if kind == 'teacher' else False, 'registered_via': 'public', **extra})
+        approved = p.approval_state == 'approved'
+        msg = False
+        if approved and (ev.reg_success_text or not ev.reg_pass_enabled):
+            msg = (ev.reg_success_text or '').strip() or _("Congratulations! You are registered.")
         return {'registered': True, 'already': False, 'approval_state': p.approval_state,
-                'token': p.qr_token if p.approval_state == 'approved' else False}
+                'token': p.qr_token if approved and ev.reg_pass_enabled else False, 'message': msg}
 
     @api('/public/pass/<string:token>', auth='public')
     def public_pass(self, token, body=None, **kw):
@@ -576,7 +583,7 @@ class WinnersMeetApi(http.Controller):
     def event_save(self, body=None, **kw):
         _need_manager()
         allowed = ('name', 'time_text', 'venue', 'state', 'reg_student_open', 'reg_teacher_open',
-                   'teacher_needs_approval', 'frontend_url', 'frontend_url_teacher', 'wa_tpl_confirm', 'wa_tpl_seat',
+                   'teacher_needs_approval', 'reg_pass_enabled', 'reg_success_text', 'frontend_url', 'frontend_url_teacher', 'wa_tpl_confirm', 'wa_tpl_seat',
                    'wa_msg_confirm', 'wa_msg_seat', 'wa_tpl_confirm_teacher', 'wa_tpl_seat_teacher',
                    'wa_msg_confirm_teacher', 'wa_msg_seat_teacher', 'wa_seat_hat_param', 'slug',
                    'wa_tpl_stage_done', 'wa_tpl_stage_late',

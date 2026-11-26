@@ -114,7 +114,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
         <Card className="wm-card p-8 text-center">
           <div className="mb-5 flex justify-center"><img src={ev?.logo || "/logo.png"} alt={ev?.name || "Logo"} className="max-h-24 w-auto max-w-full object-contain" /></div>
           {done.approval_state === "approved" ? <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-600" /> : <Clock className="mx-auto mb-3 h-12 w-12 text-amber-500" />}
-          <h2 className="text-xl font-semibold">{done.already ? "Already registered" : done.approval_state === "approved" ? "You are registered!" : "Registration received"}</h2>
+          <h2 className="text-xl font-semibold">{done.already ? "Already registered" : done.approval_state === "approved" ? (ev.reg_pass_enabled === false ? "Congratulations!" : "You are registered!") : "Registration received"}</h2>
           <p className="mt-2 text-sm text-slate-600">
             {done.message ||
               (done.approval_state === "approved"

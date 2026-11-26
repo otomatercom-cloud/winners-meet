@@ -70,6 +70,8 @@ export default function EventSettings() {
           <Toggle label="Teacher registration open" checked={f.reg_teacher_open} onChange={(v) => set("reg_teacher_open", v)} />
         </div>
         <Toggle label="Teachers need admin approval (off = auto-approved)" checked={f.teacher_needs_approval} onChange={(v) => set("teacher_needs_approval", v)} />
+        <Toggle label="Show entry pass after registration (off = only a congratulations message)" checked={f.reg_pass_enabled !== false} onChange={(v) => set("reg_pass_enabled", v)} />
+        <Field label="Success message (optional)" hint="Shown after a successful registration. Leave empty for the default text."><textarea className={inputCls + " min-h-[4.5rem] py-2"} maxLength={500} value={f.reg_success_text || ""} onChange={(e) => set("reg_success_text", e.target.value)} placeholder="Congratulations! You are registered." /></Field>
       </Card>
       {f.id && (
         <Card className="mb-5 p-5">

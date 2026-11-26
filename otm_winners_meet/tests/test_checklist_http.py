@@ -18,7 +18,7 @@ class TestChecklistHttp(HttpCase):
     def _call(self, login, path, body=None):
         if login:
             self.authenticate(login, login + '-pw-1')
-        else:
+        elif self.session:
             self.logout()
         if body is None:
             r = self.url_open('/api/wm' + path)
@@ -94,3 +94,20 @@ class TestChecklistHttp(HttpCase):
         self.assertEqual(r['data']['event']['form_text'], {'phone': {'label': 'Mobile', 'hint': ''}, 'photo': {'label': 'Pic', 'hint': 'Hi'}})
         code, r = self._call('ck_staff', '/events/save', {'id': self.ev.id, 'form_text': {}})
         self.assertEqual(code, 403)
+
+    def test_pass_disabled_congrats_only(self):
+        env = self.env
+        self.authenticate('ck_mgr', 'ck_mgr-pw-1')
+        env['otm.wm.category'].create({'event_id': self.ev.id, 'name': 'T', 'kind': 'teacher', 'self_select': True})
+        self.ev.write({'slug': 'pass-ev', 'reg_teacher_open': True, 'reg_pass_enabled': False, 'teacher_needs_approval': False,
+                       'form_teacher': '{"place":"off","institution":"off","email":"off","photo":"off","food_pref":"off","accompany":"off","instagram":"off","profile":"off","contact":"off","bio":"off","profile_either":"off"}'})
+        code, r = self._call(None, '/public/register', {'event_id': self.ev.id, 'kind': 'teacher', 'name': 'Teach One', 'phone': '9447712345'})
+        self.assertTrue(r['ok'], r)
+        self.assertEqual((r['data']['token'], r['data']['approval_state']), (False, 'approved'))
+        self.assertIn('Congratulations', r['data']['message'])
+        code, r = self._call(None, '/public/register', {'event_id': self.ev.id, 'kind': 'teacher', 'name': 'Teach One', 'phone': '9447712345'})
+        self.assertFalse(r['data']['token'])
+        self.ev.write({'reg_pass_enabled': True, 'reg_success_text': 'Welcome aboard'})
+        code, r = self._call(None, '/public/register', {'event_id': self.ev.id, 'kind': 'teacher', 'name': 'Teach Two', 'phone': '9447712346'})
+        self.assertTrue(r['data']['token'])
+        self.assertEqual(r['data']['message'], 'Welcome aboard')
