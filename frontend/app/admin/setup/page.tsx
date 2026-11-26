@@ -75,7 +75,7 @@ export default function Setup() {
           actions={<Button size="sm" onClick={() => setCat(newCat)}><Plus className="h-4 w-4" /> Category</Button>} />
         {!cats.data?.length ? <Empty>No categories yet. Add Gold, Silver, Teacher…</Empty> : (
           <div className="grid gap-3 sm:grid-cols-2">
-            {cats.data.filter((c) => studentsOn || c.kind !== "student").map((c) => (
+            {cats.data.filter((c) => (studentsOn || c.kind !== "student") && (event?.teachers_enabled !== false || c.kind !== "teacher")).map((c) => (
               <Card key={c.id} className="p-4">
                 <div className="flex items-start justify-between"><CategoryChip name={c.name} color={c.color} /><div className="flex gap-1"><button className="rounded p-1 text-slate-400 hover:bg-slate-100" onClick={() => setCat({ ...c, name: c.sub, course_id: c.course_id || "", seat_block_id: c.seat_block_id || "", seat_from: c.seat_from || 0, seat_to: c.seat_to || 0, sequence: c.sequence ?? 10 })}><Pencil className="h-4 w-4" /></button></div></div>
                 <div className="mt-3 flex flex-wrap gap-1.5"><Badge tone="violet">{c.kind}</Badge>{c.items?.map((i) => <Badge key={i.id} tone="amber">{i.name}</Badge>)}<Badge tone="blue">{c.seat_block || "no block"}</Badge><Badge>{c.seat_mode === "auto" ? "auto seat" : "manual seat"}</Badge>{!c.self_select && <Badge>admin only</Badge>}</div>

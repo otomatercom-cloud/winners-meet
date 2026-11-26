@@ -66,7 +66,8 @@ export default function EventSettings() {
         </div>
         <Field label="Venue"><input className={inputCls} value={f.venue} onChange={(e) => set("venue", e.target.value)} /></Field>
         <div className="grid gap-2 sm:grid-cols-2">
-          <Toggle label="Students take part in this event (off = teachers-only: student form, lists and stats are hidden)" checked={f.students_enabled !== false} onChange={(v) => set("students_enabled", v)} />
+          <Toggle label="Students take part in this event (off = teachers-only: student form, lists and stats are hidden)" checked={f.students_enabled !== false} onChange={(v) => { if (!v && f.teachers_enabled === false) { toast("At least students or teachers must take part", "err"); return; } set("students_enabled", v); }} />
+        <Toggle label="Teachers take part in this event (off = students-only: teacher form, lists and stats are hidden)" checked={f.teachers_enabled !== false} onChange={(v) => { if (!v && f.students_enabled === false) { toast("At least students or teachers must take part", "err"); return; } set("teachers_enabled", v); }} />
         <Toggle label="Student registration open" checked={f.reg_student_open} onChange={(v) => set("reg_student_open", v)} />
           <Toggle label="Teacher registration open" checked={f.reg_teacher_open} onChange={(v) => set("reg_teacher_open", v)} />
         </div>

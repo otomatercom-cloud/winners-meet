@@ -50,6 +50,8 @@ class WmEvent(models.Model):
     reg_teacher_open = fields.Boolean(string="Teacher Registration Open", default=True)
     students_enabled = fields.Boolean(string="Students Take Part", default=True,
                                       help="Off = a teachers-only event: student registration, lists and stats are hidden.")
+    teachers_enabled = fields.Boolean(string="Teachers Take Part", default=True,
+                                      help="Off = a students-only event: teacher registration, lists and stats are hidden.")
     reg_pass_enabled = fields.Boolean(string="Show Entry Pass After Registration", default=True,
                                       help="Off = the form only says congratulations; no entry pass link is shown.")
     reg_success_text = fields.Text(string="Registration Success Message", help="Shown after registering. Blank = default.")

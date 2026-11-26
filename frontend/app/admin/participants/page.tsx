@@ -17,7 +17,7 @@ const PAGE = 50;
 
 function Inner() {
   const { eventId, me, event } = useEvent();
-  const studentsOn = event?.students_enabled !== false;
+  const studentsOn = event?.students_enabled !== false && event?.teachers_enabled !== false;
   const sp = useSearchParams();
   const toast = useToast();
   const [kind, setKind] = useState(sp.get("kind") || "");

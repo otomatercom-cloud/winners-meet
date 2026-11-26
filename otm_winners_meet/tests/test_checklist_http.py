@@ -128,3 +128,15 @@ class TestChecklistHttp(HttpCase):
         self.assertFalse(r['data']['event']['reg_student_open'])
         code, r = self._call(None, '/public/register', {'event_id': self.ev.id, 'kind': 'student', 'name': 'New Stu', 'phone': '9447700003'})
         self.assertFalse(r['ok'])
+
+    def test_teachers_off(self):
+        env = self.env
+        env['otm.wm.participant'].create({'event_id': self.ev.id, 'kind': 'student', 'name': 'Stu', 'phone': '9447700011'})
+        env['otm.wm.participant'].create({'event_id': self.ev.id, 'kind': 'teacher', 'name': 'Tea', 'phone': '9447700012'})
+        self.ev.write({'teachers_enabled': False, 'slug': 'stu-only', 'reg_teacher_open': True})
+        code, r = self._call('ck_staff', '/participants?event_id=%d' % self.ev.id)
+        self.assertEqual([x['name'] for x in r['data']['rows']], ['Stu'])
+        code, r = self._call(None, '/public/event?slug=stu-only')
+        self.assertFalse(r['data']['event']['reg_teacher_open'])
+        code, r = self._call(None, '/public/register', {'event_id': self.ev.id, 'kind': 'teacher', 'name': 'New Tea', 'phone': '9447700013'})
+        self.assertFalse(r['ok'])

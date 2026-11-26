@@ -27,11 +27,13 @@ export default function Dashboard() {
   if (loading && !d) return <Spinner />;
   if (error && !d) return <ErrorBox message={error} onRetry={reload} />;
   if (!d) return null;
-  const s = d.students, t = d.teachers;
+  const zero = { registered: 0, approved: 0, checked_in: 0, not_arrived: 0, pending: 0 };
+  const tOff = event?.teachers_enabled === false;
+  const s = d.students, t = tOff ? zero : d.teachers;
   const pending = s.pending + t.pending;
-  const tGuests = d.extras?.teacher_guests ?? 0, sGuests = d.extras?.guests ?? 0;
+  const tGuests = tOff ? 0 : d.extras?.teacher_guests ?? 0, sGuests = d.extras?.guests ?? 0;
   const total = s.registered + t.registered + tGuests + sGuests;
-  const teachersOnly = event?.students_enabled === false || s.registered === 0 && (d.expected?.total ?? 0) === 0 && t.registered > 0;
+  const teachersOnly = !tOff && (event?.students_enabled === false || s.registered === 0) && (d.expected?.total ?? 0) === 0 && t.registered > 0;
   return (
     <div>
       <PageHeader title="Dashboard" subtitle={`${d.event.name} · ${d.event.date}${d.event.venue ? " · " + d.event.venue : ""} · live`} />
@@ -60,15 +62,15 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Stat label="Students registered" value={s.registered} sub={`${s.approved} approved`} icon={Users} href="/admin/participants?kind=student" />
             <Stat label="Students checked in" value={s.checked_in} sub={`${s.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />
-            <Stat label="Teachers registered" value={t.registered} sub={`${t.approved} approved`} icon={Users} href="/admin/participants?kind=teacher" />
-            <Stat label="Teachers checked in" value={t.checked_in} sub={`${t.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />
+            {!tOff && <Stat label="Teachers registered" value={t.registered} sub={`${t.approved} approved`} icon={Users} href="/admin/participants?kind=teacher" />}
+            {!tOff && <Stat label="Teachers checked in" value={t.checked_in} sub={`${t.not_arrived} yet to arrive`} icon={UserCheck} tone="green" />}
           </div>
           {d.extras && (
             <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <Stat label="Teachers · Veg" value={d.extras.veg} icon={Users} />
-              <Stat label="Teachers · Non-veg" value={d.extras.nonveg} icon={Users} />
+              {!tOff && <Stat label="Teachers · Veg" value={d.extras.veg} icon={Users} />}
+              {!tOff && <Stat label="Teachers · Non-veg" value={d.extras.nonveg} icon={Users} />}
               <Stat label="Students' guests (friends / guardians)" value={d.extras.guests} icon={Users} />
-              <Stat label="Teachers' guests" value={tGuests} icon={Users} />
+              {!tOff && <Stat label="Teachers' guests" value={tGuests} icon={Users} />}
             </div>
           )}
           <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">

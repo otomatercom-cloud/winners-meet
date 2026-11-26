@@ -62,7 +62,7 @@ export default function Stage() {
         ))}
       </div>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {event?.students_enabled !== false && <select className={sel} value={kind} onChange={(e) => { setKind(e.target.value); setCat(""); }}><option value="">Students + teachers</option><option value="student">Students</option><option value="teacher">Teachers</option></select>}
+        {event?.students_enabled !== false && event?.teachers_enabled !== false && <select className={sel} value={kind} onChange={(e) => { setKind(e.target.value); setCat(""); }}><option value="">Students + teachers</option><option value="student">Students</option><option value="teacher">Teachers</option></select>}
         <select className={sel} value={cat} onChange={(e) => setCat(e.target.value)}>
           <option value="">All categories</option>
           {(s?.categories || []).map((c) => <option key={c.id} value={c.id}>{c.name} ({tab === "present" ? c.present : tab === "collected" ? c.collected : c.absent})</option>)}
