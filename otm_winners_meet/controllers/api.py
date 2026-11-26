@@ -152,7 +152,7 @@ def _event_dict(e):
             'form_student': e.form_config('student'), 'form_teacher': e.form_config('teacher'),
             'wa_tpl_confirm_teacher': e.wa_tpl_confirm_teacher or '', 'wa_tpl_seat_teacher': e.wa_tpl_seat_teacher or '',
             'wa_msg_confirm_teacher': e.wa_msg_confirm_teacher or '', 'wa_msg_seat_teacher': e.wa_msg_seat_teacher or '',
-            'logo': e.logo_data_uri(),
+            'logo': e.logo_data_uri(), 'form_text': e.form_texts(),
             'coupon_enabled': bool(e.coupon_enabled), 'wa_tpl_coupon': e.wa_tpl_coupon or '', 'wa_tpl_coupon_teacher': e.wa_tpl_coupon_teacher or '',
             'wa_msg_coupon_student': e.wa_msg_coupon_student or '', 'wa_msg_coupon_teacher': e.wa_msg_coupon_teacher or ''}
 
@@ -301,7 +301,7 @@ class WinnersMeetApi(http.Controller):
             'event': {'id': ev.id, 'slug': ev.slug, 'name': ev.name, 'date': fields.Date.to_string(ev.date),
                       'time': ev.time_text or '', 'venue': ev.venue or '',
                       'reg_student_open': ev.reg_student_open, 'reg_teacher_open': ev.reg_teacher_open,
-                      'logo': ev.logo_data_uri()},
+                      'logo': ev.logo_data_uri(), 'form_text': ev.form_texts()},
             'student_categories': [{'id': c.id, 'name': c.name, 'course_id': c.course_id.id or False, 'color': c.color}
                                  for c in cats if c.kind == 'student'],
             'form': {'student': ev.form_config('student'), 'teacher': ev.form_config('teacher')},
@@ -587,6 +587,13 @@ class WinnersMeetApi(http.Controller):
                 vals[key] = json.dumps({k: v for k, v in body[key].items()
                                         if k in ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile', 'contact', 'bio', 'profile_either')
                                         and v in ('off', 'optional', 'required')})
+        if isinstance(body.get('form_text'), dict):
+            from ..models.event import FORM_TEXT_KEYS
+            clean = {}
+            for k, v in body['form_text'].items():
+                if k in FORM_TEXT_KEYS and isinstance(v, dict):
+                    clean[k] = {'label': str(v.get('label') or '')[:120], 'hint': str(v.get('hint') or '')[:250]}
+            vals['form_text'] = json.dumps(clean)
         if vals.get('slug'):
             clash = request.env['otm.wm.event'].search(
                 [('slug', '=', request.env['otm.wm.event']._slugify(vals['slug'])), ('id', '!=', _int(body.get('id'), 0))], limit=1)

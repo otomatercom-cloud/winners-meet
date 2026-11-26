@@ -5,6 +5,7 @@ from odoo.exceptions import UserError
 from odoo import _, api, fields, models
 
 # Registration form fields an admin can switch: off / optional / required.
+FORM_TEXT_KEYS = ('name', 'phone', 'institution', 'email', 'place', 'instagram', 'photo', 'bio', 'profile', 'contact', 'food_pref', 'accompany')
 FORM_FIELDS = ('place', 'institution', 'email', 'photo', 'food_pref', 'accompany', 'instagram', 'profile', 'contact', 'bio', 'profile_either')
 FORM_DEFAULTS = {
     'student': {'place': 'optional', 'institution': 'off', 'email': 'off', 'photo': 'off',
@@ -82,6 +83,23 @@ class WmEvent(models.Model):
                        help="Used in the registration link: /e/<slug>/register. Letters, numbers and dashes.")
     form_student = fields.Text(string="Student Form Fields (JSON)")
     form_teacher = fields.Text(string="Teacher Form Fields (JSON)")
+    form_text = fields.Text(string="Form Labels (JSON)", help="Custom label / hint per field; blank = default text")
+
+    def form_texts(self):
+        self.ensure_one()
+        try:
+            saved = json.loads(self.form_text or '{}')
+        except ValueError:
+            saved = {}
+        out = {}
+        for k in FORM_TEXT_KEYS:
+            v = saved.get(k) if isinstance(saved, dict) else None
+            if isinstance(v, dict):
+                lab, hint = str(v.get('label') or '').strip()[:120], str(v.get('hint') or '').strip()[:250]
+                if lab or hint:
+                    out[k] = {'label': lab, 'hint': hint}
+        return out
+
     logo = fields.Binary(string="Event Logo", attachment=True)
     logo_mime = fields.Char()
 

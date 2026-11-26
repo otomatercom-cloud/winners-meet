@@ -56,6 +56,9 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
   const cfg = (data?.form?.[kind] || {}) as Record<string, string>;
   const on = (k: string) => (cfg[k] || "off") !== "off";
   const req = (k: string) => cfg[k] === "required";
+  const ft = (data?.event?.form_text || {}) as Record<string, { label?: string; hint?: string }>;
+  const lab = (k: string, d: string) => ft[k]?.label || d;
+  const hnt = (k: string, d?: string) => ft[k]?.hint || d;
   const open = ev && (kind === "student" ? ev.reg_student_open : ev.reg_teacher_open);
 
   const pickPhoto = async (file?: File) => {
@@ -128,8 +131,8 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
           <p className="mb-4 mt-1 border-b border-slate-100 pb-4 text-sm text-slate-500">{ev.date}{ev.time ? ` · ${ev.time}` : ""}{ev.venue ? ` · ${ev.venue}` : ""}</p>
           <form onSubmit={submit} className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
             <Section>Your details</Section>
-            <Field label="Full name"><input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} required minLength={2} maxLength={100} autoComplete="name" /></Field>
-            <Field label="WhatsApp number" hint="Your entry pass and seat details will be sent here.">
+            <Field label={lab("name", "Full name")} hint={hnt("name")}><input className={inputCls} value={f.name} onChange={(e) => set("name", e.target.value)} required minLength={2} maxLength={100} autoComplete="name" /></Field>
+            <Field label={lab("phone", "WhatsApp number")} hint={hnt("phone", "Your entry pass and seat details will be sent here.")}>
               <input className={inputCls} value={f.phone} onChange={(e) => set("phone", e.target.value)} inputMode="tel" required placeholder="10-digit mobile number" autoComplete="tel" />
             </Field>
             {courses.length > 0 && (
@@ -148,25 +151,25 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
                 </select>
               </Field>
             )}
-            {on("institution") && <Field label="School / institution"><input className={inputCls} value={f.institution} onChange={(e) => set("institution", e.target.value)} required={req("institution")} /></Field>}
-            {on("email") && <Field label="Email"><input type="email" className={inputCls} value={f.email} onChange={(e) => set("email", e.target.value)} required={req("email")} autoComplete="email" /></Field>}
-            {on("place") && <Field label="Place"><input className={inputCls} value={f.place} onChange={(e) => set("place", e.target.value)} required={req("place")} /></Field>}
+            {on("institution") && <Field label={lab("institution", "School / institution")} hint={hnt("institution")}><input className={inputCls} value={f.institution} onChange={(e) => set("institution", e.target.value)} required={req("institution")} /></Field>}
+            {on("email") && <Field label={lab("email", "Email")} hint={hnt("email")}><input type="email" className={inputCls} value={f.email} onChange={(e) => set("email", e.target.value)} required={req("email")} autoComplete="email" /></Field>}
+            {on("place") && <Field label={lab("place", "Place")} hint={hnt("place")}><input className={inputCls} value={f.place} onChange={(e) => set("place", e.target.value)} required={req("place")} /></Field>}
             {on("instagram") && (
-              <Field label="Instagram ID" hint="So we can tag you in your event photos."><div className="wm-ig flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500"><span className="pl-3 text-slate-400">@</span><input className="h-10 w-full rounded-lg bg-transparent px-2 text-sm outline-none" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/\s/g, ""))} required={req("instagram")} placeholder="your_instagram_id" autoCapitalize="none" autoCorrect="off" maxLength={60} /></div></Field>
+              <Field label={lab("instagram", "Instagram ID")} hint={hnt("instagram", "So we can tag you in your event photos.")}><div className="wm-ig flex items-center rounded-lg border border-slate-300 bg-white focus-within:border-brand-500"><span className="pl-3 text-slate-400">@</span><input className="h-10 w-full rounded-lg bg-transparent px-2 text-sm outline-none" value={f.instagram} onChange={(e) => set("instagram", e.target.value.replace(/\s/g, ""))} required={req("instagram")} placeholder="your_instagram_id" autoCapitalize="none" autoCorrect="off" maxLength={60} /></div></Field>
             )}
 
             {(on("photo") || on("bio") || on("profile")) && <Section>{on("bio") || on("profile") ? "Photo & profile" : "Photo"}</Section>}
             {on("photo") && (
-              <Field className="sm:col-span-2" label="Your photo">
+              <Field className="sm:col-span-2" label={lab("photo", "Your photo")}>
                 <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 p-2.5 hover:border-brand-500">
                   {f.photo ? <img src={f.photo} alt="Your photo" className="h-14 w-14 rounded-lg object-cover" /> : <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-400"><Camera className="h-6 w-6" /></span>}
-                  <span className="min-w-0 text-sm"><span className="block font-medium text-brand-600">{f.photo ? "Change photo" : "Take or choose photo"}</span><span className="block text-xs text-slate-500">A clear face photo. It is shown at the entry desk.</span></span>
+                  <span className="min-w-0 text-sm"><span className="block font-medium text-brand-600">{f.photo ? "Change photo" : "Take or choose photo"}</span><span className="block text-xs text-slate-500">{hnt("photo", "A clear face photo. It is shown at the entry desk.")}</span></span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { pickPhoto(e.target.files?.[0]); e.target.value = ""; }} />
                 </label>
               </Field>
             )}
             {on("bio") && (
-              <Field className="sm:col-span-2" label="Short profile" hint={req("profile_either") && on("profile") ? "Write a short paragraph about yourself, or upload a Word / PDF file below. One of the two is enough." : "Write a short paragraph about yourself, your teaching and achievements."}>
+              <Field className="sm:col-span-2" label={lab("bio", "Short profile")} hint={hnt("bio") || (req("profile_either") && on("profile") ? "Write a short paragraph about yourself, or upload a Word / PDF file below. One of the two is enough." : "Write a short paragraph about yourself, your teaching and achievements.")}>
                 <textarea className="min-h-[5.5rem] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition placeholder:text-slate-400 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20" rows={4} maxLength={1500} value={f.bio} onChange={(e) => set("bio", e.target.value)} required={req("bio")} placeholder="Example: I teach Accountancy at ... for 12 years ..." />
                 <div className="mt-0.5 text-right text-[11px] text-slate-400">{f.bio.length}/1500</div>
               </Field>
@@ -179,7 +182,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
               </div>
             )}
             {on("profile") && (
-              <Field className="sm:col-span-2" label="Profile document (Word / PDF)">
+              <Field className="sm:col-span-2" label={lab("profile", "Profile document (Word / PDF)")} hint={hnt("profile")}>
                 <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-slate-300 p-2.5 hover:border-brand-500">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500"><FileText className="h-5 w-5" /></span>
                   <span className="min-w-0 text-sm"><span className="block truncate font-medium text-slate-700">{profile ? profile.name : "No file chosen"}</span><span className="block text-xs"><span className="font-medium text-brand-600">{profile ? "Change file" : "Choose Word / PDF file"}</span><span className="text-slate-500"> · max {PROFILE_MAX_KB >= 1024 ? Math.round(PROFILE_MAX_KB / 1024) + " MB" : PROFILE_MAX_KB + " KB"}</span></span></span>
@@ -191,7 +194,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
 
             {(on("contact") && (data?.contacts?.length ?? 0) > 0 || on("food_pref") || on("accompany")) && <Section>Event details</Section>}
             {on("contact") && (data?.contacts?.length ?? 0) > 0 && (
-              <Field label="Point of contact">
+              <Field label={lab("contact", "Point of contact")} hint={hnt("contact")}>
                 <select className={inputCls} value={f.contact_id} onChange={(e) => set("contact_id", e.target.value)} required={req("contact")}>
                   <option value="">Select point of contact</option>
                   {data.contacts.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -199,13 +202,13 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
               </Field>
             )}
             {on("food_pref") && (
-              <Field label="Food preference">
+              <Field label={lab("food_pref", "Food preference")} hint={hnt("food_pref")}>
                 <Seg value={f.food_pref} onChange={(v) => set("food_pref", v)} options={[["veg", "Veg"], ["nonveg", "Non-veg"]]} />
               </Field>
             )}
             {on("accompany") && kind === "teacher" && (
               <>
-                <Field label="Will anyone accompany you?">
+                <Field label={lab("accompany", "Will anyone accompany you?")} hint={hnt("accompany")}>
                   <Seg value={f.accompany_type} onChange={(v) => setF((x) => ({ ...x, accompany_type: v, accompany_count: v === "none" ? "" : x.accompany_count }))} options={[["none", "No"], ["guest", "Yes"]]} />
                 </Field>
                 {f.accompany_type === "guest" && (
@@ -217,7 +220,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
             )}
             {on("accompany") && kind !== "teacher" && (
               <>
-                <Field label="Accompanied by">
+                <Field label={lab("accompany", "Accompanied by")} hint={hnt("accompany")}>
                   <select className={inputCls} value={f.accompany_type} onChange={(e) => setF((x) => ({ ...x, accompany_type: e.target.value, accompany_count: e.target.value === "none" ? "" : x.accompany_count }))}>
                     <option value="none">Attending alone</option>
                     <option value="friend">Friend</option>

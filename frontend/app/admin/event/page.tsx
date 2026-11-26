@@ -5,6 +5,7 @@ import { useEvent } from "@/components/EventContext";
 import { api, useFetch } from "@/lib/api";
 import { Button, Card, Empty, Field, PageHeader, Toggle, inputCls, useToast } from "@/components/ui";
 import type { EventInfo } from "@/lib/types";
+import { FORM_TEXT_DEFAULTS } from "@/lib/formDefaults";
 
 const blank: any = { name: "", date: new Date().toISOString().slice(0, 10), time: "", venue: "", state: "draft", reg_student_open: true, reg_teacher_open: true, teacher_needs_approval: false, frontend_url: "", frontend_url_teacher: "", wa_seat_hat_param: false, form_student: { place: "optional", institution: "off", email: "off", photo: "off", food_pref: "off", accompany: "optional", instagram: "required" }, form_teacher: { place: "off", institution: "optional", email: "off", photo: "required", food_pref: "required", accompany: "off", instagram: "off" }, wa_tpl_confirm: "", wa_tpl_seat: "", wa_msg_confirm: "", wa_msg_seat: "", wa_tpl_confirm_teacher: "", wa_tpl_seat_teacher: "", wa_msg_confirm_teacher: "", wa_msg_seat_teacher: "", coupon_enabled: false, wa_tpl_coupon: "", wa_tpl_coupon_teacher: "", wa_msg_coupon_student: "", wa_msg_coupon_teacher: "" };
 
@@ -101,6 +102,19 @@ export default function EventSettings() {
             </tr>
           ))}
         </tbody></table></div>
+      </Card>
+      <Card className="mb-5 p-5">
+        <h3 className="font-semibold">Field labels</h3>
+        <p className="mb-3 mt-1 text-xs text-slate-500">Change the text shown on the registration forms for this event. Leave a box empty to keep the default (shown in grey). Applies to both student and teacher forms.</p>
+        <div className="space-y-3">
+          {Object.entries(FORM_TEXT_DEFAULTS).map(([k, d]) => (
+            <div key={k} className="grid gap-2 sm:grid-cols-[9rem_1fr_1.4fr] sm:items-center">
+              <div className="text-sm font-medium text-slate-700">{d.name}</div>
+              <input className={inputCls} placeholder={d.label} maxLength={120} value={f.form_text?.[k]?.label || ""} onChange={(e) => set("form_text", { ...f.form_text, [k]: { ...f.form_text?.[k], label: e.target.value } })} />
+              <input className={inputCls} placeholder={d.hint || "Small helper text (optional)"} maxLength={250} value={f.form_text?.[k]?.hint || ""} onChange={(e) => set("form_text", { ...f.form_text, [k]: { ...f.form_text?.[k], hint: e.target.value } })} />
+            </div>
+          ))}
+        </div>
       </Card>
       <Card className="mb-5 space-y-4 p-5">
         <h3 className="font-semibold">WhatsApp - Students</h3>

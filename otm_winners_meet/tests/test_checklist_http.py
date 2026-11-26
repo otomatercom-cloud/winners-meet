@@ -85,3 +85,12 @@ class TestChecklistHttp(HttpCase):
         code, r = self._call('ck_mgr', '/events/logo', {'event_id': self.ev.id, 'data': ''})
         code, r = self._call(None, '/public/event?slug=logo-ev')
         self.assertEqual(r['data']['event']['logo'], '')
+
+    def test_form_text(self):
+        code, r = self._call('ck_mgr', '/events/save', {'id': self.ev.id, 'slug': 'txt-ev', 'form_text': {
+            'phone': {'label': ' Mobile ', 'hint': ''}, 'bogus': {'label': 'x'}, 'photo': {'label': 'Pic', 'hint': 'Hi'}}})
+        self.assertTrue(r['ok'], r)
+        code, r = self._call(None, '/public/event?slug=txt-ev')
+        self.assertEqual(r['data']['event']['form_text'], {'phone': {'label': 'Mobile', 'hint': ''}, 'photo': {'label': 'Pic', 'hint': 'Hi'}})
+        code, r = self._call('ck_staff', '/events/save', {'id': self.ev.id, 'form_text': {}})
+        self.assertEqual(code, 403)
