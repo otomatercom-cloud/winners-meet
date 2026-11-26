@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Copy, Plus } from "lucide-react";
 import { useEvent } from "@/components/EventContext";
 import { api, useFetch } from "@/lib/api";
@@ -16,6 +16,30 @@ export default function EventSettings() {
   useEffect(() => { setF(event || blank); }, [event?.id]);
   if (!me?.manager) return <Empty>Administrators only.</Empty>;
   const set = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
+  const logoInput = useRef<HTMLInputElement>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  /** Shrinks the picked image in the browser (max 480 px wide) so the upload stays small. */
+  const pickLogo = async (file: File) => {
+    if (!/^image\/(png|jpe?g|webp)$/i.test(file.type)) { toast("Use a PNG, JPG or WEBP image", "err"); return; }
+    setLogoBusy(true);
+    try {
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 480 / bmp.width);
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+      c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+      const data = c.toDataURL(file.type === "image/jpeg" ? "image/jpeg" : "image/png", 0.9);
+      const r = await api<any>("/events/logo", { method: "POST", body: { event_id: f.id, data } });
+      set("logo", r.logo); toast("Logo saved");
+    } catch (e: any) { toast(e.message || "Could not use this image", "err"); }
+    setLogoBusy(false);
+  };
+  const removeLogo = async () => {
+    setLogoBusy(true);
+    try { await api("/events/logo", { method: "POST", body: { event_id: f.id, data: "" } }); set("logo", ""); toast("Logo removed"); }
+    catch (e: any) { toast(e.message, "err"); }
+    setLogoBusy(false);
+  };
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const save = async () => {
     setBusy(true);
@@ -46,6 +70,23 @@ export default function EventSettings() {
         </div>
         <Toggle label="Teachers need admin approval (off = auto-approved)" checked={f.teacher_needs_approval} onChange={(v) => set("teacher_needs_approval", v)} />
       </Card>
+      {f.id && (
+        <Card className="mb-5 p-5">
+          <h3 className="font-semibold">Event logo</h3>
+          <p className="mb-3 mt-1 text-xs text-slate-500">Shown at the top of this event&apos;s registration forms. PNG, JPG or WEBP. If none is uploaded, the default logo is used.</p>
+          <input ref={logoInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const x = e.target.files?.[0]; e.target.value = ""; if (x) pickLogo(x); }} />
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex h-20 w-40 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f.logo || "/logo.png"} alt="Event logo" className="max-h-full max-w-full object-contain" />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" loading={logoBusy} onClick={() => logoInput.current?.click()}>{f.logo ? "Change logo" : "Upload logo"}</Button>
+              {f.logo && <Button size="sm" variant="secondary" disabled={logoBusy} onClick={removeLogo}>Remove</Button>}
+            </div>
+          </div>
+        </Card>
+      )}
       <Card className="mb-5 p-5">
         <h3 className="font-semibold">Registration form fields</h3>
         <p className="mb-3 mt-1 text-xs text-slate-500">Name and WhatsApp number are always asked. Choose what else each form shows. Students also always choose course / category.</p>

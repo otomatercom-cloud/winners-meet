@@ -3,6 +3,7 @@
 Staff routes use the normal Odoo session (the Next.js server holds session_id, the browser never talks
 to Odoo). Public routes (registration form, entry pass) are limited to what a guest may see.
 """
+import base64
 import functools
 import json
 import os
@@ -151,6 +152,7 @@ def _event_dict(e):
             'form_student': e.form_config('student'), 'form_teacher': e.form_config('teacher'),
             'wa_tpl_confirm_teacher': e.wa_tpl_confirm_teacher or '', 'wa_tpl_seat_teacher': e.wa_tpl_seat_teacher or '',
             'wa_msg_confirm_teacher': e.wa_msg_confirm_teacher or '', 'wa_msg_seat_teacher': e.wa_msg_seat_teacher or '',
+            'logo': e.logo_data_uri(),
             'coupon_enabled': bool(e.coupon_enabled), 'wa_tpl_coupon': e.wa_tpl_coupon or '', 'wa_tpl_coupon_teacher': e.wa_tpl_coupon_teacher or '',
             'wa_msg_coupon_student': e.wa_msg_coupon_student or '', 'wa_msg_coupon_teacher': e.wa_msg_coupon_teacher or ''}
 
@@ -298,7 +300,8 @@ class WinnersMeetApi(http.Controller):
         return {
             'event': {'id': ev.id, 'slug': ev.slug, 'name': ev.name, 'date': fields.Date.to_string(ev.date),
                       'time': ev.time_text or '', 'venue': ev.venue or '',
-                      'reg_student_open': ev.reg_student_open, 'reg_teacher_open': ev.reg_teacher_open},
+                      'reg_student_open': ev.reg_student_open, 'reg_teacher_open': ev.reg_teacher_open,
+                      'logo': ev.logo_data_uri()},
             'student_categories': [{'id': c.id, 'name': c.name, 'course_id': c.course_id.id or False, 'color': c.color}
                                  for c in cats if c.kind == 'student'],
             'form': {'student': ev.form_config('student'), 'teacher': ev.form_config('teacher')},
@@ -547,6 +550,27 @@ class WinnersMeetApi(http.Controller):
     def events(self, body=None, **kw):
         _need_staff()
         return [_event_dict(e) for e in request.env['otm.wm.event'].search([])]
+
+    @api('/events/logo', methods=('POST',))
+    def event_logo(self, body=None, **kw):
+        """Upload (or remove, with empty data) the logo shown on this event's public forms."""
+        _need_manager()
+        ev = _event(body.get('event_id'))
+        data = str(body.get('data') or '')
+        if not data:
+            ev.write({'logo': False, 'logo_mime': False})
+            return {'logo': ''}
+        m = re.match(r'^data:(image/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$', data)
+        if not m:
+            raise UserError(_("Please upload a PNG, JPG or WEBP image."))
+        raw = base64.b64decode(m.group(2), validate=True)
+        if len(raw) > 600 * 1024:
+            raise UserError(_("Logo is too large. Use an image under 600 KB."))
+        magic = {'image/png': b'\x89PNG', 'image/jpeg': b'\xff\xd8\xff', 'image/webp': b'RIFF'}[m.group(1)]
+        if not raw.startswith(magic):
+            raise UserError(_("This file is not a valid image."))
+        ev.write({'logo': m.group(2), 'logo_mime': m.group(1)})
+        return {'logo': ev.logo_data_uri()}
 
     @api('/events/save', methods=('POST',))
     def event_save(self, body=None, **kw):

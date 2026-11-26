@@ -82,6 +82,15 @@ class WmEvent(models.Model):
                        help="Used in the registration link: /e/<slug>/register. Letters, numbers and dashes.")
     form_student = fields.Text(string="Student Form Fields (JSON)")
     form_teacher = fields.Text(string="Teacher Form Fields (JSON)")
+    logo = fields.Binary(string="Event Logo", attachment=True)
+    logo_mime = fields.Char()
+
+    def logo_data_uri(self):
+        self.ensure_one()
+        if not self.logo:
+            return ''
+        raw = self.logo.decode() if isinstance(self.logo, bytes) else self.logo
+        return 'data:%s;base64,%s' % (self.logo_mime or 'image/png', raw)
     item_ids = fields.One2many('otm.wm.item', 'event_id', string="Kit Items")
     course_ids = fields.One2many('otm.wm.course', 'event_id', string="Courses")
     category_ids = fields.One2many('otm.wm.category', 'event_id', string="Winner Categories")

@@ -66,3 +66,22 @@ class TestChecklistHttp(HttpCase):
         self.assertEqual(code, 404)                                  # old link dead
         code, r = self._call('ck_mgr', '/checklist/reset', {'event_id': eid})
         self.assertEqual(self.ev.checklist_ids.filtered('done').ids, [])
+
+    def test_logo_upload(self):
+        import base64
+        png = base64.b64encode(b'\x89PNG\r\n\x1a\n' + b'0' * 50).decode()
+        uri = 'data:image/png;base64,' + png
+        code, r = self._call('ck_staff', '/events/logo', {'event_id': self.ev.id, 'data': uri})
+        self.assertEqual(code, 403)
+        code, r = self._call('ck_mgr', '/events/logo', {'event_id': self.ev.id, 'data': 'data:image/svg+xml;base64,AAAA'})
+        self.assertFalse(r['ok'])
+        code, r = self._call('ck_mgr', '/events/logo', {'event_id': self.ev.id, 'data': 'data:image/png;base64,' + base64.b64encode(b'notapng').decode()})
+        self.assertFalse(r['ok'])
+        code, r = self._call('ck_mgr', '/events/logo', {'event_id': self.ev.id, 'data': uri})
+        self.assertEqual(r['data']['logo'], uri)
+        self.ev.write({'slug': 'logo-ev'})
+        code, r = self._call(None, '/public/event?slug=logo-ev')
+        self.assertEqual(r['data']['event']['logo'], uri)
+        code, r = self._call('ck_mgr', '/events/logo', {'event_id': self.ev.id, 'data': ''})
+        code, r = self._call(None, '/public/event?slug=logo-ev')
+        self.assertEqual(r['data']['event']['logo'], '')
