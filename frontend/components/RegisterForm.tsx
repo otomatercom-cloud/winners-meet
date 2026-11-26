@@ -112,7 +112,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
         <Card className="p-6 text-center text-slate-600">Registration is closed right now.</Card>
       ) : done ? (
         <Card className="wm-card p-8 text-center">
-          <img src={ev?.logo || "/logo.png"} alt={ev?.name || "Logo"} className="mx-auto mb-5 max-h-16 w-auto max-w-[220px] rounded object-contain" />
+          <div className="mb-5 flex justify-center rounded-xl bg-white p-3 shadow-sm"><img src={ev?.logo || "/logo.png"} alt={ev?.name || "Logo"} className="max-h-24 w-auto max-w-full object-contain" /></div>
           {done.approval_state === "approved" ? <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-600" /> : <Clock className="mx-auto mb-3 h-12 w-12 text-amber-500" />}
           <h2 className="text-xl font-semibold">{done.already ? "Already registered" : done.approval_state === "approved" ? "You are registered!" : "Registration received"}</h2>
           <p className="mt-2 text-sm text-slate-600">
@@ -125,7 +125,7 @@ export default function RegisterForm({ kind, slug }: { kind: "student" | "teache
         </Card>
       ) : (
         <Card className="wm-card p-5 sm:p-7">
-          <img src={ev?.logo || "/logo.png"} alt={ev?.name || "Logo"} className="mb-4 max-h-16 w-auto max-w-[220px] rounded object-contain" />
+          <div className="mb-5 flex justify-center rounded-xl bg-white p-3 shadow-sm"><img src={ev?.logo || "/logo.png"} alt={ev?.name || "Logo"} className="max-h-24 w-auto max-w-full object-contain" /></div>
           <div className="wm-eyebrow"><i />{ev.name}</div>
           <h1 className="mt-2 text-2xl font-bold">{kind === "student" ? "Student" : "Teacher"} registration</h1>
           <p className="mb-4 mt-1 border-b border-slate-100 pb-4 text-sm text-slate-500">{ev.date}{ev.time ? ` · ${ev.time}` : ""}{ev.venue ? ` · ${ev.venue}` : ""}</p>
