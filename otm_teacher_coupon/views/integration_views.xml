@@ -32,8 +32,8 @@
         <field name="model">lead.admission.wizard</field>
         <field name="inherit_id" ref="custom_leads_19.view_lead_admission_wizard_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//group[field[@name='fee_structure_id']]" position="after">
-                <group string="Coupon (optional)" invisible="not batch_required or not fee_structure_id">
+            <xpath expr="//group[field[@name='fee_structure_ids']]" position="after">
+                <group string="Coupon (optional)" invisible="not batch_required or not fee_structure_ids">
                     <field name="coupon_code" placeholder="WMT-XXXXXX / WMS-XXXXXX"/>
                 </group>
             </xpath>
