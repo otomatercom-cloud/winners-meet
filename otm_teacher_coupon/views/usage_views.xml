@@ -17,7 +17,9 @@
                 <field name="slot_no" optional="show"/>
                 <field name="discount_pct" optional="show"/>
                 <field name="base_amount" optional="hide"/>
+                <field name="course_id" optional="show"/>
                 <field name="discount_amount" sum="Total"/>
+                <field name="referral_amount" sum="Total" optional="show"/>
                 <field name="approved_by" optional="show"/>
                 <field name="source" optional="hide"/>
             </list>
@@ -49,6 +51,8 @@
                         <group string="Admission">
                             <field name="student_id" readonly="1"/>
                             <field name="enrollment_id" readonly="1"/>
+                            <field name="course_id" readonly="state != 'pending'" options="{'no_create': True}"/>
+                            <field name="lead_id"/>
                             <field name="requested_by"/>
                             <field name="source"/>
                         </group>
@@ -64,6 +68,8 @@
                             <field name="discount_pct"/>
                             <field name="base_amount"/>
                             <field name="discount_amount"/>
+                            <field name="referral_pct"/>
+                            <field name="referral_amount"/>
                         </group>
                     </group>
                 </sheet>

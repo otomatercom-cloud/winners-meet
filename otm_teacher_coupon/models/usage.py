@@ -34,10 +34,16 @@ class CouponUsage(models.Model):
     base_amount = fields.Float(string="Discount Base ₹", readonly=True, digits=(10, 2))
     discount_amount = fields.Float(string="Discount ₹", readonly=True, digits=(10, 2))
     source = fields.Char(readonly=True)
+    lead_id = fields.Many2one('leads.logic', string="Lead", readonly=True, index=True, ondelete='set null')
+    course_id = fields.Many2one('course.interested', string="Course",
+                                help="Its tuition fee is the base for the discount and referral. Set before approving.")
+    tuition_base = fields.Float(string="Tuition Fee Base ₹", readonly=True, digits=(10, 2))
+    referral_pct = fields.Float(string="Referral %", readonly=True)
+    referral_amount = fields.Float(string="Referral ₹", readonly=True, digits=(10, 2))
 
     # ------------------------------------------------------------ request
     @api.model
-    def _request(self, code, enrollment, source=''):
+    def _request(self, code, enrollment, source='', lead=None):
         """Officer enters a code for an enrollment: validate and create a Pending usage."""
         code = (code or '').strip().upper()
         if not code:
@@ -57,9 +63,27 @@ class CouponUsage(models.Model):
         usage = self.sudo().create({
             'coupon_code': code, 'participant_id': part.id, 'owner_name': part.name, 'owner_phone': part.phone,
             'owner_kind': part.kind, 'student_id': student.id, 'enrollment_id': enrollment.id,
-            'requested_by': self.env.uid, 'source': source})
+            'requested_by': self.env.uid, 'source': source,
+            'lead_id': lead.id if lead else False,
+            'course_id': lead.course_inter[:1].id if lead and lead.course_inter else False})
         usage.message_post(body=_("Coupon %(c)s entered by %(u)s, waiting for approval.", c=code, u=self.env.user.name))
         return usage
+
+    def _tuition_base(self):
+        """Course tuition fee when set, else the enrollment fee (excl. GST unless the setting says otherwise)."""
+        self.ensure_one()
+        if self.course_id and self.course_id.tuition_fee > 0:
+            return self.course_id.tuition_fee
+        cfg = self.env['otm.coupon.config']._get()
+        enr = self.enrollment_id
+        base = enr.total_fee
+        if cfg.base == 'excl':
+            try:
+                rate = float(enr.gst_rate or 0)
+            except ValueError:
+                rate = 0.0
+            base = round(base / (1 + rate / 100.0), 2) if rate else base
+        return base
 
     # ------------------------------------------------------------ approval
     def _need_approver(self):
@@ -79,20 +103,25 @@ class CouponUsage(models.Model):
             enr = rec.enrollment_id
             used = self.sudo().search_count([('participant_id', '=', rec.participant_id.id), ('state', '=', 'approved')])
             slot = used + 1
+            base = rec._tuition_base()
             if rec.owner_kind == 'teacher':
-                pct = cfg.teacher_pct if slot <= cfg.teacher_slots else cfg.teacher_after_pct
+                pct = cfg.discount_pct if (cfg.discount_enabled and slot <= cfg.discount_slots) else 0.0
+                ref_pct = cfg.referral_pct if (cfg.referral_enabled and (not cfg.referral_max or slot <= cfg.referral_max)) else 0.0
             else:
-                pct = cfg.student_pct
-            base = enr.total_fee
-            if cfg.base == 'excl':
-                rate = float(enr.gst_rate or 0)
-                base = round(base / (1 + rate / 100.0), 2) if rate else base
+                pct, ref_pct = cfg.student_pct, 0.0
             amount = round(base * pct / 100.0, 2)
-            enr.write({'total_fee': round(enr.total_fee - amount, 2)})
+            ref_amount = round(base * ref_pct / 100.0, 2)
+            if amount:
+                enr.write({'total_fee': round(enr.total_fee - amount, 2)})
             rec.write({'state': 'approved', 'approved_by': self.env.uid, 'approved_on': fields.Datetime.now(),
-                       'slot_no': slot, 'discount_pct': pct, 'base_amount': base, 'discount_amount': amount})
-            rec.message_post(body=_("Approved by %(u)s: use #%(n)s, %(p)s%% = ₹%(a)s off.",
-                                    u=self.env.user.name, n=slot, p=pct, a=amount))
+                       'slot_no': slot, 'discount_pct': pct, 'base_amount': base, 'tuition_base': base,
+                       'discount_amount': amount, 'referral_pct': ref_pct, 'referral_amount': ref_amount})
+            if ref_amount:
+                self.env['otm.coupon.wallet.line'].sudo().create({
+                    'participant_id': rec.participant_id.id, 'kind': 'referral', 'amount': ref_amount,
+                    'usage_id': rec.id, 'note': rec.student_id.name})
+            rec.message_post(body=_("Approved by %(u)s: use #%(n)s, student discount %(p)s%% = ₹%(a)s, teacher referral ₹%(r)s.",
+                                    u=self.env.user.name, n=slot, p=pct, a=amount, r=ref_amount))
         return True
 
     def action_revoke(self):
@@ -105,6 +134,7 @@ class CouponUsage(models.Model):
             enr = rec.enrollment_id
             enr.write({'total_fee': round(enr.total_fee + rec.discount_amount, 2)})
             rec.write({'state': 'revoked'})
+            self.env['otm.coupon.wallet.line'].sudo().search([('usage_id', '=', rec.id), ('state', '=', 'active')]).write({'state': 'cancelled'})
             rec.message_post(body=_("Revoked by %s. Discount added back to the fee.", self.env.user.name))
         return True
 

@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_wallet_line_list" model="ir.ui.view">
+        <field name="name">otm.coupon.wallet.line.list</field>
+        <field name="model">otm.coupon.wallet.line</field>
+        <field name="arch" type="xml">
+            <list string="Teacher Wallet" decoration-muted="state == 'cancelled'" decoration-danger="kind == 'payout'">
+                <field name="date"/>
+                <field name="participant_id"/>
+                <field name="kind" widget="badge"/>
+                <field name="note"/>
+                <field name="usage_id" optional="hide"/>
+                <field name="amount"/>
+                <field name="signed_amount" sum="Net"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+    <record id="view_wallet_line_form" model="ir.ui.view">
+        <field name="name">otm.coupon.wallet.line.form</field>
+        <field name="model">otm.coupon.wallet.line</field>
+        <field name="arch" type="xml">
+            <form string="Wallet Entry">
+                <sheet>
+                    <group>
+                        <field name="participant_id" options="{'no_create': True}" readonly="usage_id"/>
+                        <field name="kind" readonly="usage_id"/>
+                        <field name="amount" readonly="usage_id"/>
+                        <field name="note"/>
+                        <field name="usage_id" readonly="1" invisible="not usage_id"/>
+                        <field name="state"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_wallet_line_search" model="ir.ui.view">
+        <field name="name">otm.coupon.wallet.line.search</field>
+        <field name="model">otm.coupon.wallet.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="participant_id"/>
+                <field name="note"/>
+                <filter name="f_payout" string="Payouts" domain="[('kind', '=', 'payout')]"/>
+                <filter name="f_ref" string="Referrals" domain="[('kind', '=', 'referral')]"/>
+                <group>
+                    <filter name="g_teacher" string="Teacher" context="{'group_by': 'participant_id'}"/>
+                    <filter name="g_kind" string="Type" context="{'group_by': 'kind'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_wallet_line" model="ir.actions.act_window">
+        <field name="name">Teacher Wallet</field>
+        <field name="res_model">otm.coupon.wallet.line</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_wallet_line_search"/>
+        <field name="context">{'search_default_g_teacher': 1}</field>
+    </record>
+
+    <record id="view_course_interested_tree_fee" model="ir.ui.view">
+        <field name="name">course.interested.tree.fee</field>
+        <field name="model">course.interested</field>
+        <field name="inherit_id" ref="custom_leads_19.view_course_interested_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="tuition_fee"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_course_interested_form_fee" model="ir.ui.view">
+        <field name="name">course.interested.form.fee</field>
+        <field name="model">course.interested</field>
+        <field name="inherit_id" ref="custom_leads_19.view_course_interested_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="tuition_fee"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="action_course_fees" model="ir.actions.act_window">
+        <field name="name">Course Fees</field>
+        <field name="res_model">course.interested</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="view_leads_logic_form_referral" model="ir.ui.view">
+        <field name="name">leads.logic.form.referral</field>
+        <field name="model">leads.logic</field>
+        <field name="inherit_id" ref="custom_leads_19.view_leads_logic_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='college_name']" position="after">
+                <field name="wm_participant_id" readonly="1" invisible="not wm_participant_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

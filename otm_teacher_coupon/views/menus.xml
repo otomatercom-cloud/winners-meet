@@ -6,6 +6,10 @@
     <menuitem id="menu_coupon_usage" name="Coupon Uses" parent="menu_coupon_root" action="action_coupon_usage" sequence="20"/>
     <menuitem id="menu_coupon_owners" name="Coupons" parent="menu_coupon_root" action="action_coupon_owners" sequence="30"
               groups="otm_teacher_coupon.group_coupon_approver"/>
+    <menuitem id="menu_coupon_wallet" name="Teacher Wallet" parent="menu_coupon_root" action="action_wallet_line" sequence="40"
+              groups="otm_teacher_coupon.group_coupon_approver"/>
+    <menuitem id="menu_coupon_course_fees" name="Course Fees" parent="menu_coupon_root" action="action_course_fees" sequence="50"
+              groups="otm_teacher_coupon.group_coupon_approver"/>
     <menuitem id="menu_coupon_config" name="Settings" parent="menu_coupon_root" action="action_coupon_config" sequence="90"
               groups="otm_teacher_coupon.group_coupon_approver"/>
 </odoo>

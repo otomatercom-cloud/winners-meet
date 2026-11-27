@@ -6,13 +6,19 @@ class CouponConfig(models.Model):
     _description = 'Coupon Settings'
 
     name = fields.Char(default='Coupon Settings', readonly=True)
-    teacher_slots = fields.Integer(string="Teacher: students at the higher discount", default=3)
-    teacher_pct = fields.Float(string="Teacher: higher discount %", default=20.0)
-    teacher_after_pct = fields.Float(string="Teacher: discount % after the slots are used", default=10.0)
-    student_pct = fields.Float(string="Student coupon discount %", default=10.0)
+    # Student discount for students who join through a TEACHER's code
+    discount_enabled = fields.Boolean(string="Student discount on", default=True)
+    discount_slots = fields.Integer(string="Students per teacher who get the discount", default=3)
+    discount_pct = fields.Float(string="Student discount % (of tuition fee)", default=10.0)
+    # Referral amount credited to the teacher's wallet
+    referral_enabled = fields.Boolean(string="Teacher referral amount on", default=True)
+    referral_pct = fields.Float(string="Teacher referral % (of tuition fee)", default=10.0)
+    referral_max = fields.Integer(string="Max referrals paid per teacher", default=0, help="0 = no limit")
+    # Codes owned by a STUDENT (WMS-...) keep a flat discount
+    student_pct = fields.Float(string="Student-owned code discount %", default=10.0)
     base = fields.Selection(
         [('incl', 'Total fee including GST'), ('excl', 'Fee excluding GST')],
-        string="Discount is calculated on", default='incl', required=True)
+        string="Fallback base (when the course has no tuition fee set)", default='excl', required=True)
 
     @api.model
     def _get(self):

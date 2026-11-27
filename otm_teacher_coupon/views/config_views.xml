@@ -6,15 +6,24 @@
         <field name="arch" type="xml">
             <form string="Coupon Settings">
                 <sheet>
-                    <group string="Teacher coupon">
-                        <field name="teacher_slots"/>
-                        <field name="teacher_pct"/>
-                        <field name="teacher_after_pct"/>
+                    <group string="Student discount (students who join with a teacher's code)">
+                        <field name="discount_enabled"/>
+                        <field name="discount_slots" invisible="not discount_enabled"/>
+                        <field name="discount_pct" invisible="not discount_enabled"/>
                     </group>
-                    <group string="Student coupon">
+                    <group string="Teacher referral amount (credited to the teacher's wallet on every confirmed admission)">
+                        <field name="referral_enabled"/>
+                        <field name="referral_pct" invisible="not referral_enabled"/>
+                        <field name="referral_max" invisible="not referral_enabled"/>
+                    </group>
+                    <group string="Student-owned codes">
                         <field name="student_pct"/>
                     </group>
                     <group string="Calculation">
+                        <div colspan="2" class="text-muted">
+                            Discount and referral are calculated on the course's Tuition Fee (set it under Coupons &gt; Course Fees).
+                            If a course has no tuition fee, the enrollment fee is used as set below.
+                        </div>
                         <field name="base"/>
                     </group>
                 </sheet>

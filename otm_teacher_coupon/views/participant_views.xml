@@ -15,6 +15,7 @@
                 <field name="coupon_pending" string="Pending"/>
                 <field name="coupon_slots_left"/>
                 <field name="coupon_discount_total" sum="Total"/>
+                <field name="wallet_balance" sum="Total"/>
             </list>
         </field>
     </record>

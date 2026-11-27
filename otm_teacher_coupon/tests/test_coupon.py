@@ -31,49 +31,94 @@ class TestCoupon(TransactionCase):
         return self.env['student.enrollment'].create(
             {'student_id': st.id, 'batch_id': self.batch.id, 'total_fee': fee, 'gst_rate': gst})
 
-    def test_pending_then_approve_discount_incl_gst(self):
-        enr = self._enr(1, '9100000001')
-        u = self.env['otm.coupon.usage'].with_user(self.officer)._request(self.teacher.coupon_code.lower(), enr)
-        self.assertEqual(u.state, 'pending')
-        self.assertEqual(enr.total_fee, 10000.0)             # nothing until approved
+    def _course(self, fee=20000.0):
+        return self.env['course.interested'].create({'name': 'CMA USA T%s' % fee, 'tuition_fee': fee})
+
+    def _use(self, n, phone, course=None, fee=10000.0):
+        enr = self._enr(n, phone, fee=fee)
+        u = self.env['otm.coupon.usage']._request(self.teacher.coupon_code, enr)
+        if course:
+            u.course_id = course
+        return enr, u
+
+    def test_pending_then_approve_on_course_tuition_fee(self):
+        crs = self._course(20000.0)
+        enr, u = self._use(1, '9100000001', course=crs)
+        self.assertEqual((u.state, enr.total_fee), ('pending', 10000.0))     # nothing until approved
         with self.assertRaises(UserError):
-            u.with_user(self.officer).action_approve()       # officer cannot approve
+            u.with_user(self.officer).action_approve()
         u.with_user(self.approver).action_approve()
-        self.assertEqual((u.state, u.slot_no, u.discount_pct, u.discount_amount), ('approved', 1, 20.0, 2000.0))
+        self.assertEqual((u.slot_no, u.discount_pct, u.tuition_base, u.discount_amount), (1, 10.0, 20000.0, 2000.0))
+        self.assertEqual((u.referral_pct, u.referral_amount), (10.0, 2000.0))
         self.assertEqual(enr.total_fee, 8000.0)
-        self.assertEqual(enr.due_amount, 8000.0)
-
-    def test_first_three_20_then_10(self):
-        pcts = []
-        for i in range(4):
-            enr = self._enr(10 + i, '91000001%02d' % i)
-            u = self.env['otm.coupon.usage']._request(self.teacher.coupon_code, enr)
-            u.with_user(self.approver).action_approve()
-            pcts.append(u.discount_pct)
-        self.assertEqual(pcts, [20.0, 20.0, 20.0, 10.0])
         self.teacher.invalidate_recordset()
-        self.assertEqual((self.teacher.coupon_approved, self.teacher.coupon_slots_left), (4, 0))
-        self.assertEqual(self.teacher.coupon_discount_total, 2000 * 3 + 1000)
+        self.assertEqual(self.teacher.wallet_balance, 2000.0)
 
-    def test_slot_by_approval_order_and_revoke_frees_slot(self):
-        e = [self._enr(20 + i, '91000002%02d' % i) for i in range(5)]
-        us = [self.env['otm.coupon.usage']._request(self.teacher.coupon_code, x) for x in e]
-        for u in us[:3]:
+    def test_first_three_get_discount_teacher_always_gets_referral(self):
+        crs = self._course(10000.0)
+        res = []
+        for i in range(4):
+            enr, u = self._use(10 + i, '91000001%02d' % i, course=crs)
             u.with_user(self.approver).action_approve()
-        us[3].with_user(self.approver).action_approve()      # 4th approved -> 10%
-        self.assertEqual(us[3].discount_pct, 10.0)
-        us[0].with_user(self.approver).action_revoke()       # slot freed, fee restored
-        self.assertEqual(e[0].total_fee, 10000.0)
-        us[4].with_user(self.approver).action_approve()      # approved count is 3 -> this is use #4 again
-        self.assertEqual(us[4].slot_no, 4)
+            res.append((u.discount_pct, u.referral_amount, enr.total_fee))
+        self.assertEqual(res, [(10.0, 1000.0, 9000.0)] * 3 + [(0.0, 1000.0, 10000.0)])
+        self.teacher.invalidate_recordset()
+        self.assertEqual((self.teacher.coupon_approved, self.teacher.coupon_slots_left, self.teacher.wallet_balance), (4, 0, 4000.0))
 
-    def test_student_coupon_10_and_excl_gst(self):
-        self.env['otm.coupon.config']._get().sudo().write({'base': 'excl'}) if self.env['otm.coupon.config'].search([]) else self.env['otm.coupon.config'].create({'base': 'excl'})
-        enr = self._enr(30, '9100000030', fee=11800.0, gst='18')
+    def test_fallback_base_excl_gst_when_course_has_no_fee(self):
+        enr = self._enr(20, '9100000020', fee=11800.0, gst='18')
+        u = self.env['otm.coupon.usage']._request(self.teacher.coupon_code, enr)
+        u.with_user(self.approver).action_approve()
+        self.assertEqual((u.tuition_base, u.discount_amount, u.referral_amount), (10000.0, 1000.0, 1000.0))
+        self.assertEqual(enr.total_fee, 10800.0)
+
+    def test_settings_switch_off_and_limits(self):
+        cfg = self.env['otm.coupon.config']._get()
+        cfg = cfg if cfg.id else self.env['otm.coupon.config'].create({})
+        crs = self._course(10000.0)
+        cfg.write({'discount_enabled': False})
+        enr, u = self._use(30, '9100000030', course=crs)
+        u.with_user(self.approver).action_approve()
+        self.assertEqual((u.discount_amount, u.referral_amount, enr.total_fee), (0.0, 1000.0, 10000.0))
+        cfg.write({'discount_enabled': True, 'referral_enabled': False})
+        enr, u = self._use(31, '9100000031', course=crs)
+        u.with_user(self.approver).action_approve()
+        self.assertEqual((u.discount_amount, u.referral_amount), (1000.0, 0.0))
+        cfg.write({'referral_enabled': True, 'referral_max': 3})            # slot 3 pays, slot 4 does not
+        enr, u3 = self._use(32, '9100000032', course=crs)
+        u3.with_user(self.approver).action_approve()
+        enr, u4 = self._use(33, '9100000033', course=crs)
+        u4.with_user(self.approver).action_approve()
+        self.assertEqual((u3.slot_no, u3.referral_amount, u4.slot_no, u4.referral_amount), (3, 1000.0, 4, 0.0))
+        cfg.write({'referral_max': 0})
+
+    def test_revoke_frees_slot_and_cancels_wallet_credit(self):
+        crs = self._course(10000.0)
+        pairs = [self._use(40 + i, '91000004%02d' % i, course=crs) for i in range(4)]
+        for enr, u in pairs[:3]:
+            u.with_user(self.approver).action_approve()
+        pairs[0][1].with_user(self.approver).action_revoke()
+        self.assertEqual(pairs[0][0].total_fee, 10000.0)
+        self.teacher.invalidate_recordset()
+        self.assertEqual(self.teacher.wallet_balance, 2000.0)               # credit of the revoked one cancelled
+        pairs[3][1].with_user(self.approver).action_approve()               # approved count was 2 -> slot 3, discount again
+        self.assertEqual((pairs[3][1].slot_no, pairs[3][1].discount_pct), (3, 10.0))
+
+    def test_payout_reduces_balance(self):
+        crs = self._course(10000.0)
+        enr, u = self._use(50, '9100000050', course=crs)
+        u.with_user(self.approver).action_approve()
+        self.env['otm.coupon.wallet.line'].with_user(self.approver).create(
+            {'participant_id': self.teacher.id, 'kind': 'payout', 'amount': 400.0, 'note': 'GPay'})
+        self.teacher.invalidate_recordset()
+        self.assertEqual(self.teacher.wallet_balance, 600.0)
+
+    def test_student_owned_code_flat_discount_no_wallet(self):
+        enr = self._enr(60, '9100000060', fee=11800.0, gst='18')
         u = self.env['otm.coupon.usage']._request(self.winner.coupon_code, enr)
         u.with_user(self.approver).action_approve()
-        self.assertEqual((u.base_amount, u.discount_pct, u.discount_amount), (10000.0, 10.0, 1000.0))
-        self.assertEqual(enr.total_fee, 10800.0)
+        self.assertEqual((u.discount_pct, u.discount_amount, u.referral_amount), (10.0, 1000.0, 0.0))
+        self.assertFalse(self.env['otm.coupon.wallet.line'].search([('participant_id', '=', self.winner.id)]))
 
     def test_rules(self):
         enr = self._enr(40, '9100000040')
@@ -107,4 +152,20 @@ class TestCoupon(TransactionCase):
         self.assertEqual(usage.state, 'pending')
         self.assertEqual(enr.total_fee, 11800.0)
         usage.with_user(self.approver).action_approve()
-        self.assertEqual(enr.total_fee, 11800.0 - 2360.0)
+        self.assertEqual(enr.total_fee, 11800.0 - 1000.0)       # 10% of the tuition base (11800 excl. 18% GST)
+
+    def test_wallet_referral_lead_flow_via_admission(self):
+        env = self.env
+        env['ir.config_parameter'].sudo().set_param('custom_leads_19.admission_batch_required', '1')
+        crs = self._course(20000.0)
+        src = env.ref('otm_teacher_coupon.lead_source_wm_referral')
+        lead = env['leads.logic'].create({'name': 'Referred Stu', 'phone_number': '9100000088', 'leads_source': src.id,
+                                          'course_inter': [(6, 0, [crs.id])], 'wm_participant_id': self.teacher.id})
+        fs = env['fee.structure'].create({'name': 'LS2', 'fee_type': 'lumpsum', 'gst_rate': '18', 'amount_inclusive': 23600.0,
+                                          'batch_ids': [(6, 0, [self.batch.id])]})
+        wiz = env['lead.admission.wizard'].create({'lead_id': lead.id, 'batch_id': self.batch.id, 'fee_structure_id': fs.id})
+        wiz.action_confirm_admission()                      # no code typed: taken from the referral
+        usage = lead.student_id.enrollment_ids.coupon_usage_ids
+        self.assertEqual((usage.state, usage.lead_id, usage.course_id), ('pending', lead, crs))
+        usage.with_user(self.approver).action_approve()
+        self.assertEqual((usage.discount_amount, usage.referral_amount), (2000.0, 2000.0))

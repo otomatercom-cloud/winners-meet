@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="lead_source_wm_referral" model="leads.sources">
+        <field name="name">Winners Meet Teacher Referral</field>
+    </record>
+</odoo>
