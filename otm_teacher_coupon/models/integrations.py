@@ -1,4 +1,4 @@
-from odoo import _, fields, models
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 
@@ -8,16 +8,28 @@ class LeadAdmissionWizard(models.TransientModel):
     coupon_code = fields.Char(string="Coupon Code",
                               help="Optional. The discount is applied only after a Coupon Approver approves it.")
 
+    @api.model
+    def default_get(self, fields_list):
+        # a lead that came through a teacher's coupon: fetch the code into the admission form automatically
+        res = super().default_get(fields_list)
+        lead_id = res.get('lead_id') or self.env.context.get('default_lead_id')
+        if lead_id and 'coupon_code' in fields_list and not res.get('coupon_code'):
+            lead = self.env['leads.logic'].browse(lead_id).exists()
+            res['coupon_code'] = (lead.wm_participant_id.coupon_code or '') if lead else ''
+        return res
+
     def action_confirm_admission(self):
         lead = self.lead_id
-        code = (self.coupon_code or '').strip() or (lead.wm_participant_id.coupon_code or '')
+        referral = lead.wm_participant_id.coupon_code or ''
+        code = (self.coupon_code or '').strip() or referral
+        from_referral = bool(code) and code == referral      # auto-fetched code: never block the admission
         res = super().action_confirm_admission()
         if code:
             student = lead.student_id
             enrollment = student.enrollment_ids.filtered(lambda e: e.batch_id == self.batch_id)[:1] if self.batch_id \
                 else student.enrollment_ids.sorted('id', reverse=True)[:1]
             if enrollment:
-                if (self.coupon_code or '').strip():
+                if (self.coupon_code or '').strip() and not from_referral:
                     self.env['otm.coupon.usage']._request(code, enrollment, source='Admission', lead=lead)
                 else:
                     try:                                   # code came from the referral: never block the admission
