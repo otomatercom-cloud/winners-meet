@@ -88,7 +88,9 @@ class WalletController(http.Controller):
                          'paid': bool(cl.settled_by_id), 'paid_on': _date(cl.settled_by_id.date) if cl.settled_by_id else '',
                          'reference': cl.settled_by_id.reference or '' if cl.settled_by_id else ''})
         for ln in part.wallet_line_ids.sudo().filtered(lambda x: x.kind != 'referral' and x.state == 'active'):
-            rows.append({'kind': ln.kind, 'name': dict(ln._fields['kind'].selection)[ln.kind], 'course': ' · '.join(x for x in (ln.note, ln.reference and 'Ref ' + ln.reference) if x),
+            is_payout = ln.kind == 'payout'
+            rows.append({'kind': ln.kind, 'name': 'Paid to your bank' if is_payout else dict(ln._fields['kind'].selection)[ln.kind],
+                         'course': ' · '.join(x for x in ('Transferred to your account' if is_payout else ln.note, ln.reference and 'Ref ' + ln.reference) if x),
                          'state': 'paid' if ln.kind == 'payout' else 'adjust', 'amount': ln.signed_amount,
                          'discount_pct': 0.0, 'date': _date(ln.date)})
         rows.sort(key=lambda r: r['date'], reverse=True)
