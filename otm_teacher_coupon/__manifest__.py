@@ -18,6 +18,7 @@
         'views/wallet_views.xml',
         'views/menus.xml',
         'wizard/apply_coupon_views.xml',
+        'wizard/payout_wizard_views.xml',
     ],
     'installable': True,
     'application': False,

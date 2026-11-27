@@ -16,6 +16,10 @@ class CouponWalletLine(models.Model):
     state = fields.Selection([('active', 'Active'), ('cancelled', 'Cancelled')], default='active', required=True)
     usage_id = fields.Many2one('otm.coupon.usage', ondelete='set null', index=True)
     note = fields.Char()
+    reference = fields.Char(string="Transfer reference", help="Bank / UPI transaction reference of the payout.")
+    settled_by_id = fields.Many2one('otm.coupon.wallet.line', string="Paid by payout", ondelete='set null', index=True,
+                                    copy=False, help="The payout that transferred this credit to the teacher's account.")
+    settled_ids = fields.One2many('otm.coupon.wallet.line', 'settled_by_id', string="Credits paid")
     date = fields.Datetime(default=fields.Datetime.now)
 
     @api.depends('kind', 'amount', 'state')

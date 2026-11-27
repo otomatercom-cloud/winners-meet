@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowUp, Clock, Plus, XCircle } from "lucide-react";
 import { api } from "@/lib/api";
 
-type Row = { kind: string; name: string; course: string; state: string; amount: number; discount_pct: number; date: string };
+type Row = { kind: string; name: string; course: string; state: string; amount: number; discount_pct: number; date: string; paid?: boolean; paid_on?: string; reference?: string };
 type Wallet = {
-  name: string; code: string; balance: number; expected: number; confirmed: number; added: number;
+  name: string; code: string; balance: number; paid_total: number; expected: number; confirmed: number; added: number;
   discount_enabled: boolean; discount_slots: number; discount_pct: number; discount_used: number;
   referral_enabled: boolean; referral_pct: number; can_add: boolean; courses: { id: number; name: string }[]; rows: Row[];
 };
@@ -102,15 +102,15 @@ export default function WalletPage() {
   }
 
   const stateChip = (r: Row) => {
-    if (r.state === "credited") return <span className="text-[15px] font-bold text-emerald-700">+ {rs(r.amount)}</span>;
-    if (r.state === "paid") return <span className="text-[15px] font-bold text-rose-700">− {rs(r.amount)}</span>;
+    if (r.state === "credited") return <span className="text-right"><span className="block text-[15px] font-bold text-emerald-700">+ {rs(r.amount)}</span>{r.paid ? <span className="mt-0.5 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">Paid ✓</span> : <span className="mt-0.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">Not paid yet</span>}</span>;
+    if (r.state === "paid") return <span className="text-right"><span className="block text-[15px] font-bold text-rose-700">− {rs(r.amount)}</span><span className="text-[11px] font-semibold text-emerald-800">Transferred</span></span>;
     if (r.state === "adjust") return <span className={"text-[15px] font-bold " + (r.amount < 0 ? "text-rose-700" : "text-emerald-700")}>{r.amount < 0 ? "− " : "+ "}{rs(r.amount)}</span>;
     if (r.state === "closed") return <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">Not admitted</span>;
     if (r.state === "approval") return <span className="rounded-full bg-sky-100 px-2.5 py-1 text-xs font-semibold text-sky-800">Verifying</span>;
     return <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800">In progress</span>;
   };
   const sub = (r: Row) =>
-    r.state === "credited" ? `${r.course ? r.course + " · " : ""}Admitted${r.discount_pct ? ` · student got ${r.discount_pct}% off` : ""}`
+    r.state === "credited" ? `${r.course ? r.course + " · " : ""}Admitted${r.discount_pct ? ` · student got ${r.discount_pct}% off` : ""}${r.paid ? ` · transferred to your account${r.paid_on ? " on " + r.paid_on.slice(0, 10) : ""}${r.reference ? " (Ref " + r.reference + ")" : ""}` : ""}`
     : r.state === "approval" ? `${r.course ? r.course + " · " : ""}Admission being verified`
     : r.state === "closed" ? `${r.course ? r.course + " · " : ""}Did not join`
     : r.state === "paid" || r.state === "adjust" ? r.course
@@ -130,7 +130,8 @@ export default function WalletPage() {
           </div>
         </header>
         <section className="-mt-14 mx-4 space-y-4 rounded-2xl bg-white p-5 shadow-lg shadow-emerald-900/10">
-          <div><div className="text-sm text-slate-600">Wallet balance</div><div className="text-4xl font-bold tracking-tight text-slate-900">{rs(data.balance)}</div></div>
+          <div><div className="text-sm text-slate-600">Wallet balance (not yet paid)</div><div className="text-4xl font-bold tracking-tight text-slate-900">{rs(data.balance)}</div></div>
+          <div className="rounded-xl bg-emerald-50 px-3 py-2.5 text-sm"><span className="text-slate-600">Transferred to your account: </span><b className="text-emerald-800">{rs(data.paid_total)}</b></div>
           <div className="flex gap-3">
             <div className="flex-1 rounded-xl bg-emerald-50 px-3 py-2.5"><div className="text-xs text-slate-600">Expected</div><div className="font-semibold text-amber-800">{rs(data.expected)}</div></div>
             <div className="flex-1 rounded-xl bg-emerald-50 px-3 py-2.5"><div className="text-xs text-slate-600">Admissions</div><div className="font-semibold text-emerald-800">{data.confirmed} confirmed</div></div>

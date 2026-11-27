@@ -9,6 +9,8 @@
                 <field name="participant_id"/>
                 <field name="kind" widget="badge"/>
                 <field name="note"/>
+                <field name="reference"/>
+                <field name="settled_by_id" optional="show" string="Paid by"/>
                 <field name="usage_id" optional="hide"/>
                 <field name="amount"/>
                 <field name="signed_amount" sum="Net"/>
@@ -27,6 +29,8 @@
                         <field name="kind" readonly="usage_id"/>
                         <field name="amount" readonly="usage_id"/>
                         <field name="note"/>
+                        <field name="reference"/>
+                        <field name="settled_by_id" readonly="1" invisible="not settled_by_id"/>
                         <field name="usage_id" readonly="1" invisible="not usage_id"/>
                         <field name="state"/>
                     </group>

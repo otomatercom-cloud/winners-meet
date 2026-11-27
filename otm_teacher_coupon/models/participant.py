@@ -24,3 +24,8 @@ class WmParticipant(models.Model):
             rec.coupon_discount_total = sum(ok.mapped('discount_amount'))
             rec.coupon_slots_left = max(0, slots - len(ok)) if rec.kind == 'teacher' else 0
             rec.wallet_balance = sum(rec.sudo().wallet_line_ids.mapped('signed_amount'))
+
+    def action_pay_wallet(self):
+        self.ensure_one()
+        return {'type': 'ir.actions.act_window', 'name': 'Pay wallet', 'res_model': 'otm.coupon.payout.wizard',
+                'view_mode': 'form', 'target': 'new', 'context': {'default_participant_id': self.id}}

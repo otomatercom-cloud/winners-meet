@@ -9,3 +9,4 @@ access_apply_wizard,coupon apply wizard,model_otm_coupon_apply_wizard,base.group
 access_wallet_line_user,wallet line user,model_otm_coupon_wallet_line,base.group_user,1,0,0,0
 access_wallet_line_approver,wallet line approver,model_otm_coupon_wallet_line,group_coupon_approver,1,1,1,1
 access_course_approver,course interested approver,custom_leads_19.model_course_interested,group_coupon_approver,1,1,1,0
+access_payout_wizard,coupon payout wizard,model_otm_coupon_payout_wizard,group_coupon_approver,1,1,1,1

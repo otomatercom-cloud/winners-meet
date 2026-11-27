@@ -16,6 +16,9 @@
                 <field name="coupon_slots_left"/>
                 <field name="coupon_discount_total" sum="Total"/>
                 <field name="wallet_balance" sum="Total"/>
+                <button name="action_pay_wallet" type="object" string="Pay wallet" icon="fa-money"
+                        invisible="wallet_balance &lt;= 0 or kind != 'teacher'"
+                        groups="otm_teacher_coupon.group_coupon_approver"/>
             </list>
         </field>
     </record>

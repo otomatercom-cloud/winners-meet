@@ -61,8 +61,13 @@ class WalletController(http.Controller):
         for ld in leads:
             u = by_lead.get(ld.id)
             course = ', '.join(ld.course_inter.mapped('name')) or ld.course_interested or ''
+            paid_on, ref_no, paid = '', '', False
             if u and u.state == 'approved':
                 state, amount = 'credited', u.referral_amount
+                cl = u.env['otm.coupon.wallet.line'].sudo().search(
+                    [('usage_id', '=', u.id), ('kind', '=', 'referral'), ('state', '=', 'active')], limit=1)
+                if cl.settled_by_id:
+                    paid, paid_on, ref_no = True, _date(cl.settled_by_id.date), cl.settled_by_id.reference or ''
             elif u and u.state in ('rejected', 'revoked'):
                 state, amount = 'closed', 0.0
             else:
@@ -73,19 +78,27 @@ class WalletController(http.Controller):
                     expected += round(fee * cfg.referral_pct / 100.0, 2)
             rows.append({'kind': 'student', 'name': ld.name, 'course': course, 'state': state, 'amount': amount,
                          'discount_pct': u.discount_pct if u and u.state == 'approved' else 0.0,
+                         'paid': paid, 'paid_on': paid_on, 'reference': ref_no,
                          'date': _date(u.approved_on if u and u.approved_on else ld.create_date)})
         for u in usages.filtered(lambda x: not x.lead_id and x.state == 'approved'):
+            cl = env['otm.coupon.wallet.line'].sudo().search(
+                [('usage_id', '=', u.id), ('kind', '=', 'referral'), ('state', '=', 'active')], limit=1)
             rows.append({'kind': 'student', 'name': u.student_id.name, 'course': u.course_id.name or '', 'state': 'credited',
-                         'amount': u.referral_amount, 'discount_pct': u.discount_pct, 'date': _date(u.approved_on)})
+                         'amount': u.referral_amount, 'discount_pct': u.discount_pct, 'date': _date(u.approved_on),
+                         'paid': bool(cl.settled_by_id), 'paid_on': _date(cl.settled_by_id.date) if cl.settled_by_id else '',
+                         'reference': cl.settled_by_id.reference or '' if cl.settled_by_id else ''})
         for ln in part.wallet_line_ids.sudo().filtered(lambda x: x.kind != 'referral' and x.state == 'active'):
-            rows.append({'kind': ln.kind, 'name': dict(ln._fields['kind'].selection)[ln.kind], 'course': ln.note or '',
+            rows.append({'kind': ln.kind, 'name': dict(ln._fields['kind'].selection)[ln.kind], 'course': ' · '.join(x for x in (ln.note, ln.reference and 'Ref ' + ln.reference) if x),
                          'state': 'paid' if ln.kind == 'payout' else 'adjust', 'amount': ln.signed_amount,
                          'discount_pct': 0.0, 'date': _date(ln.date)})
         rows.sort(key=lambda r: r['date'], reverse=True)
         approved = usages.filtered(lambda x: x.state == 'approved')
         return {
             'name': part.name, 'code': part.coupon_code,
-            'balance': part.wallet_balance, 'expected': round(expected, 2),
+            'balance': part.wallet_balance,
+            'paid_total': round(sum(abs(l.amount) for l in part.wallet_line_ids.sudo()
+                                    if l.kind == 'payout' and l.state == 'active'), 2),
+            'expected': round(expected, 2),
             'confirmed': len(approved), 'added': len(leads),
             'discount_enabled': bool(cfg.discount_enabled), 'discount_slots': cfg.discount_slots,
             'discount_pct': cfg.discount_pct, 'discount_used': min(len(approved), cfg.discount_slots),

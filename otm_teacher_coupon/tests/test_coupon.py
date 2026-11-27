@@ -113,6 +113,22 @@ class TestCoupon(TransactionCase):
         self.teacher.invalidate_recordset()
         self.assertEqual(self.teacher.wallet_balance, 600.0)
 
+    def test_full_payout_marks_credits_paid(self):
+        crs = self._course(10000.0)
+        enr, u = self._use(51, '9100000051', course=crs)
+        u.with_user(self.approver).action_approve()
+        wiz = self.env['otm.coupon.payout.wizard'].with_user(self.approver).with_context(
+            default_participant_id=self.teacher.id).create({'reference': 'UTR123'})
+        self.assertEqual(wiz.amount, 1000.0)
+        with self.assertRaises(UserError):
+            self.env['otm.coupon.payout.wizard'].with_user(self.officer).create(
+                {'participant_id': self.teacher.id, 'amount': 1000.0, 'reference': 'X'}).action_confirm()
+        wiz.action_confirm()
+        self.teacher.invalidate_recordset()
+        self.assertEqual(self.teacher.wallet_balance, 0.0)
+        credit = self.env['otm.coupon.wallet.line'].search([('usage_id', '=', u.id), ('kind', '=', 'referral')])
+        self.assertEqual(credit.settled_by_id.reference, 'UTR123')
+
     def test_student_owned_code_flat_discount_no_wallet(self):
         enr = self._enr(60, '9100000060', fee=11800.0, gst='18')
         u = self.env['otm.coupon.usage']._request(self.winner.coupon_code, enr)
